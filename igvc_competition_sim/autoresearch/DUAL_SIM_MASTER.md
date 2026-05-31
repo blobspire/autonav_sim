@@ -28,6 +28,13 @@ python3 master/orchestrator.py commands planning_control
 python3 master/orchestrator.py commands jetson_perception
 ```
 
+Install the Codex skill from a fresh clone so future agents automatically load
+the dual-sim workflow:
+
+```bash
+./master/install_codex_skill.sh
+```
+
 Create isolated worktrees for candidate edits instead of editing active
 worktrees directly:
 

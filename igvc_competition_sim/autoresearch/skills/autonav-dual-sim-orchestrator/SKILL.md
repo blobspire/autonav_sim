@@ -1,0 +1,111 @@
+---
+name: autonav-dual-sim-orchestrator
+description: Use when coordinating AutoNav dual-simulation work across the planning/control Gazebo AutoResearch lane and the Jetson-in-the-loop perception/full-stack lane, including master-agent workflow, VM/Jetson orchestration, branch/worktree isolation, ROS domain separation, preflights, launch commands, run artifacts, and merge gates.
+---
+
+# AutoNav Dual-Sim Orchestrator
+
+Use this skill when the task involves running or supervising both AutoNav sim
+lanes, deciding which VM/Jetson process should own a run, or preparing a master
+agent workflow.
+
+## First Commands
+
+Start by checking status from the host:
+
+```bash
+cd /Users/cole/code/git/autonav_sim/igvc_competition_sim/autoresearch
+python3 master/orchestrator.py status
+```
+
+Then preflight the lane you are about to use:
+
+```bash
+python3 master/orchestrator.py preflight planning_control
+python3 master/orchestrator.py preflight jetson_perception
+```
+
+Read the durable workflow if details are needed:
+
+```bash
+sed -n '1,220p' DUAL_SIM_MASTER.md
+```
+
+## Lane Ownership
+
+- `planning_control`: `autonav-gazebo-sim` only. Gazebo is headless, Nav2 runs
+  in the same VM, and perception is oracle-backed. Do not involve the Jetson.
+- `jetson_perception`: `autonav-ros22` runs headless Gazebo/sim sensors; the
+  Jetson at `jetson-spare-eth` / `10.66.0.2` runs the sim-safe robot stack.
+- `autonav-rviz`: optional visualization only; it should be stopped when not
+  actively needed.
+
+## Safety Rules
+
+- Do not stop unmanaged AutoResearch runs unless the user explicitly asks.
+- Do not launch `bringup.launch.py`, `sensors.launch.py`, real ZED/SICK
+  launches, Docker hardware containers, or `control_node` for Jetson sim.
+- Do not edit dirty active worktrees directly. Create an isolated worktree and
+  branch for each candidate.
+- Keep ROS domains separate. The default Jetson lane domain is `72`.
+
+## Branch Policy
+
+- Planning/control candidates: `AutoNavB-control/<experiment>`.
+- Perception/Jetson candidates: `AutoNavB-perception/<experiment>`.
+- Harness/orchestrator candidates: `autonav_sim-master/<experiment>`.
+
+Before merging, require clean artifacts and no known regression in the other
+lane.
+
+## Useful Commands
+
+Print launch commands without starting:
+
+```bash
+python3 master/orchestrator.py commands planning_control
+python3 master/orchestrator.py commands jetson_perception
+```
+
+Create isolated worktrees before editing code:
+
+```bash
+python3 master/orchestrator.py create-worktree planning_control <experiment> --base hailmary
+python3 master/orchestrator.py create-worktree jetson_perception <experiment> --base hailmary
+python3 master/orchestrator.py create-worktree harness <experiment> --base main
+```
+
+Prepare the Jetson-lane sim workspace once before launching that lane:
+
+```bash
+python3 master/orchestrator.py prepare-jetson-sim-workspace --build
+```
+
+Start a master-owned planning/control run only after unmanaged runs finish:
+
+```bash
+python3 master/orchestrator.py start-planning-control \
+  --duration 45m \
+  --courses compact_baseline tight_gaps dense_obstacles sparse_lines ramp_turns \
+  --runs 1 --tier 1 --timeout 300 \
+  --description master-planning-control
+```
+
+Stop only a run that the master started:
+
+```bash
+python3 master/orchestrator.py stop-owned planning_control
+```
+
+Start and stop a master-owned Jetson perception run:
+
+```bash
+python3 master/orchestrator.py start-jetson-perception --name smoke
+python3 master/orchestrator.py stop-owned jetson_perception
+```
+
+## Gate
+
+A run is not clean if it has line crossing, obstacle contact, pothole contact,
+monitor failure, timeout, missing detector topics, empty line outputs when tape
+is visible, or speed-rule failure.
