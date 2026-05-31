@@ -331,3 +331,25 @@ RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning o
   `pfs=10.0`, `stuck=0.33`) and tight/dense/sparse Tier 1 screens passed, but `ramp_turns` failed
   immediately (`blocking_stop_over_60s`, distance `4.873`, progress `-15.227`). Do not reduce
   `bend_angle` globally; it overfits compact and removes the turn authority ramp needs.
+- DISCARD: adding a `GoalBender` `near_goal_bend_disable_radius` input and setting it from BT XML.
+  A `1.0m` radius passed compact Tier 2 but did not remove the late GoalBender/PathGoalConsistent churn
+  (`t_mean=95.86`, `stuck=3.0`). A `2.0m` radius improved compact (`3/3`, `t_mean=88.15`,
+  `stuck=0.33`) but failed `ramp_turns` Tier 2 (`2/3`; run 3 hit `blocking_stop_over_60s` after
+  `first_swing`). The candidate was reverted. Do not suppress GoalBender near goals by radius alone;
+  any retry needs a ramp-aware or planner-success-aware condition and must pass compact Tier 2 plus
+  ramp Tier 2 before being kept.
+- DISCARD: raising `PathGoalConsistent` `stale_timeout_s` from `1.50s` to `2.50s`. This gave the planner
+  more time to refresh after a moving bent goal and improved compact (`3/3`, `t_mean=85.04`,
+  `stuck=0.0`), but `ramp_turns` Tier 2 failed (`2/3`) because one run completed too slowly and tripped
+  `first_44ft_speed_below_1mph` at `0.272m/s`. Do not raise the stale timeout to `2.50s` globally; any
+  smaller timeout experiment must pass compact Tier 2 and ramp Tier 2 including the speed gate.
+- DISCARD: raising `PathGoalConsistent` `stale_timeout_s` from `1.50s` to `2.00s`. Compact again improved
+  (`3/3`, `t_mean=85.17`, `stuck=0.0`), but `ramp_turns` Tier 2 still failed (`2/3`) because one run
+  tripped `first_44ft_speed_below_1mph` at the `0.447m/s` threshold. This is close numerically but not
+  keepable; the competition speed gate is part of the acceptance target.
+- DISCARD: raising `PathGoalConsistent` `stale_timeout_s` from `1.50s` to `1.75s`. This passed compact
+  Tier 2 (`3/3`, `t_mean=85.82`) and a focused ramp Tier 2 (`3/3`, `t_mean=79.29`), but the full five-course
+  Tier 1 regression still failed on `ramp_turns` with `first_44ft_speed_below_1mph` at `0.447m/s`.
+  Stop tuning this timeout globally; the family is too close to the ramp speed gate. Future work should
+  address why the bent planner goal keeps moving or why ramp speed margin is low, not simply wait longer
+  before stale-path rejection.
