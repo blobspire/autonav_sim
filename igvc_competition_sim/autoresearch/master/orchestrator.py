@@ -28,6 +28,8 @@ MANIFEST_PATH = SCRIPT_DIR / "dual_sim_manifest.json"
 STATE_DIR = Path.home() / ".autonav_master"
 RUNS_DIR = STATE_DIR / "runs"
 ACTIVE_DIR = STATE_DIR / "active"
+BUNDLES_DIR = STATE_DIR / "bundles"
+SNAPSHOTS_DIR = STATE_DIR / "snapshots"
 
 
 def run(
@@ -92,6 +94,8 @@ def load_manifest() -> dict[str, Any]:
 def ensure_state_dirs() -> None:
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     ACTIVE_DIR.mkdir(parents=True, exist_ok=True)
+    BUNDLES_DIR.mkdir(parents=True, exist_ok=True)
+    SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def timestamp() -> str:
@@ -113,6 +117,131 @@ def git_status(path: str) -> dict[str, Any]:
             line and not line.startswith("##") for line in proc.stdout.strip().splitlines()
         ),
     }
+
+
+def git_info_local(path: str) -> dict[str, Any]:
+    repo = Path(path)
+    info: dict[str, Any] = {
+        "path": path,
+        "exists": repo.exists(),
+        "is_repo": False,
+        "dirty": None,
+        "branch": "",
+        "head": "",
+        "short": "",
+        "status": [],
+    }
+    if not repo.exists():
+        return info
+    inside = run(["git", "-C", path, "rev-parse", "--is-inside-work-tree"], timeout=10)
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        return info
+    info["is_repo"] = True
+    status = run(["git", "-C", path, "status", "--short"], timeout=10)
+    branch = run(["git", "-C", path, "branch", "--show-current"], timeout=10)
+    head = run(["git", "-C", path, "rev-parse", "HEAD"], timeout=10)
+    short = run(["git", "-C", path, "log", "-1", "--oneline"], timeout=10)
+    info.update(
+        {
+            "dirty": bool(status.stdout.strip()),
+            "branch": branch.stdout.strip(),
+            "head": head.stdout.strip(),
+            "short": short.stdout.strip(),
+            "status": status.stdout.splitlines(),
+        }
+    )
+    return info
+
+
+def remote_git_info_command(path: str) -> str:
+    return f"""python3 - {shlex.quote(path)} <<'PY'
+import json
+import pathlib
+import subprocess
+import sys
+
+path = sys.argv[1]
+repo = pathlib.Path(path)
+info = {{
+    "path": path,
+    "exists": repo.exists(),
+    "is_repo": False,
+    "dirty": None,
+    "branch": "",
+    "head": "",
+    "short": "",
+    "status": [],
+}}
+
+def git(args):
+    return subprocess.run(
+        ["git", "-C", path, *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+if repo.exists():
+    inside = git(["rev-parse", "--is-inside-work-tree"])
+    if inside.returncode == 0 and inside.stdout.strip() == "true":
+        info["is_repo"] = True
+        status = git(["status", "--short"])
+        branch = git(["branch", "--show-current"])
+        head = git(["rev-parse", "HEAD"])
+        short = git(["log", "-1", "--oneline"])
+        info.update({{
+            "dirty": bool(status.stdout.strip()),
+            "branch": branch.stdout.strip(),
+            "head": head.stdout.strip(),
+            "short": short.stdout.strip(),
+            "status": status.stdout.splitlines(),
+        }})
+
+print(json.dumps(info))
+PY"""
+
+
+def git_info_vm(vm: str, path: str) -> dict[str, Any]:
+    proc = lima(vm, remote_git_info_command(path), timeout=20)
+    if proc.returncode != 0:
+        return {
+            "path": path,
+            "exists": False,
+            "is_repo": False,
+            "dirty": None,
+            "branch": "",
+            "head": "",
+            "short": "",
+            "status": [],
+            "error": proc.stdout.strip(),
+        }
+    return json.loads(proc.stdout)
+
+
+def git_info_ssh(host: str, path: str) -> dict[str, Any]:
+    proc = ssh(host, remote_git_info_command(path), timeout=20)
+    if proc.returncode != 0:
+        return {
+            "path": path,
+            "exists": False,
+            "is_repo": False,
+            "dirty": None,
+            "branch": "",
+            "head": "",
+            "short": "",
+            "status": [],
+            "error": proc.stdout.strip(),
+        }
+    return json.loads(proc.stdout)
+
+
+def require_clean_source(source: str, label: str) -> tuple[bool, str]:
+    info = git_info_local(source)
+    if not info["is_repo"]:
+        return False, f"{label} source is not a git repo: {source}"
+    if info["dirty"]:
+        return False, f"{label} source is dirty; commit or stash before syncing: {source}"
+    return True, ""
 
 
 def process_lines_local(pattern: str) -> list[str]:
@@ -220,7 +349,27 @@ def check_active_local_pid(state: dict[str, Any]) -> bool:
     return False
 
 
-def preflight_planning(manifest: dict[str, Any]) -> tuple[bool, list[str]]:
+def runtime_dirty_messages(
+    runtime_infos: list[dict[str, Any]],
+    *,
+    allow_dirty: bool,
+) -> list[str]:
+    if allow_dirty:
+        return []
+    messages = []
+    for info in runtime_infos:
+        if not info.get("is_repo"):
+            continue
+        if info.get("dirty"):
+            messages.append(f"runtime repo is dirty: {info['path']}")
+    return messages
+
+
+def preflight_planning(
+    manifest: dict[str, Any],
+    *,
+    allow_dirty_runtime: bool = False,
+) -> tuple[bool, list[str]]:
     lane = manifest["lanes"]["planning_control"]
     messages: list[str] = []
     ok = True
@@ -241,10 +390,19 @@ def preflight_planning(manifest: dict[str, Any]) -> tuple[bool, list[str]]:
     active = process_lines_vm(lane["vm"], "run_timebox.py|evaluate.py|igvc_competition.launch.py|ign gazebo")
     if active:
         messages.append("planning VM already has an active sim/autoresearch run")
+    robot_info = git_info_vm(lane["vm"], f"{lane['workspace']}/src/AutoNav_25-26")
+    sim_info = git_info_vm(lane["vm"], f"{lane['workspace']}/src/autonav_sim")
+    for msg in runtime_dirty_messages([robot_info, sim_info], allow_dirty=allow_dirty_runtime):
+        ok = False
+        messages.append(msg)
     return ok, messages
 
 
-def preflight_jetson(manifest: dict[str, Any]) -> tuple[bool, list[str]]:
+def preflight_jetson(
+    manifest: dict[str, Any],
+    *,
+    allow_dirty_runtime: bool = False,
+) -> tuple[bool, list[str]]:
     lane = manifest["lanes"]["jetson_perception"]
     messages: list[str] = []
     ok = True
@@ -287,7 +445,334 @@ def preflight_jetson(manifest: dict[str, Any]) -> tuple[bool, list[str]]:
     active_sim = process_lines_vm(lane["sim_vm"], "igvc_competition.launch.py|ign gazebo|ros2 bag")
     if active_sim:
         messages.append("Jetson-lane sim VM already has sim processes: " + "; ".join(active_sim))
+    sim_info = git_info_vm(lane["sim_vm"], f"{lane['sim_workspace']}/src/autonav_sim")
+    jetson_info = git_info_ssh(host, lane["jetson_repo"])
+    for msg in runtime_dirty_messages([sim_info, jetson_info], allow_dirty=allow_dirty_runtime):
+        ok = False
+        messages.append(msg)
     return ok, messages
+
+
+def compare_heads(
+    report: dict[str, Any],
+    label: str,
+    source: dict[str, Any],
+    runtime: dict[str, Any],
+) -> None:
+    checks = report.setdefault("checks", [])
+    if not source.get("is_repo"):
+        checks.append({"label": label, "ok": False, "reason": "source repo missing"})
+        return
+    if source.get("dirty"):
+        checks.append({"label": label, "ok": False, "reason": "source repo dirty"})
+        return
+    if not runtime.get("is_repo"):
+        checks.append({"label": label, "ok": False, "reason": "runtime repo missing"})
+        return
+    if runtime.get("dirty"):
+        checks.append({"label": label, "ok": False, "reason": "runtime repo dirty"})
+        return
+    if source.get("head") != runtime.get("head"):
+        checks.append(
+            {
+                "label": label,
+                "ok": False,
+                "reason": "runtime HEAD differs from source",
+                "source_head": source.get("head"),
+                "runtime_head": runtime.get("head"),
+            }
+        )
+        return
+    checks.append({"label": label, "ok": True})
+
+
+def workspace_report(manifest: dict[str, Any]) -> dict[str, Any]:
+    planning = manifest["lanes"]["planning_control"]
+    jetson = manifest["lanes"]["jetson_perception"]
+    host_sim = git_info_local(manifest["host_repos"]["autonav_sim"])
+    host_robot = git_info_local(manifest["host_repos"]["robot_primary"])
+    planning_sim = git_info_vm(
+        planning["vm"],
+        f"{planning['workspace']}/src/autonav_sim",
+    )
+    planning_robot = git_info_vm(
+        planning["vm"],
+        f"{planning['workspace']}/src/AutoNav_25-26",
+    )
+    jetson_sim = git_info_vm(
+        jetson["sim_vm"],
+        f"{jetson['sim_workspace']}/src/autonav_sim",
+    )
+    jetson_robot = git_info_ssh(jetson["jetson_host"], jetson["jetson_repo"])
+    report: dict[str, Any] = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "host": {
+            "autonav_sim": host_sim,
+            "robot_primary": host_robot,
+        },
+        "planning_control": {
+            "vm": planning["vm"],
+            "autonav_sim": planning_sim,
+            "robot": planning_robot,
+            "processes": process_lines_vm(
+                planning["vm"],
+                "run_timebox.py|evaluate.py|igvc_competition.launch.py|ign gazebo|ros2 bag|igvc_mission_runner",
+            ),
+        },
+        "jetson_perception": {
+            "sim_vm": jetson["sim_vm"],
+            "jetson_host": jetson["jetson_host"],
+            "autonav_sim": jetson_sim,
+            "robot": jetson_robot,
+            "sim_processes": process_lines_vm(
+                jetson["sim_vm"],
+                "igvc_competition.launch.py|ign gazebo|ros2 bag|igvc_mission_runner|rviz2|x11vnc|Xvfb|openbox",
+            ),
+            "jetson_processes": process_lines_ssh(
+                jetson["jetson_host"],
+                "ros2|component_container|nav2|zed|sick|control_node|docker|isaac|bringup|slam|detection",
+            ),
+        },
+        "checks": [],
+    }
+    compare_heads(report, "planning_control.autonav_sim", host_sim, planning_sim)
+    compare_heads(report, "planning_control.robot", host_robot, planning_robot)
+    compare_heads(report, "jetson_perception.autonav_sim", host_sim, jetson_sim)
+    compare_heads(report, "jetson_perception.robot", host_robot, jetson_robot)
+    forbidden_pattern = "|".join(manifest["forbidden_jetson_process_patterns"])
+    forbidden = process_lines_ssh(jetson["jetson_host"], forbidden_pattern)
+    if forbidden:
+        report["checks"].append(
+            {
+                "label": "jetson_perception.forbidden_processes",
+                "ok": False,
+                "reason": "forbidden Jetson processes are active",
+                "processes": forbidden,
+            }
+        )
+    else:
+        report["checks"].append({"label": "jetson_perception.forbidden_processes", "ok": True})
+    report["ready"] = all(check.get("ok") for check in report["checks"])
+    return report
+
+
+def create_bundle(source: str, ref: str, label: str) -> tuple[Path, str]:
+    ok, message = require_clean_source(source, label)
+    if not ok:
+        raise RuntimeError(message)
+    ensure_state_dirs()
+    sha = run(["git", "-C", source, "rev-parse", ref], timeout=10, check=True).stdout.strip()
+    bundle = BUNDLES_DIR / f"{timestamp()}_{slugify(label)}_{sha[:12]}.bundle"
+    proc = run(["git", "-C", source, "bundle", "create", str(bundle), ref], timeout=180)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stdout.strip())
+    return bundle, sha
+
+
+def remote_sync_command(
+    destination: str,
+    bundle_path: str,
+    *,
+    stash_dirty_destination: bool,
+) -> str:
+    dirty_handling = "stash" if stash_dirty_destination else "refuse"
+    return f"""
+set -eo pipefail
+dest={shlex.quote(destination)}
+bundle={shlex.quote(bundle_path)}
+dirty_handling={shlex.quote(dirty_handling)}
+test -d "$dest/.git"
+cd "$dest"
+if [ -n "$(git status --porcelain)" ]; then
+  if [ "$dirty_handling" = "stash" ]; then
+    git stash push -u -m "autonav-master-sync-$(date +%Y%m%d_%H%M%S)"
+  else
+    echo "destination is dirty: $dest" >&2
+    git status --short >&2
+    exit 3
+  fi
+fi
+git fetch "$bundle" HEAD
+git checkout --detach FETCH_HEAD
+git status -sb
+git log -1 --oneline
+"""
+
+
+def sync_bundle_to_vm(
+    bundle: Path,
+    *,
+    vm: str,
+    destination: str,
+    stash_dirty_destination: bool,
+) -> subprocess.CompletedProcess[str]:
+    remote_bundle = f"/tmp/{bundle.name}"
+    copy = run(["limactl", "copy", "--backend=rsync", str(bundle), f"{vm}:{remote_bundle}"], timeout=300)
+    if copy.returncode != 0:
+        return copy
+    return lima(
+        vm,
+        remote_sync_command(
+            destination,
+            remote_bundle,
+            stash_dirty_destination=stash_dirty_destination,
+        ),
+        timeout=300,
+    )
+
+
+def sync_bundle_to_ssh(
+    bundle: Path,
+    *,
+    host: str,
+    destination: str,
+    stash_dirty_destination: bool,
+) -> subprocess.CompletedProcess[str]:
+    remote_bundle = f"/tmp/{bundle.name}"
+    copy = run(
+        [
+            "scp",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            str(bundle),
+            f"{host}:{remote_bundle}",
+        ],
+        timeout=300,
+    )
+    if copy.returncode != 0:
+        return copy
+    return ssh(
+        host,
+        remote_sync_command(
+            destination,
+            remote_bundle,
+            stash_dirty_destination=stash_dirty_destination,
+        ),
+        timeout=300,
+    )
+
+
+def print_sync_result(label: str, proc: subprocess.CompletedProcess[str]) -> bool:
+    print(f"--- {label} ---")
+    print(proc.stdout, end="")
+    if proc.returncode != 0:
+        print(f"{label} failed with exit code {proc.returncode}", file=sys.stderr)
+        return False
+    return True
+
+
+def sync_planning_control(manifest: dict[str, Any], args: argparse.Namespace) -> int:
+    lane = manifest["lanes"]["planning_control"]
+    robot_source = args.robot_source or manifest["host_repos"]["robot_primary"]
+    sim_source = args.sim_source or manifest["host_repos"]["autonav_sim"]
+    try:
+        robot_bundle, robot_sha = create_bundle(robot_source, args.robot_ref, "planning-control-robot")
+        sim_bundle, sim_sha = create_bundle(sim_source, args.sim_ref, "planning-control-sim")
+    except RuntimeError as exc:
+        print(f"refusing to sync: {exc}", file=sys.stderr)
+        return 2
+    print(f"planning_control robot source {robot_source}@{args.robot_ref} -> {robot_sha}")
+    print(f"planning_control sim source {sim_source}@{args.sim_ref} -> {sim_sha}")
+    ok = True
+    ok &= print_sync_result(
+        "planning_control.robot",
+        sync_bundle_to_vm(
+            robot_bundle,
+            vm=lane["vm"],
+            destination=f"{lane['workspace']}/src/AutoNav_25-26",
+            stash_dirty_destination=args.stash_dirty_destination,
+        ),
+    )
+    ok &= print_sync_result(
+        "planning_control.autonav_sim",
+        sync_bundle_to_vm(
+            sim_bundle,
+            vm=lane["vm"],
+            destination=f"{lane['workspace']}/src/autonav_sim",
+            stash_dirty_destination=args.stash_dirty_destination,
+        ),
+    )
+    return 0 if ok else 2
+
+
+def sync_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) -> int:
+    lane = manifest["lanes"]["jetson_perception"]
+    robot_source = args.robot_source or manifest["host_repos"]["robot_primary"]
+    sim_source = args.sim_source or manifest["host_repos"]["autonav_sim"]
+    try:
+        robot_bundle, robot_sha = create_bundle(robot_source, args.robot_ref, "jetson-perception-robot")
+        sim_bundle, sim_sha = create_bundle(sim_source, args.sim_ref, "jetson-perception-sim")
+    except RuntimeError as exc:
+        print(f"refusing to sync: {exc}", file=sys.stderr)
+        return 2
+    print(f"jetson_perception robot source {robot_source}@{args.robot_ref} -> {robot_sha}")
+    print(f"jetson_perception sim source {sim_source}@{args.sim_ref} -> {sim_sha}")
+    ok = True
+    ok &= print_sync_result(
+        "jetson_perception.autonav_sim",
+        sync_bundle_to_vm(
+            sim_bundle,
+            vm=lane["sim_vm"],
+            destination=f"{lane['sim_workspace']}/src/autonav_sim",
+            stash_dirty_destination=args.stash_dirty_destination,
+        ),
+    )
+    ok &= print_sync_result(
+        "jetson_perception.robot",
+        sync_bundle_to_ssh(
+            robot_bundle,
+            host=lane["jetson_host"],
+            destination=lane["jetson_repo"],
+            stash_dirty_destination=args.stash_dirty_destination,
+        ),
+    )
+    return 0 if ok else 2
+
+
+def snapshot_jetson_dirty(manifest: dict[str, Any]) -> int:
+    lane = manifest["lanes"]["jetson_perception"]
+    ensure_state_dirs()
+    host = lane["jetson_host"]
+    repo = lane["jetson_repo"]
+    snapshot_dir = SNAPSHOTS_DIR / f"{timestamp()}_jetson_dirty"
+    snapshot_dir.mkdir(parents=True)
+    info = git_info_ssh(host, repo)
+    (snapshot_dir / "git_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
+    commands = {
+        "status.txt": f"git -C {shlex.quote(repo)} status --short --branch",
+        "log.txt": f"git -C {shlex.quote(repo)} log --oneline --decorate -20",
+        "diff_stat.txt": f"git -C {shlex.quote(repo)} diff --stat",
+        "tracked_diff.patch": f"git -C {shlex.quote(repo)} diff --binary",
+        "untracked_files.txt": f"git -C {shlex.quote(repo)} ls-files --others --exclude-standard",
+    }
+    for filename, command in commands.items():
+        proc = ssh(host, command, timeout=60)
+        (snapshot_dir / filename).write_text(proc.stdout, encoding="utf-8")
+    tar_command = (
+        f"cd {shlex.quote(repo)} && "
+        "git ls-files --others --exclude-standard -z | "
+        "tar --null -czf - --files-from -"
+    )
+    with open(snapshot_dir / "untracked_files.tgz", "wb") as archive:
+        proc = subprocess.run(
+            [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=8",
+                host,
+                tar_command,
+            ],
+            stdout=archive,
+            stderr=subprocess.PIPE,
+        )
+    if proc.returncode != 0:
+        (snapshot_dir / "untracked_files.tgz.error.txt").write_bytes(proc.stderr)
+    print(snapshot_dir)
+    return 0
 
 
 def command_snippets(manifest: dict[str, Any], lane_name: str) -> str:
@@ -584,8 +1069,11 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
+    sub.add_parser("verify-workspaces")
+    sub.add_parser("snapshot-jetson-dirty")
     pre = sub.add_parser("preflight")
     pre.add_argument("lane", choices=["planning_control", "jetson_perception"])
+    pre.add_argument("--allow-dirty-runtime", action="store_true")
     commands = sub.add_parser("commands")
     commands.add_argument("lane", choices=["planning_control", "jetson_perception"])
     wt = sub.add_parser("create-worktree")
@@ -595,6 +1083,18 @@ def main(argv: list[str]) -> int:
     wt.add_argument("--print-only", action="store_true")
     prep = sub.add_parser("prepare-jetson-sim-workspace")
     prep.add_argument("--build", action="store_true")
+    sync_plan = sub.add_parser("sync-planning-control")
+    sync_plan.add_argument("--robot-source", default="")
+    sync_plan.add_argument("--robot-ref", default="HEAD")
+    sync_plan.add_argument("--sim-source", default="")
+    sync_plan.add_argument("--sim-ref", default="HEAD")
+    sync_plan.add_argument("--stash-dirty-destination", action="store_true")
+    sync_jetson = sub.add_parser("sync-jetson-perception")
+    sync_jetson.add_argument("--robot-source", default="")
+    sync_jetson.add_argument("--robot-ref", default="HEAD")
+    sync_jetson.add_argument("--sim-source", default="")
+    sync_jetson.add_argument("--sim-ref", default="HEAD")
+    sync_jetson.add_argument("--stash-dirty-destination", action="store_true")
     start = sub.add_parser("start-planning-control")
     start.add_argument("--duration", default="45m")
     start.add_argument("--courses", nargs="+", default=["compact_baseline", "tight_gaps", "dense_obstacles", "sparse_lines", "ramp_turns"])
@@ -614,11 +1114,23 @@ def main(argv: list[str]) -> int:
     if args.cmd == "status":
         print_report(status_report(manifest))
         return 0
+    if args.cmd == "verify-workspaces":
+        report = workspace_report(manifest)
+        print_report(report)
+        return 0 if report.get("ready") else 2
+    if args.cmd == "snapshot-jetson-dirty":
+        return snapshot_jetson_dirty(manifest)
     if args.cmd == "preflight":
         if args.lane == "planning_control":
-            ok, messages = preflight_planning(manifest)
+            ok, messages = preflight_planning(
+                manifest,
+                allow_dirty_runtime=args.allow_dirty_runtime,
+            )
         else:
-            ok, messages = preflight_jetson(manifest)
+            ok, messages = preflight_jetson(
+                manifest,
+                allow_dirty_runtime=args.allow_dirty_runtime,
+            )
         print(json.dumps({"lane": args.lane, "ok": ok, "messages": messages}, indent=2))
         return 0 if ok else 2
     if args.cmd == "commands":
@@ -628,6 +1140,10 @@ def main(argv: list[str]) -> int:
         return create_worktree(manifest, args)
     if args.cmd == "prepare-jetson-sim-workspace":
         return prepare_jetson_sim_workspace(manifest, args.build)
+    if args.cmd == "sync-planning-control":
+        return sync_planning_control(manifest, args)
+    if args.cmd == "sync-jetson-perception":
+        return sync_jetson_perception(manifest, args)
     if args.cmd == "start-planning-control":
         return start_planning(manifest, args)
     if args.cmd == "start-jetson-perception":

@@ -16,6 +16,7 @@ Start by checking status from the host:
 ```bash
 cd /Users/cole/code/git/autonav_sim/igvc_competition_sim/autoresearch
 python3 master/orchestrator.py status
+python3 master/orchestrator.py verify-workspaces
 ```
 
 Then preflight the lane you are about to use:
@@ -48,6 +49,8 @@ sed -n '1,220p' DUAL_SIM_MASTER.md
   launches, Docker hardware containers, or `control_node` for Jetson sim.
 - Do not edit dirty active worktrees directly. Create an isolated worktree and
   branch for each candidate.
+- Sync the chosen clean worktree into the runtime workspace before testing it;
+  `verify-workspaces` must show the intended commit and no dirty runtime repo.
 - Keep ROS domains separate. The default Jetson lane domain is `72`.
 
 ## Branch Policy
@@ -86,6 +89,23 @@ Prepare the Jetson-lane sim workspace once before launching that lane:
 
 ```bash
 python3 master/orchestrator.py prepare-jetson-sim-workspace --build
+```
+
+Sync runtime workspaces from clean host worktrees:
+
+```bash
+python3 master/orchestrator.py sync-planning-control \
+  --robot-source /Users/cole/code/git/autonav_worktrees/AutoNavB-control-<experiment> \
+  --robot-ref HEAD \
+  --sim-source /Users/cole/code/git/autonav_sim \
+  --sim-ref main
+
+python3 master/orchestrator.py snapshot-jetson-dirty
+python3 master/orchestrator.py sync-jetson-perception \
+  --robot-source /Users/cole/code/git/autonav_worktrees/AutoNavB-perception-<experiment> \
+  --robot-ref HEAD \
+  --sim-source /Users/cole/code/git/autonav_sim \
+  --sim-ref main
 ```
 
 Start a master-owned planning/control run only after unmanaged runs finish:

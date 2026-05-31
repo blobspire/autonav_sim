@@ -23,6 +23,7 @@ From the host:
 cd /Users/cole/code/git/autonav_sim/igvc_competition_sim/autoresearch
 sed -n '1,220p' NEXT_MASTER_RESEARCH_TARGETS.md
 python3 master/orchestrator.py status
+python3 master/orchestrator.py verify-workspaces
 python3 master/orchestrator.py preflight planning_control
 python3 master/orchestrator.py preflight jetson_perception
 python3 master/orchestrator.py commands planning_control
@@ -43,6 +44,34 @@ worktrees directly:
 python3 master/orchestrator.py create-worktree planning_control pathgoal-stale-test --print-only
 python3 master/orchestrator.py create-worktree jetson_perception camera-line-thresholds --base hailmary
 python3 master/orchestrator.py create-worktree harness dual-sim-runner --base main
+```
+
+Sync a chosen clean worktree or primary checkout into the runtime workspace
+before testing it:
+
+```bash
+# Planning/control runtime in autonav-gazebo-sim.
+python3 master/orchestrator.py sync-planning-control \
+  --robot-source /Users/cole/code/git/autonav_worktrees/AutoNavB-control-stable-goalbender \
+  --robot-ref HEAD \
+  --sim-source /Users/cole/code/git/autonav_sim \
+  --sim-ref main
+
+# Jetson perception runtime in autonav-ros22 + the Jetson robot checkout.
+python3 master/orchestrator.py sync-jetson-perception \
+  --robot-source /Users/cole/code/git/autonav_worktrees/AutoNavB-perception-camera-line-fidelity \
+  --robot-ref HEAD \
+  --sim-source /Users/cole/code/git/autonav_sim \
+  --sim-ref main
+```
+
+Sync commands refuse dirty source worktrees and dirty runtime destinations by
+default. If a runtime destination is dirty and must be preserved first, snapshot
+it or use the explicit stash mode:
+
+```bash
+python3 master/orchestrator.py snapshot-jetson-dirty
+python3 master/orchestrator.py sync-jetson-perception --stash-dirty-destination ...
 ```
 
 Prepare the Jetson-lane sim workspace in `autonav-ros22` before the first
@@ -99,6 +128,9 @@ Do not use `stop-owned` for the current unmanaged AutoResearch run.
   - `AutoNavB-perception/<experiment>` for camera/perception/Jetson changes.
   - `autonav_sim-master/<experiment>` for harness/orchestration changes.
 - Do not edit dirty active worktrees directly.
+- Do not run a lane until `verify-workspaces` shows the runtime checkout has
+  the intended commit and no dirty runtime repo, unless the dirty state was
+  explicitly snapshotted and stashed for that run.
 - Do not launch `bringup.launch.py`, `sensors.launch.py`, the real ZED launch,
   the SICK launch, or `control_node` for Jetson-in-the-loop simulation.
 
