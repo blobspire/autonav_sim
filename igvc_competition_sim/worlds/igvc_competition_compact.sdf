@@ -295,7 +295,7 @@
     </model>
     <model name='decoy_gap_barrel'>
       <static>1</static>
-      <pose>18.8000 -0.9500 0 0 0 0</pose>
+      <pose>18.8000 -1.2000 0 0 0 0</pose>
       <link name='link'>
         <collision name='collision'><pose>0 0 0.4250 0 0 0</pose><geometry><cylinder><radius>0.2800</radius><length>0.8500</length></cylinder></geometry></collision>
         <visual name='visual'>

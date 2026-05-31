@@ -9,6 +9,7 @@ MISSION_TIMEOUT_SEC="${MISSION_TIMEOUT_SEC:-300}"
 STARTUP_WAIT_SEC="${STARTUP_WAIT_SEC:-12}"
 PRE_MISSION_WAIT_SEC="${PRE_MISSION_WAIT_SEC:-8}"
 GROUND_TRUTH_PCA="${GROUND_TRUTH_PCA:-false}"
+PUBLISH_FULL_LIDAR_CLOUD="${PUBLISH_FULL_LIDAR_CLOUD:-}"
 LINE_DETECTION_MODE="${LINE_DETECTION_MODE:-camera}"
 LAUNCH_GAZEBO="${LAUNCH_GAZEBO:-true}"
 GAZEBO_SERVER_ONLY="${GAZEBO_SERVER_ONLY:-true}"
@@ -49,6 +50,13 @@ if [[ -z "${NAV2_PARAMS:-}" ]]; then
     NAV2_PARAMS="$SLAM_SHARE/config/nav2_params_lidar.yaml"
   else
     NAV2_PARAMS="$SLAM_SHARE/config/nav2_params_camera.yaml"
+  fi
+fi
+if [[ -z "$PUBLISH_FULL_LIDAR_CLOUD" ]]; then
+  if [[ "$GROUND_TRUTH_PCA" == "true" ]]; then
+    PUBLISH_FULL_LIDAR_CLOUD="false"
+  else
+    PUBLISH_FULL_LIDAR_CLOUD="true"
   fi
 fi
 RUN_DIR="${RUN_DIR:-$SCRIPT_DIR/fortress_runs/$(basename "$COURSE_CONFIG" .yaml)_$(date +%Y%m%d_%H%M%S)}"
@@ -108,6 +116,7 @@ trap cleanup EXIT INT TERM
 setsid ros2 launch igvc_competition_sim igvc_competition.launch.py \
   course_config:="$COURSE_CONFIG" \
   ground_truth_pca:="$GROUND_TRUTH_PCA" \
+  publish_full_lidar_cloud:="$PUBLISH_FULL_LIDAR_CLOUD" \
   line_detection_mode:="$LINE_DETECTION_MODE" \
   nav2_params:="$NAV2_PARAMS" \
   use_calibrated_dynamics:="$USE_CALIBRATED_DYNAMICS" \

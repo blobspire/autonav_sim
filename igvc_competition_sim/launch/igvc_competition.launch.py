@@ -224,10 +224,42 @@ def _harness_process(context, *args, **kwargs):
                 "course_config": LaunchConfiguration("course_config"),
                 "fallback_integrate_cmd": LaunchConfiguration(
                     "fallback_integrate_cmd"),
+                "publish_full_lidar_cloud": ParameterValue(
+                    LaunchConfiguration("publish_full_lidar_cloud"),
+                    value_type=bool,
+                ),
                 "publish_ground_truth_pca": LaunchConfiguration(
                     "ground_truth_pca"),
                 "publish_ground_truth_lines": (
                     _line_detection_mode(context) == "ground_truth"),
+                "ground_truth_line_rate_hz": ParameterValue(
+                    LaunchConfiguration("ground_truth_line_rate_hz"),
+                    value_type=float,
+                ),
+                "ground_truth_line_view_limited": ParameterValue(
+                    LaunchConfiguration("ground_truth_line_view_limited"),
+                    value_type=bool,
+                ),
+                "ground_truth_line_range_min_m": ParameterValue(
+                    LaunchConfiguration("ground_truth_line_range_min_m"),
+                    value_type=float,
+                ),
+                "ground_truth_line_range_max_m": ParameterValue(
+                    LaunchConfiguration("ground_truth_line_range_max_m"),
+                    value_type=float,
+                ),
+                "ground_truth_line_angle_min_rad": ParameterValue(
+                    LaunchConfiguration("ground_truth_line_angle_min_rad"),
+                    value_type=float,
+                ),
+                "ground_truth_line_angle_max_rad": ParameterValue(
+                    LaunchConfiguration("ground_truth_line_angle_max_rad"),
+                    value_type=float,
+                ),
+                "max_ground_truth_line_points": ParameterValue(
+                    LaunchConfiguration("max_ground_truth_line_points"),
+                    value_type=int,
+                ),
                 "publish_odom_tf": ParameterValue(
                     LaunchConfiguration("publish_harness_odom_tf"),
                     value_type=bool,
@@ -414,12 +446,20 @@ def generate_launch_description() -> LaunchDescription:
             default_value=_default_dynamics_calibration(),
         ),
         DeclareLaunchArgument("ground_truth_pca", default_value="false"),
+        DeclareLaunchArgument("ground_truth_line_rate_hz", default_value="20.0"),
+        DeclareLaunchArgument("ground_truth_line_view_limited", default_value="true"),
+        DeclareLaunchArgument("ground_truth_line_range_min_m", default_value="0.8"),
+        DeclareLaunchArgument("ground_truth_line_range_max_m", default_value="6.0"),
+        DeclareLaunchArgument("ground_truth_line_angle_min_rad", default_value="-0.96"),
+        DeclareLaunchArgument("ground_truth_line_angle_max_rad", default_value="0.96"),
+        DeclareLaunchArgument("max_ground_truth_line_points", default_value="2500"),
         DeclareLaunchArgument(
             "line_detection_mode",
             default_value="camera",
             description="Line source: camera, ground_truth, or lidar.",
         ),
         DeclareLaunchArgument("fallback_integrate_cmd", default_value="false"),
+        DeclareLaunchArgument("publish_full_lidar_cloud", default_value="true"),
         DeclareLaunchArgument(
             "nav2_params",
             default_value=_default_nav2_params(),

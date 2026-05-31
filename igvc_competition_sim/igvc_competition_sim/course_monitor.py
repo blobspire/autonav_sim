@@ -84,12 +84,20 @@ class IgvcCourseMonitor(Node):
         y = float(msg.pose.pose.position.y)
         q = msg.pose.pose.orientation
         yaw = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
-        speed = abs(float(msg.twist.twist.linear.x))
+        reported_speed = abs(float(msg.twist.twist.linear.x))
+        step_distance = 0.0
+        derived_speed = 0.0
+        if self.last_pose is not None:
+            step_distance = math.hypot(x - self.last_pose[0],
+                                       y - self.last_pose[1])
+            if self.last_time_s is not None:
+                dt = now_s - self.last_time_s
+                if dt > 1e-6:
+                    derived_speed = step_distance / dt
+        speed = max(reported_speed, derived_speed)
         self.max_speed_mps = max(self.max_speed_mps, speed)
 
-        if self.last_pose is not None:
-            self.distance_m += math.hypot(x - self.last_pose[0],
-                                          y - self.last_pose[1])
+        self.distance_m += step_distance
         self.last_pose = (x, y, yaw)
         self.last_time_s = now_s
         self._update_speed_checks(now_s, speed)

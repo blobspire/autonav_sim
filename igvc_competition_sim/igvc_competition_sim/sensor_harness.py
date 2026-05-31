@@ -10,7 +10,9 @@ from .lidar_geometry import raycast_cylinders
 
 try:
     import rclpy
+    from rclpy.callback_groups import ReentrantCallbackGroup
     from rclpy.executors import ExternalShutdownException
+    from rclpy.executors import MultiThreadedExecutor
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from builtin_interfaces.msg import Time
@@ -82,6 +84,7 @@ class IgvcSensorHarness(Node):
         self.declare_parameter("fallback_integrate_cmd", False)
         self.declare_parameter("publish_ground_truth_pca", False)
         self.declare_parameter("publish_ground_truth_lines", False)
+        self.declare_parameter("publish_full_lidar_cloud", True)
         self.declare_parameter("cloud_rate_hz", 10.0)
         self.declare_parameter("odom_rate_hz", 50.0)
         self.declare_parameter("map_rate_hz", 1.0)
@@ -89,6 +92,12 @@ class IgvcSensorHarness(Node):
         self.declare_parameter("ground_truth_line_rate_hz", 20.0)
         self.declare_parameter("ground_truth_line_spacing_m", 0.05)
         self.declare_parameter("ground_truth_line_lateral_spacing_m", 0.025)
+        self.declare_parameter("ground_truth_line_view_limited", True)
+        self.declare_parameter("ground_truth_line_range_min_m", 0.8)
+        self.declare_parameter("ground_truth_line_range_max_m", 6.0)
+        self.declare_parameter("ground_truth_line_angle_min_rad", -0.96)
+        self.declare_parameter("ground_truth_line_angle_max_rad", 0.96)
+        self.declare_parameter("max_ground_truth_line_points", 2500)
         self.declare_parameter("gps_noise_std_m", 0.05)
         self.declare_parameter("publish_ground_truth_odom", True)
         self.declare_parameter(
@@ -104,10 +113,30 @@ class IgvcSensorHarness(Node):
             self.get_parameter("publish_ground_truth_pca").value)
         self.publish_ground_truth_lines = bool(
             self.get_parameter("publish_ground_truth_lines").value)
+        self.publish_full_lidar_cloud = bool(
+            self.get_parameter("publish_full_lidar_cloud").value)
         self.gps_noise_std_m = max(
             0.0, float(self.get_parameter("gps_noise_std_m").value))
         self.publish_odom_tf = bool(
             self.get_parameter("publish_odom_tf").value)
+        self.ground_truth_line_view_limited = bool(
+            self.get_parameter("ground_truth_line_view_limited").value)
+        self.ground_truth_line_range_min_m = max(
+            0.0,
+            float(self.get_parameter("ground_truth_line_range_min_m").value),
+        )
+        self.ground_truth_line_range_max_m = max(
+            self.ground_truth_line_range_min_m,
+            float(self.get_parameter("ground_truth_line_range_max_m").value),
+        )
+        self.ground_truth_line_angle_min_rad = float(
+            self.get_parameter("ground_truth_line_angle_min_rad").value)
+        self.ground_truth_line_angle_max_rad = float(
+            self.get_parameter("ground_truth_line_angle_max_rad").value)
+        self.max_ground_truth_line_points = max(
+            0,
+            int(self.get_parameter("max_ground_truth_line_points").value),
+        )
 
         sensor_qos = QoSProfile(depth=5)
         sensor_qos.reliability = ReliabilityPolicy.BEST_EFFORT
@@ -167,22 +196,28 @@ class IgvcSensorHarness(Node):
         self.left_wheel_position = 0.0
         self.right_wheel_position = 0.0
         self.ground_truth_line_points = self._build_ground_truth_line_points()
+        self.fast_callback_group = ReentrantCallbackGroup()
+        self.sensor_callback_group = ReentrantCallbackGroup()
 
         self.create_timer(
             1.0 / max(1.0, float(self.get_parameter("odom_rate_hz").value)),
             self._step_and_publish_odom,
+            callback_group=self.fast_callback_group,
         )
         self.create_timer(
             1.0 / max(1.0, float(self.get_parameter("cloud_rate_hz").value)),
             self._publish_sensor_frame,
+            callback_group=self.sensor_callback_group,
         )
         self.create_timer(
             1.0 / max(0.5, float(self.get_parameter("map_rate_hz").value)),
             self._publish_map,
+            callback_group=self.sensor_callback_group,
         )
         self.create_timer(
             1.0 / max(0.5, float(self.get_parameter("gps_rate_hz").value)),
             self._publish_gps,
+            callback_group=self.fast_callback_group,
         )
         if self.line_gt_pub is not None:
             self.create_timer(
@@ -191,6 +226,7 @@ class IgvcSensorHarness(Node):
                     float(self.get_parameter("ground_truth_line_rate_hz").value),
                 ),
                 self._publish_ground_truth_lines,
+                callback_group=self.fast_callback_group,
             )
         self._publish_map()
         self.get_logger().info(
@@ -206,8 +242,16 @@ class IgvcSensorHarness(Node):
         )
         if self.line_gt_pub is not None:
             self.get_logger().info(
-                "Publishing ground-truth /line_points from %d sampled tape cells"
-                % len(self.ground_truth_line_points)
+                "Publishing ground-truth /line_points from %d sampled tape "
+                "cells (view_limited=%s, range=%.1f-%.1fm, fov=%.2f..%.2frad)"
+                % (
+                    len(self.ground_truth_line_points),
+                    self.ground_truth_line_view_limited,
+                    self.ground_truth_line_range_min_m,
+                    self.ground_truth_line_range_max_m,
+                    self.ground_truth_line_angle_min_rad,
+                    self.ground_truth_line_angle_max_rad,
+                )
             )
 
     def _cmd_vel_callback(self, msg: Twist) -> None:
@@ -628,12 +672,19 @@ class IgvcSensorHarness(Node):
 
     def _publish_sensor_frame(self) -> None:
         stamp = self.get_clock().now().to_msg()
-        cloud_points = self._build_cloud_points()
+        if self.publish_full_lidar_cloud:
+            cloud_points = self._build_cloud_points()
+            pca_points = None
+        else:
+            cloud_points = self._ground_truth_obstacle_points()
+            pca_points = cloud_points
         self.cloud_pub.publish(self._make_cloud(stamp, cloud_points))
         self._publish_scan_fullframe(stamp, cloud_points)
         if self.pca_gt_pub is not None:
+            if pca_points is None:
+                pca_points = self._ground_truth_obstacle_points()
             self.pca_gt_pub.publish(
-                self._make_cloud(stamp, self._ground_truth_obstacle_points()))
+                self._make_cloud(stamp, pca_points))
 
     def _publish_scan_fullframe(self,
                                 stamp: Time,
@@ -707,8 +758,51 @@ class IgvcSensorHarness(Node):
         msg = LinePoints()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "map"
-        msg.points = self.ground_truth_line_points
+        msg.points = self._visible_ground_truth_line_points()
         self.line_gt_pub.publish(msg)
+
+    def _visible_ground_truth_line_points(self) -> list[Vector3]:
+        if not self.ground_truth_line_view_limited:
+            return self._downsample_line_points(self.ground_truth_line_points)
+
+        origin_x = (
+            self.base_x
+            + self.robot.base_link_to_nav_center_m * math.cos(self.heading)
+        )
+        origin_y = (
+            self.base_y
+            + self.robot.base_link_to_nav_center_m * math.sin(self.heading)
+        )
+        cos_h = math.cos(self.heading)
+        sin_h = math.sin(self.heading)
+        min_r2 = self.ground_truth_line_range_min_m ** 2
+        max_r2 = self.ground_truth_line_range_max_m ** 2
+        visible: list[Vector3] = []
+        for point in self.ground_truth_line_points:
+            dx = point.x - origin_x
+            dy = point.y - origin_y
+            range2 = dx * dx + dy * dy
+            if range2 < min_r2 or range2 > max_r2:
+                continue
+            forward = cos_h * dx + sin_h * dy
+            if forward <= 0.0:
+                continue
+            lateral = -sin_h * dx + cos_h * dy
+            angle = math.atan2(lateral, forward)
+            if (
+                self.ground_truth_line_angle_min_rad
+                <= angle
+                <= self.ground_truth_line_angle_max_rad
+            ):
+                visible.append(point)
+        return self._downsample_line_points(visible)
+
+    def _downsample_line_points(self, points: list[Vector3]) -> list[Vector3]:
+        limit = self.max_ground_truth_line_points
+        if limit <= 0 or len(points) <= limit:
+            return points
+        step = len(points) / float(limit)
+        return [points[int(idx * step)] for idx in range(limit)]
 
     def _publish_map(self) -> None:
         msg = OccupancyGrid()
@@ -738,11 +832,14 @@ class IgvcSensorHarness(Node):
 def main(argv: list[str] | None = None) -> int:
     rclpy.init(args=sys.argv if argv is None else argv)
     node = IgvcSensorHarness()
+    executor = MultiThreadedExecutor(num_threads=4)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except (KeyboardInterrupt, ExternalShutdownException, RCLError):
         pass
     finally:
+        executor.remove_node(node)
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

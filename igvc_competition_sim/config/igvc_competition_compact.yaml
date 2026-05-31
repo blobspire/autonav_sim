@@ -68,7 +68,9 @@ dashed_lines:
 obstacles:
   - {name: left_edge_barrel, type: barrel, x_m: 7.2, y_m: 1.18, radius_m: 0.28, height_m: 0.85}
   - {name: center_barrel_20ft, type: barrel, x_m: 14.6, y_m: 0.22, radius_m: 0.28, height_m: 0.85}
-  - {name: decoy_gap_barrel, type: barrel, x_m: 18.8, y_m: -0.95, radius_m: 0.28, height_m: 0.85}
+  # This barrel creates an invalid lower decoy gap while preserving a legal
+  # 5 ft-plus passage between the perpendicular line end and the barrel.
+  - {name: decoy_gap_barrel, type: barrel, x_m: 18.8, y_m: -1.20, radius_m: 0.28, height_m: 0.85}
   - {name: post_obstacle, type: post, x_m: 32.0, y_m: 1.70, radius_m: 0.18, height_m: 1.10}
 
 ramps:
