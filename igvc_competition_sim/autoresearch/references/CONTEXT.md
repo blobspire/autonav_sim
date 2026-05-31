@@ -353,3 +353,20 @@ RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning o
   Stop tuning this timeout globally; the family is too close to the ramp speed gate. Future work should
   address why the bent planner goal keeps moving or why ramp speed margin is low, not simply wait longer
   before stale-path rejection.
+- HARNESS/COURSE KEEP: added `official_full_loop`, an official-scale AutoNav course gate (`~492 ft` route,
+  `~109 ft x 94 ft` footprint, 10/12/15/20 ft lanes, 3-inch tape, cones/barrels/posts, a 10 ft wide ramp
+  with visible white ramp-edge lines, first-44-ft speed gate, and exactly four GPS waypoints). Added
+  `rules_profile: igvc_2026_autonav_full_course` validation so future edits must preserve the 120 ft x
+  100 ft envelope, 10-20 ft track widths, 5 ft minimum turn radius, 5 ft legal side passage, <=15% ramp
+  grade, GPS waypoint count, and speed gates. Subagent audits explicitly warned not to soften this course
+  just to make the robot pass.
+- OFFICIAL-LOOP FINDING: oracle run `official_full_loop_20260531_180217_run1` passed `wp1_ramp_exit`
+  cleanly (`final_distance=0.923`) and then timed out on `wp2_gps_field_entry` (`mission_status=124`,
+  `distance_m=43.252`, no tape/obstacle/scorer failures, `max_speed_mps=0.5`, speed check complete).
+  Logs show repeated `PathFootprintSafe` rejects around `(28.44, 0.99)`, about `0.63m` from the nearest
+  left tape and not near an obstacle. Treat this as a robot planning/path-acceptance target exposed by a
+  legal course, not a reason to move the line/goal/obstacle.
+- HARNESS FIX: official-loop testing exposed false `max_speed_exceeded` failures caused by VM sim-clock
+  jitter in position-derived odom speed (`6-10m/s` spikes while commanded speed was capped at `0.5m/s`).
+  `course_monitor.py` now uses reported odom twist for max-speed enforcement when available, while still
+  using position-derived motion for stop detection and first-44-ft average distance/time scoring.

@@ -65,7 +65,36 @@ export LAUNCH_DETECTION=false
 export AUTORESEARCH_CLEAN_ROS_ENV=true
 ```
 
-### Target 1: Stable Bent-Goal Generation
+### Target 1: Official Full Loop Path Acceptance
+
+Problem:
+
+The new `official_full_loop` final gate is rule-validated and should not be
+softened for pass rate. Oracle run `official_full_loop_20260531_180217_run1`
+passed the ramp-exit waypoint, then timed out on `wp2_gps_field_entry` with no
+tape/obstacle/scorer failure. Logs show repeated `PathFootprintSafe` rejects
+around `(28.44, 0.99)`, close to the left tape on the first turn into the GPS
+field.
+
+Preferred hypothesis direction:
+
+- Analyze why Smac/BT accepts or repeatedly regenerates a path near lethal tape
+  instead of routing through the available legal corridor.
+- Inspect global costmap line memory, global inflation, Smac lattice
+  penalties, path smoothing, and PathFootprintSafe rejection timing on the
+  second official-loop leg.
+- Preserve the official course geometry. Use `validate_course.py` as the gate;
+  if it passes, treat this as robot planning/control behavior unless a concrete
+  scorer defect is proven.
+
+Avoid:
+
+- moving `official_full_loop` lines, obstacles, or waypoints to avoid the
+  reject point;
+- reducing hard safety or PathFootprintSafe thresholds;
+- using camera perception failures as the signal for this target.
+
+### Target 2: Stable Bent-Goal Generation
 
 Problem:
 
@@ -95,7 +124,7 @@ Avoid:
 - simple near-goal radius suppression;
 - global bend-angle reduction.
 
-### Target 2: Ramp Speed Margin
+### Target 3: Ramp Speed Margin
 
 Problem:
 
@@ -112,7 +141,7 @@ Preferred hypothesis direction:
   PathFootprintSafe.
 - Treat first-44-ft average speed as a hard keep gate, not a secondary metric.
 
-### Target 3: Churn Metrics
+### Target 4: Churn Metrics
 
 Add explicit metrics before broad tuning so candidates can be ranked without
 manual log reading:

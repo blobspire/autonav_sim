@@ -95,6 +95,23 @@ python3 master/orchestrator.py start-planning-control \
   --description master-planning-control
 ```
 
+Use the long official-style loop as an explicit final gate after fast courses
+are healthy. It is intentionally not in the default short cycle, and it should
+not be softened to make a candidate pass. First require
+`lib/validate_course.py courses/official_full_loop.yaml` to pass; after that,
+oracle failures are robot-stack findings unless a concrete sim/scorer defect is
+identified.
+
+```bash
+python3 master/orchestrator.py start-planning-control \
+  --duration 90m \
+  --courses official_full_loop \
+  --runs 1 \
+  --tier 1 \
+  --timeout 900 \
+  --description official-full-loop
+```
+
 The master writes state and logs under:
 
 ```text

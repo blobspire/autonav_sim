@@ -57,6 +57,7 @@ class IgvcCourseMonitor(Node):
         self.robot = self.course.robot
         self.sample_spacing_m = max(
             0.02, float(self.get_parameter("sample_spacing_m").value))
+        self.ramp_monitor_lateral_margin_m = 1.0
 
         self.score_pub = self.create_publisher(String, "/igvc_sim/score", 10)
         self.fail_pub = self.create_publisher(Bool, "/igvc_sim/fail", 10)
@@ -92,10 +93,14 @@ class IgvcCourseMonitor(Node):
                                        y - self.last_pose[1])
             if self.last_time_s is not None:
                 dt = now_s - self.last_time_s
-                if dt > 1e-6:
+                if 0.02 <= dt <= 1.0:
                     derived_speed = step_distance / dt
-        speed = max(reported_speed, derived_speed)
-        self.max_speed_mps = max(self.max_speed_mps, speed)
+        motion_speed = max(reported_speed, derived_speed)
+        # Enforce max speed from odom twist when available. Position-derived
+        # speed is useful for stop detection, but VM sim-clock jitter can make
+        # small odom steps look like impossible 6-10 m/s bursts.
+        limit_speed = reported_speed if reported_speed > 0.01 else derived_speed
+        self.max_speed_mps = max(self.max_speed_mps, limit_speed)
 
         self.distance_m += step_distance
         self.last_pose = (x, y, yaw)
@@ -104,16 +109,19 @@ class IgvcCourseMonitor(Node):
         if self.finish_reached:
             self.stop_started_s = None
             return
-        self._update_speed_checks(now_s, speed)
+        self._update_speed_checks(now_s, motion_speed, limit_speed)
         self._check_course_contact(x, y, yaw)
 
-    def _update_speed_checks(self, now_s: float, speed: float) -> None:
+    def _update_speed_checks(self,
+                             now_s: float,
+                             motion_speed: float,
+                             limit_speed: float) -> None:
         if self.speed_check_start_s is None:
             # The sim stack can publish odom for many seconds before the
             # mission runner sends the first waypoint. The IGVC 44 ft speed
             # check starts when the robot actually begins the run, not while
             # it is parked during bringup.
-            if speed < 0.05 and self.distance_m < 0.05:
+            if motion_speed < 0.05 and self.distance_m < 0.05:
                 return
             self.speed_check_start_s = now_s
             self.speed_check_start_distance_m = self.distance_m
@@ -127,10 +135,10 @@ class IgvcCourseMonitor(Node):
                 self._fail(
                     "first_44ft_speed_below_1mph: %.3f m/s" % avg,
                     failure_type="speed_check")
-        if speed > self.course.speed_check.maximum_speed_mps:
-            self._fail("max_speed_exceeded: %.3f m/s" % speed,
+        if limit_speed > self.course.speed_check.maximum_speed_mps:
+            self._fail("max_speed_exceeded: %.3f m/s" % limit_speed,
                        failure_type="speed_check")
-        if speed < 0.02:
+        if motion_speed < 0.02:
             if self.stop_started_s is None:
                 self.stop_started_s = now_s
             elif now_s - self.stop_started_s > self.course.speed_check.blocking_stop_s:
@@ -174,8 +182,22 @@ class IgvcCourseMonitor(Node):
                     pose=(base_x, base_y, yaw),
                 )
         for ramp in self.course.ramps:
-            if ramp.start_x_m <= nav_x <= ramp.end_x_m:
-                if abs(nav_y - ramp.center_y_m) > ramp.width_m * 0.5 + hy:
+            if nav_x + hx >= ramp.start_x_m and nav_x - hx <= ramp.end_x_m:
+                lateral = abs(nav_y - ramp.center_y_m)
+                edge_limit = ramp.width_m * 0.5 + hy
+                distance_to_ramp_center = _point_segment_distance(
+                    nav_x, nav_y,
+                    (ramp.start_x_m, ramp.center_y_m),
+                    (ramp.end_x_m, ramp.center_y_m),
+                )
+                # Long loop courses can revisit the same x range far away
+                # from an x-aligned ramp. Only suppress the ramp-specific
+                # check when the robot is clearly in a different lane; tape and
+                # obstacle contact checks above still score normal course exits.
+                if distance_to_ramp_center > (
+                        edge_limit + self.ramp_monitor_lateral_margin_m):
+                    continue
+                if lateral > edge_limit:
                     self._fail(
                         "ramp_edge_departure:" + ramp.name,
                         failure_type="ramp_edge_departure",

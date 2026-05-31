@@ -52,6 +52,31 @@ It includes:
   giving the GPS EKF enough motion before GPS waypoint legs.
 - First-44-ft speed-check metadata and live scoring stations.
 
+The long official-style acceptance course source is:
+
+```bash
+src/autonav_sim/igvc_competition_sim/autoresearch/courses/official_full_loop.yaml
+```
+
+It follows the official AutoNav constraints as a full-scale competition mission:
+about 500 ft of route inside the rules-described 120 ft x 100 ft area, 10-20 ft
+taped lane widths, cones/barrels/posts, a below-15% ramp, a GPS waypoint field,
+legal 5 ft passages, first-44-ft speed scoring, and four GPS mission waypoints.
+Keep this as an explicit final gate; it is intentionally longer than the
+default nightly course list.
+
+The ramp is modeled at lane width with visible white lane lines on the sloped
+surface. This matches the real qualification-course detail that robots can use
+camera line detection to stay centered on the ramp; do not replace it with an
+unmarked narrow ramp.
+
+Course-integrity rule: do not move obstacles, widen lanes, or relax waypoint
+radii merely because the current robot stack fails this course. If
+`validate_course.py` passes and the oracle run fails, treat the result as a
+robot-stack planning/control/perception issue unless a specific scorer or
+physics bug is proven. Rule references: `http://www.igvc.org/rules.htm` and
+`http://www.igvc.org/2026rules.pdf`.
+
 Regenerate the SDF after changing the YAML:
 
 ```bash
@@ -59,6 +84,23 @@ cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim
 python3 -m igvc_competition_sim.generate_world \
   --course-config config/igvc_competition_compact.yaml \
   --output worlds/igvc_competition_compact.sdf
+```
+
+Regenerate the official long-course SDF:
+
+```bash
+cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim
+python3 -m igvc_competition_sim.generate_world \
+  --course-config autoresearch/courses/official_full_loop.yaml \
+  --output autoresearch/courses/worlds/official_full_loop.sdf
+```
+
+Validate all course geometry before running an official-course experiment:
+
+```bash
+cd ~/autonav_ws/src/autonav_sim
+python3 igvc_competition_sim/autoresearch/lib/validate_course.py \
+  igvc_competition_sim/autoresearch/courses/*.yaml
 ```
 
 ## Run
@@ -89,6 +131,19 @@ The oracle test uses ground-truth tape on `/line_points` plus ground-truth
 barrel/post obstacles on `/scan_pca_filtered_points`. If oracle fails, inspect
 Nav2/control/config. If oracle passes but camera/PCA mode fails, inspect sim
 perception, sensor timing, or costmap ingestion first.
+
+Run the long official-style oracle acceptance gate explicitly:
+
+```bash
+cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim/autoresearch
+python3 run_timebox.py \
+  --duration 90m \
+  --courses official_full_loop \
+  --runs 1 \
+  --tier 1 \
+  --timeout 900 \
+  --description official-full-loop-oracle
+```
 
 Analyze a completed run:
 

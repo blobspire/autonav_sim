@@ -75,6 +75,23 @@ def _tape_model(name: str,
     </model>"""
 
 
+def _sloped_tape_model(name: str,
+                       pose: tuple[float, float, float, float, float, float],
+                       length: float,
+                       width_m: float) -> str:
+    return f"""
+    <model name='{_clean_name(name)}'>
+      <static>1</static>
+      <pose>{pose[0]:.4f} {pose[1]:.4f} {pose[2]:.4f} {pose[3]:.6f} {pose[4]:.6f} {pose[5]:.6f}</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry><box><size>{length:.4f} {width_m:.4f} 0.012</size></box></geometry>
+          <material><ambient>0.98 0.98 0.98 1</ambient><diffuse>0.98 0.98 0.98 1</diffuse><specular>0.05 0.05 0.05 1</specular><emissive>0.9 0.9 0.9 1</emissive></material>
+        </visual>
+      </link>
+    </model>"""
+
+
 def _cylinder_model(name: str,
                     x: float,
                     y: float,
@@ -105,6 +122,46 @@ def _cylinder_model(name: str,
     </model>"""
 
 
+def _cone_model(name: str,
+                x: float,
+                y: float,
+                radius: float,
+                height: float,
+                collide: bool) -> str:
+    collision = ""
+    if collide:
+        collision = (
+            "<collision name='collision'><pose>0 0 "
+            f"{height * 0.5:.4f} 0 0 0</pose><geometry><cylinder>"
+            f"<radius>{radius:.4f}</radius><length>{height:.4f}</length>"
+            "</cylinder></geometry></collision>"
+        )
+    layers: list[str] = []
+    layer_count = 5
+    for idx in range(layer_count):
+        frac = idx / layer_count
+        layer_radius = max(radius * (1.0 - frac), radius * 0.18)
+        layer_height = height / layer_count
+        z = layer_height * (idx + 0.5)
+        layers.append(
+            f"""
+        <visual name='visual_{idx}'>
+          <pose>0 0 {z:.4f} 0 0 0</pose>
+          <geometry><cylinder><radius>{layer_radius:.4f}</radius><length>{layer_height:.4f}</length></cylinder></geometry>
+          {_material('mat', (0.95, 0.32, 0.05, 1.0))}
+        </visual>"""
+        )
+    return f"""
+    <model name='{_clean_name(name)}'>
+      <static>1</static>
+      <pose>{x:.4f} {y:.4f} 0 0 0 0</pose>
+      <link name='link'>
+        {collision}
+        {''.join(layers)}
+      </link>
+    </model>"""
+
+
 def _ramp_model(course: Course) -> str:
     out: list[str] = []
     for ramp in course.ramps:
@@ -125,6 +182,33 @@ def _ramp_model(course: Course) -> str:
             (0.45, 0.45, 0.42, 1.0),
             collide=True,
         ))
+    return "\n".join(out)
+
+
+def _ramp_line_models(course: Course) -> str:
+    out: list[str] = []
+    tape_width = course.tapes[0].width_m if course.tapes else 0.0762
+    for ramp in course.ramps:
+        run = ramp.end_x_m - ramp.start_x_m
+        length = math.hypot(run, ramp.rise_m)
+        if run <= 1e-6:
+            continue
+        pitch = -math.atan2(ramp.rise_m, run)
+        z = 0.5 * ramp.rise_m + 0.052
+        for side, y_sign in (("left", 1.0), ("right", -1.0)):
+            out.append(_sloped_tape_model(
+                f"{ramp.name}_{side}_white_line",
+                (
+                    0.5 * (ramp.start_x_m + ramp.end_x_m),
+                    ramp.center_y_m + y_sign * ramp.width_m * 0.5,
+                    z,
+                    0.0,
+                    pitch,
+                    0.0,
+                ),
+                length,
+                tape_width,
+            ))
     return "\n".join(out)
 
 
@@ -233,16 +317,27 @@ def generate_world(course: Course) -> str:
         color = (0.95, 0.32, 0.05, 1.0)
         if obstacle.kind == "post":
             color = (0.25, 0.25, 0.25, 1.0)
-        models.append(_cylinder_model(
-            obstacle.name,
-            obstacle.center[0],
-            obstacle.center[1],
-            obstacle.radius_m,
-            obstacle.height_m,
-            color,
-            collide=True,
-        ))
+        if obstacle.kind == "cone":
+            models.append(_cone_model(
+                obstacle.name,
+                obstacle.center[0],
+                obstacle.center[1],
+                obstacle.radius_m,
+                obstacle.height_m,
+                collide=True,
+            ))
+        else:
+            models.append(_cylinder_model(
+                obstacle.name,
+                obstacle.center[0],
+                obstacle.center[1],
+                obstacle.radius_m,
+                obstacle.height_m,
+                color,
+                collide=True,
+            ))
     models.append(_ramp_model(course))
+    models.append(_ramp_line_models(course))
     models.append(_robot_model(course))
 
     return f"""<?xml version='1.0'?>

@@ -1,0 +1,113 @@
+course_id: official_full_loop
+description: "official-style IGVC AutoNav full loop: 10-20 ft taped course, cones, ramp, GPS field, four GPS waypoints"
+rules_profile: igvc_2026_autonav_full_course
+
+# Local map frame convention: +x east/forward from start, +y left/north,
+# meters. This is an official-style rules-constrained course, not a copy of a
+# secret competition layout.
+datum:
+  latitude_deg: 37.23027
+  longitude_deg: -80.42504
+  altitude_m: 650.0
+
+start:
+  x_m: 0.0
+  y_m: 0.0
+  yaw_rad: 0.0
+
+finish:
+  x_m: 0.0
+  y_m: 24.0
+  radius_m: 1.25
+
+robot:
+  base_link_to_nav_center_m: 0.225
+  lidar_x_from_base_link_m: 0.6598
+  lidar_z_from_base_link_m: 0.20568
+  base_link_height_above_ground_m: 0.11303
+  gps_x_from_base_link_m: -0.2122
+  gps_y_from_base_link_m: -0.000105
+  gps_z_from_base_link_m: 0.66161
+  wheel_track_m: 0.72326
+  wheel_radius_m: 0.12946
+  physical_half_length_m: 0.545
+  physical_half_width_m: 0.410
+  footprint_padding_m: 0.050
+  max_linear_speed_mps: 0.50
+  max_angular_speed_radps: 1.0
+  cmd_latency_s: 0.08
+  linear_time_constant_s: 0.20
+  angular_time_constant_s: 0.18
+
+# IGVC AutoNav course lines are plain white tape, approximately 3 inches wide.
+tape_width_m: 0.0762
+
+# Official-scale switchback loop. The centerline is about 492 ft long and the
+# whole course footprint stays inside the rules-described 120 ft x 100 ft area.
+# Widths intentionally cover the rules-relevant range: 10 ft (3.048 m), 12 ft,
+# 15 ft, and 20 ft sections.
+centerline:
+  - {x_m: 0.0,  y_m: 0.0,  width_m: 3.048}
+  - {x_m: 15.5, y_m: 0.0,  width_m: 3.048}
+  - {x_m: 31.5, y_m: 0.0,  width_m: 3.6576}
+  - {x_m: 31.5, y_m: 8.0,  width_m: 3.048}
+  - {x_m: 15.5, y_m: 8.0,  width_m: 6.096}
+  - {x_m: 0.0,  y_m: 8.0,  width_m: 3.6576}
+  - {x_m: 0.0,  y_m: 16.0, width_m: 3.048}
+  - {x_m: 15.5, y_m: 16.0, width_m: 4.572}
+  - {x_m: 31.5, y_m: 16.0, width_m: 3.6576}
+  - {x_m: 31.5, y_m: 24.0, width_m: 3.048}
+  - {x_m: 15.5, y_m: 24.0, width_m: 6.096}
+  - {x_m: 0.0,  y_m: 24.0, width_m: 3.6576}
+
+internal_lines:
+  - name: gps_field_no_cross_line
+    start: {x_m: 18.5, y_m: 9.3}
+    end: {x_m: 26.0, y_m: 13.4}
+    width_m: 0.0762
+
+obstacles:
+  - {name: speed_chute_left_cone, type: cone, x_m: 5.5, y_m: 1.10, radius_m: 0.18, height_m: 0.46}
+  - {name: ramp_approach_right_cone, type: cone, x_m: 12.5, y_m: -1.00, radius_m: 0.18, height_m: 0.46}
+  - {name: ramp_exit_barrel, type: barrel, x_m: 24.5, y_m: 1.15, radius_m: 0.28, height_m: 0.85}
+  - {name: gps_field_gate_barrel, type: barrel, x_m: 27.5, y_m: 9.30, radius_m: 0.28, height_m: 0.85}
+  - {name: gps_field_inner_cone, type: cone, x_m: 3.5, y_m: 9.30, radius_m: 0.18, height_m: 0.46}
+  - {name: gps_field_center_barrel, type: barrel, x_m: 15.5, y_m: 16.0, radius_m: 0.28, height_m: 0.85}
+  - {name: gps_field_exit_cone, type: cone, x_m: 27.5, y_m: 17.25, radius_m: 0.18, height_m: 0.46}
+  - {name: north_lane_barrel, type: barrel, x_m: 18.5, y_m: 22.20, radius_m: 0.28, height_m: 0.85}
+  - {name: legal_gap_cone, type: cone, x_m: 7.5, y_m: 24.90, radius_m: 0.18, height_m: 0.46}
+  - {name: return_lane_cone, type: cone, x_m: 5.5, y_m: 22.60, radius_m: 0.18, height_m: 0.46}
+  - {name: finish_post, type: post, x_m: 2.5, y_m: 25.05, radius_m: 0.18, height_m: 1.10}
+
+ramps:
+  - name: official_grade_ramp
+    start_x_m: 17.5
+    end_x_m: 23.5
+    center_y_m: 0.0
+    # The real qualification ramp carries white lane lines so robots can stay
+    # centered using camera line detection. Keep this at the 10 ft lane width;
+    # do not shrink it to a narrow unlabeled plank just to create difficulty.
+    width_m: 3.048
+    rise_m: 0.40
+
+speed_check:
+  start_x_m: 0.0
+  end_distance_m: 13.4112
+  minimum_average_mps: 0.44704
+  maximum_speed_mps: 2.2352
+  blocking_stop_s: 60.0
+
+# Four overall GPS mission waypoints, matching the competition-style mission
+# contract. No hidden local bootstrap waypoint is used in this long-course gate.
+mission_waypoints:
+  - {label: wp1_ramp_exit, type: gps, x_m: 26.5, y_m: 0.0, radius_m: 1.25}
+  - {label: wp2_gps_field_entry, type: gps, x_m: 27.5, y_m: 8.0, radius_m: 1.25}
+  - {label: wp3_gps_field_exit, type: gps, x_m: 27.5, y_m: 24.0, radius_m: 1.25}
+  - {label: wp4_finish, type: gps, x_m: 0.0, y_m: 24.0, radius_m: 1.25}
+
+analysis_stations:
+  - {label: first_44ft_speed_chute, x_m: 13.4112, y_min_m: -1.4, y_max_m: 1.4}
+  - {label: ramp_center, x_m: 20.5, y_min_m: -0.9, y_max_m: 0.9}
+  - {label: gps_field_choice, x_m: 27.5, y_min_m: 8.2, y_max_m: 13.2}
+  - {label: return_lane_choice, x_m: 15.5, y_min_m: 14.0, y_max_m: 18.0}
+  - {label: north_legal_gap, x_m: 7.5, y_min_m: 22.4, y_max_m: 25.6}
