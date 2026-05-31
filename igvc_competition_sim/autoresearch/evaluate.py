@@ -130,6 +130,8 @@ def main() -> int:
     ap.add_argument("--run-root", default=str(RESULTS / "runs"))
     ap.add_argument("--keep-bags", action="store_true",
                     help="do not prune bags after scoring")
+    ap.add_argument("--startup-retries", type=int, default=2,
+                    help="retry a run when the stack never reaches nav readiness")
     ap.add_argument("--score-existing", nargs="+", default=None,
                     help="score existing RUN_DIRs instead of running the sim")
     args = ap.parse_args()
@@ -149,18 +151,26 @@ def main() -> int:
         run_root = Path(args.run_root)
         stamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
         for k in range(args.runs):
-            run_dir = run_root / f"{course}_{stamp}_run{k + 1}"
-            run_dir.mkdir(parents=True, exist_ok=True)
-            print(f"--- {course} run {k + 1}/{args.runs} -> {run_dir} ---")
-            _run_sim(course, run_dir, args.timeout)
-            m = M.compute_metrics(run_dir, str(yaml))
-            per_run.append(m)
-            # prune heavy bag unless failing/keep
-            if not args.keep_bags and F.run_clean(m) is True:
-                bagp = run_dir / "bag"
-                if bagp.is_dir():
-                    import shutil
-                    shutil.rmtree(bagp, ignore_errors=True)
+            for startup_try in range(args.startup_retries + 1):
+                suffix = "" if startup_try == 0 else f"_startup_retry{startup_try}"
+                run_dir = run_root / f"{course}_{stamp}_run{k + 1}{suffix}"
+                run_dir.mkdir(parents=True, exist_ok=True)
+                print(f"--- {course} run {k + 1}/{args.runs} "
+                      f"try {startup_try + 1}/{args.startup_retries + 1} -> {run_dir} ---")
+                _run_sim(course, run_dir, args.timeout)
+                m = M.compute_metrics(run_dir, str(yaml))
+                m["startup_retry_count"] = startup_try
+                if m.get("startup_not_ready") and startup_try < args.startup_retries:
+                    print("startup not ready; retrying this run")
+                    continue
+                per_run.append(m)
+                # prune heavy bag unless failing/keep
+                if not args.keep_bags and F.run_clean(m) is True:
+                    bagp = run_dir / "bag"
+                    if bagp.is_dir():
+                        import shutil
+                        shutil.rmtree(bagp, ignore_errors=True)
+                break
 
     result = F.evaluate_candidate(per_run, course=course, tier=args.tier,
                                   commit=args.commit, best_fitness=args.best_fitness)

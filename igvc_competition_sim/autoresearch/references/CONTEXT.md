@@ -290,3 +290,9 @@ RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning o
   compact (`pfs=9`, min_clear `0.126`), tight (`pfs=0`, `0.287`), dense (`pfs=0`, `0.353`), sparse
   (`pfs=0`, `0.240`), ramp (`pfs=0`, `0.159`, distance `35.787`). Treat future ramp failures as robot
   planning/control only after `validate_course.py courses/*.yaml` passes and `/breadcrumb_tail` is present.
+- HARNESS FIX: post-fix timebox found one zero-data ramp run (`/plan=0`, `/cmd_vel=0`, costmap_raw=0).
+  This was Nav2 startup/readiness, not robot navigation. `run_one.sh` now waits for typed global/local
+  costmap and breadcrumb messages before starting the mission, writes `startup_status.txt`, and
+  `evaluate.py` retries startup-not-ready runs. Also added `--include-hidden-topics` to bag recording so
+  action status topics are actually captured; this restores real traversal-time scoring for speed tuning
+  (`compact_baseline` smoke recorded `t_mean=85.44s` instead of the previous false `0.0s`).

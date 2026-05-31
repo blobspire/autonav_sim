@@ -155,6 +155,13 @@ def _mission_completed(run_dir: Path) -> bool | None:
     return None
 
 
+def _read_status_file(run_dir: Path, name: str) -> str:
+    fp = run_dir / name
+    if not fp.is_file():
+        return ""
+    return fp.read_text(encoding="utf-8", errors="replace").strip()
+
+
 def _count_action_starts(status_msgs: list[tuple[int, Any]]) -> int:
     """Count distinct goals that reached ACCEPTED/EXECUTING (=activations)."""
     seen = set()
@@ -325,6 +332,15 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
     except Exception as exc:  # noqa: BLE001
         m["bag_error"] = str(exc)
     to_sim = _clock_mapper(msgs)
+    startup_status = _read_status_file(run_dir, "startup_status.txt")
+    mission_status = _read_status_file(run_dir, "mission_status.txt")
+    mission_log = _read_status_file(run_dir, "mission.log")
+    m["startup_status"] = startup_status
+    m["mission_status"] = mission_status
+    m["startup_not_ready"] = (
+        startup_status.startswith("startup_not_ready:")
+        or "run_one: timed out waiting for" in mission_log
+    )
 
     # --- authoritative reliability ---
     score = _load_score(run_dir, msgs)
@@ -343,7 +359,11 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
     m["mission_completed"] = _mission_completed(run_dir)
 
     # --- traversal time + first-motion origin ---
-    nav_status = msgs.get("/navigate_to_pose/_action/status") or []
+    nav_status = sorted(
+        (msgs.get("/navigate_to_pose/_action/status") or [])
+        + (msgs.get("/navigate_to_waypoint/_action/status") or []),
+        key=lambda item: item[0],
+    )
     m["traversal_time"] = _traversal_time(nav_status, to_sim)
     origin = None
     for t_ns, msg in nav_status:

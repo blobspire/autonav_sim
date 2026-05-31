@@ -21,6 +21,7 @@
 #   AUTORESEARCH_CLEAN_ROS_ENV (true),
 #   STARTUP_WAIT_SEC (12), PRE_MISSION_WAIT_SEC (8),
 #   FINAL_SCORE_WAIT_SEC (8), ROS_DOMAIN_ID (auto)
+#   NAV_READY_WAIT_SEC (45)
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,6 +59,7 @@ fi
 STARTUP_WAIT_SEC="${STARTUP_WAIT_SEC:-12}"
 PRE_MISSION_WAIT_SEC="${PRE_MISSION_WAIT_SEC:-8}"
 FINAL_SCORE_WAIT_SEC="${FINAL_SCORE_WAIT_SEC:-8}"
+NAV_READY_WAIT_SEC="${NAV_READY_WAIT_SEC:-45}"
 MISSION_TIMEOUT_SEC="${MISSION_TIMEOUT_SEC:-300}"
 
 COURSE_YAML=""; WORLD=""; RUN_DIR=""
@@ -133,7 +135,7 @@ stack_pid=$!
 
 sleep "$STARTUP_WAIT_SEC"
 
-ros2 bag record -o "$RUN_DIR/bag" \
+ros2 bag record --include-hidden-topics -o "$RUN_DIR/bag" \
   /clock /tf /tf_static \
   /odom /local_ekf/odom /igvc_sim/ground_truth_odom \
   /cmd_vel /cmd_vel_nav \
@@ -151,6 +153,31 @@ ros2 bag record -o "$RUN_DIR/bag" \
 bag_pid=$!
 
 sleep "$PRE_MISSION_WAIT_SEC"
+
+wait_topic_once() {
+  local topic="$1"
+  local msg_type="$2"
+  local label="$3"
+  if ! timeout --kill-after=2s "${NAV_READY_WAIT_SEC}s" \
+    ros2 topic echo --once "$topic" "$msg_type" > /dev/null 2>&1
+  then
+    echo "run_one: timed out waiting for $label ($topic)" | tee -a "$RUN_DIR/mission.log" >&2
+    return 1
+  fi
+}
+
+startup_not_ready() {
+  local label="$1"
+  local topic="$2"
+  echo "startup_not_ready:$label:$topic" > "$RUN_DIR/startup_status.txt"
+  echo 4 > "$RUN_DIR/mission_status.txt"
+  exit 4
+}
+
+wait_topic_once "/global_costmap/costmap_raw" "nav2_msgs/msg/Costmap" "global costmap" || startup_not_ready "global costmap" "/global_costmap/costmap_raw"
+wait_topic_once "/local_costmap/costmap_raw" "nav2_msgs/msg/Costmap" "local costmap" || startup_not_ready "local costmap" "/local_costmap/costmap_raw"
+wait_topic_once "/breadcrumb_tail" "nav_msgs/msg/Path" "breadcrumb buffer" || startup_not_ready "breadcrumb buffer" "/breadcrumb_tail"
+echo "ready" > "$RUN_DIR/startup_status.txt"
 
 mission_status=0
 set +e

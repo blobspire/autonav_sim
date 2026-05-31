@@ -43,6 +43,8 @@ _RECOVERY_KEYS = ("breadcrumb", "gradient", "backup", "spin", "clearcostmap")
 
 def run_clean(m: dict) -> bool | None:
     """True=clean, False=hard fail, None=indeterminate (INCOMPLETE)."""
+    if m.get("startup_not_ready"):
+        return None
     if not m.get("score_loaded"):
         return None
     if m.get("failed"):
@@ -141,9 +143,11 @@ def evaluate_candidate(runs: list[dict],
         reasons = []
         for i, (c, r) in enumerate(zip(clean_flags, runs)):
             if c is not True:
-                reasons.append(f"run{i + 1}:" + (
-                    "INCOMPLETE" if c is None else
-                    ",".join(r.get("violations") or ["incomplete/timeout"])))
+                if c is None:
+                    reason = r.get("startup_status") or "INCOMPLETE"
+                else:
+                    reason = ",".join(r.get("violations") or ["incomplete/timeout"])
+                reasons.append(f"run{i + 1}:{reason}")
         result["notes"] = "; ".join(reasons)
         return result
 
@@ -203,7 +207,7 @@ def report_card(result: dict, per_run: list[dict]) -> str:
             f"bc={r.get('breadcrumb')} ge={r.get('gradient')} bu={r.get('backup')} "
             f"sp={r.get('spin')} cc={r.get('clearcostmap')} pfs={r.get('pathfootprint_rejects')} "
             f"rev={r.get('ang_reversals')} var={r.get('ang_var')} stuck={r.get('stuck_events')} "
-            f"clear={r.get('min_course_clear')}")
+            f"clear={r.get('min_course_clear')} startup={r.get('startup_status') or '-'}")
     lines.append(f"GATE: {result['gate']} ({result['pass']}/{result['runs']} clean)  "
                  f"-> {result.get('decision', '?')}  status={result['status']}")
     if result.get("fitness") is not None:
