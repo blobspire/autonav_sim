@@ -113,3 +113,12 @@ LOOP until 8h-budget - 20min:
 ## NEVER STOP / finish
 Once the loop begins do not pause to ask. If out of ideas, re-read UNKNOWNS.md. At budget end: final
 Tier-3 confirmation of the best config, write the summary to CONTEXT.md, commit, then `git push -u origin auto_camera`.
+
+## Timeboxed runner
+Use `python3 run_timebox.py --duration 8h --courses compact_baseline tight_gaps
+dense_obstacles sparse_lines ramp_turns --runs 1 --tier 1 --timeout 300` for
+deterministic long-run mechanics. The runner performs preflight gates, repeats
+`evaluate.py` until the deadline, preserves per-attempt logs, writes
+`results/timebox/<timestamp>/{summary.json,attempts.tsv}`, and calls the reaper
+before exit. It does not edit code or choose hypotheses; the supervising agent
+still owns one-change-at-a-time keep/discard decisions.
