@@ -212,6 +212,9 @@ def main() -> int:
         resf = F.evaluate_candidate([m, mf, m], course="compact_baseline", tier=2)
         ok &= check("gate FAIL on 1 bad run", resf["gate"] == "FAIL"
                     and resf["decision"] == "DISCARD")
+        ok &= check("failed candidate has progress score",
+                    resf.get("progress_fitness") is not None
+                    and resf.get("distance_mean") is not None)
 
         # incomplete run (no score) -> not clean
         inc_dir = tmp / "inc"

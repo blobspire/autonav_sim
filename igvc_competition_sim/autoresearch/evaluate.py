@@ -40,8 +40,9 @@ LOG_COLS = [
     "gradient", "backup", "spin", "clearcostmap", "pathfootprint_rejects",
     "followpath_disruptive_aborts", "compute_aborts", "ang_var", "ang_reversals",
     "stuck_events", "time_below_speed", "min_course_clear", "executed_lethal_clear",
-    "plan_inscribed_clear", "line_first_s", "line_max_cells", "pca_first_s",
-    "global_clear_events", "notes", "description",
+    "plan_inscribed_clear", "distance_mean", "progress_fitness", "line_first_s",
+    "line_max_cells", "pca_first_s", "global_clear_events", "notes",
+    "description",
 ]
 
 
@@ -98,6 +99,8 @@ def _append_log_row(result: dict, per_run: list[dict], description: str) -> None
         "min_course_clear": result.get("min_course_clear"),
         "executed_lethal_clear": None,
         "plan_inscribed_clear": None,
+        "distance_mean": result.get("distance_mean"),
+        "progress_fitness": result.get("progress_fitness"),
         "line_first_s": _mean_of(per_run, "line_first_s"),
         "line_max_cells": None,
         "pca_first_s": _mean_of(per_run, "pca_first_s"),

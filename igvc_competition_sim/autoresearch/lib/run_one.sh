@@ -16,26 +16,44 @@
 # Env overrides:
 #   ROS_WS (default: containing colcon workspace), AUTONAV_SRC,
 #   NAV2_PARAMS_SRC, BT_XML_SRC,
+#   LINE_DETECTION_MODE (ground_truth), GROUND_TRUTH_PCA (true),
+#   LAUNCH_DETECTION (auto: false for oracle planning, true for perception),
+#   AUTORESEARCH_CLEAN_ROS_ENV (true),
 #   STARTUP_WAIT_SEC (12), PRE_MISSION_WAIT_SEC (8), ROS_DOMAIN_ID (auto)
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SIM_PACKAGE_DIR="$(cd "$HERE/../.." && pwd)"
+SIM_REPO_DIR="$(cd "$SIM_PACKAGE_DIR/.." && pwd)"
 ROS_WS="${ROS_WS:-$(cd "$HERE/../../../../.." && pwd)}"
 WORKSPACE_SRC="$ROS_WS/src"
 
 find_autonav_src() {
   local nav2
-  nav2="$(find "$WORKSPACE_SRC" -path '*/isaac_ros-dev/src/slam/config/nav2_params_camera.yaml' -print -quit 2>/dev/null || true)"
-  if [[ -n "$nav2" ]]; then
-    dirname "$(dirname "$(dirname "$nav2")")"
-  fi
+  for root in "$WORKSPACE_SRC" "$SIM_REPO_DIR/.." "/autonav"; do
+    [[ -d "$root" ]] || continue
+    nav2="$(find "$root" -path '*/isaac_ros-dev/src/slam/config/nav2_params_camera.yaml' -print -quit 2>/dev/null || true)"
+    if [[ -n "$nav2" ]]; then
+      dirname "$(dirname "$(dirname "$nav2")")"
+      return 0
+    fi
+  done
 }
 
 AUTONAV_SRC="${AUTONAV_SRC:-$(find_autonav_src)}"
 NAV2_PARAMS_SRC="${NAV2_PARAMS_SRC:-$AUTONAV_SRC/slam/config/nav2_params_camera.yaml}"
 BT_XML_SRC="${BT_XML_SRC:-$AUTONAV_SRC/slam/behavior_trees/bt_nav.xml}"
 DYN_CAL="${DYNAMICS_CALIBRATION:-$SIM_PACKAGE_DIR/config/dynamics_calibration.yaml}"
+LINE_DETECTION_MODE="${LINE_DETECTION_MODE:-ground_truth}"
+GROUND_TRUTH_PCA="${GROUND_TRUTH_PCA:-true}"
+PUBLISH_FULL_LIDAR_CLOUD="${PUBLISH_FULL_LIDAR_CLOUD:-false}"
+if [[ -z "${LAUNCH_DETECTION:-}" ]]; then
+  if [[ "$LINE_DETECTION_MODE" == "camera" || "$GROUND_TRUTH_PCA" != "true" ]]; then
+    LAUNCH_DETECTION=true
+  else
+    LAUNCH_DETECTION=false
+  fi
+fi
 STARTUP_WAIT_SEC="${STARTUP_WAIT_SEC:-12}"
 PRE_MISSION_WAIT_SEC="${PRE_MISSION_WAIT_SEC:-8}"
 MISSION_TIMEOUT_SEC="${MISSION_TIMEOUT_SEC:-300}"
@@ -62,6 +80,9 @@ mkdir -p "$RUN_DIR"
 if [[ ! -f /opt/ros/humble/setup.bash || ! -f "$ROS_WS/install/setup.bash" ]]; then
   echo "ROS env not ready (need /opt/ros/humble + $ROS_WS/install). Build the workspace." >&2
   exit 3
+fi
+if [[ "${AUTORESEARCH_CLEAN_ROS_ENV:-true}" == "true" ]]; then
+  unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH PYTHONPATH LD_LIBRARY_PATH
 fi
 set +u
 source /opt/ros/humble/setup.bash
@@ -93,7 +114,10 @@ bash "$HERE/reaper.sh" >>"$RUN_DIR/reaper.log" 2>&1 || true
 setsid ros2 launch igvc_competition_sim igvc_competition.launch.py \
   course_config:="$COURSE_YAML" \
   world:="$WORLD" \
-  line_detection_mode:=camera \
+  line_detection_mode:="$LINE_DETECTION_MODE" \
+  ground_truth_pca:="$GROUND_TRUTH_PCA" \
+  publish_full_lidar_cloud:="$PUBLISH_FULL_LIDAR_CLOUD" \
+  launch_detection:="$LAUNCH_DETECTION" \
   nav2_params:="$NAV2_PARAMS_SRC" \
   bt_xml:="$BT_XML_SRC" \
   use_calibrated_dynamics:=true \
@@ -112,9 +136,10 @@ ros2 bag record -o "$RUN_DIR/bag" \
   /follow_path/_action/status /compute_path_to_pose/_action/status \
   /back_up/_action/status /spin/_action/status /drive_on_heading/_action/status \
   /rosout \
-  /plan /unsmoothed_plan \
+  /behavior_tree_log \
+  /plan /unsmoothed_plan /local_plan /trajectories \
   /global_costmap/costmap_raw /local_costmap/costmap_raw \
-  /line_points /line_costmap /scan_pca_filtered \
+  /line_points /line_costmap /scan_pca_filtered_points /scan_pca_filtered \
   /igvc_sim/score /igvc_sim/fail \
   >"$RUN_DIR/bag_record.log" 2>&1 &
 bag_pid=$!

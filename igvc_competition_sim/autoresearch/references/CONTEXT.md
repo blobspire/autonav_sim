@@ -117,14 +117,20 @@ DONE + VERIFIED on host:
   (route the centerline farther from inflation by construction -> fewer PathFootprintSafe rejects /
   breadcrumb fallbacks). Soft preference only; lethal topology unchanged so the 5 ft passage stays usable.
 
-DEFERRED until the sim env is available:
-- Phase-0 wall-clock calibration + tier auto-sizing; the baseline; running the keep/discard loop;
-  validating C-ii (`global_clear_events`) and C-iii (`pathfootprint_rejects`/`breadcrumb`/time down,
-  0 violations); costmap-based metrics (executed_lethal_clear / plan_inscribed_clear / global_clear_events)
-  wired from the FROZEN scripts/analyze_*.py.
+CURRENT STATUS:
+- Split-repo VM smoke is runnable in `/tmp/autonav_split_ws` with
+  `src/{AutoNav_25-26,autonav_sim}`.
+- Planning/control autoresearch defaults to oracle inputs:
+  `LINE_DETECTION_MODE=ground_truth`, `GROUND_TRUTH_PCA=true`,
+  `PUBLISH_FULL_LIDAR_CLOUD=false`, `LAUNCH_DETECTION=false`.
+- Phase-0 wall-clock calibration + tier auto-sizing and the full keep/discard
+  loop still need to be run. Costmap-based metrics
+  (executed_lethal_clear / plan_inscribed_clear / global_clear_events) remain
+  future analyzer work.
 
 ## How to run once a sim is available
-1. Get a runnable sim (see BLOCKER). Build the ws once: `cd isaac_ros-dev && colcon build --symlink-install`.
+1. Build the split workspace:
+   `cd /tmp/autonav_split_ws && source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-select autonav_interfaces custom_behavior_tree_plugins local_mirror_layer line_layer slam bringup gps_waypoint_handler autonav_detection igvc_competition_sim`.
 2. Gates: `python3 .../autoresearch/lib/check_footprint.py` and `... validate_course.py courses/*.yaml`.
 3. Smoke: `python3 .../autoresearch/evaluate.py --course compact_baseline --runs 1 --tier 1`
    (confirm a RESULT line + no orphaned gz/ros: `pgrep -fa 'gz sim|controller_server'` empty).
@@ -134,6 +140,17 @@ DEFERRED until the sim env is available:
 ## Iteration log
 (_baseline + each kept/discarded experiment recorded here in the AUTORESEARCH_PATH.md style once the loop runs._)
 - 2026-05-30 setup: branch + scaffold + 5 validated courses + footprint check (PASS).
+- 2026-05-31 split-workspace harness prep: cloned current `hailmary` robot
+  source into the VM, rebuilt the selected packages from a clean ROS
+  environment, and validated the oracle planning harness. Gates PASS:
+  footprint consistency, 5-course feasibility, and `selftest_metrics.py`.
+  Live smoke ran end-to-end and cleaned up, but the current robot config FAILS
+  `compact_baseline` at the second waypoint: `blocking_stop_over_60s`,
+  distance=5.62m, min_clear=0.692m, PathFootprintSafe rejects=5,
+  progress_fitness=-14.63. This is a robot planning/control behavior failure,
+  not a harness launch failure. Next nightly work should improve from this
+  baseline using the progress score until a clean reliability-gated baseline
+  exists.
 - 2026-05-30 harness: metrics.py + fitness.py built and self-tested (16/16); evaluate.py/run_one.sh/reaper.sh
   built (sim-run path unvalidated). C-ii (config-only line clearing) + C-iii (cost_penalty 3.0) implemented,
   UNVALIDATED. Loop run still blocked on a runnable sim env.

@@ -32,6 +32,11 @@ W_STUCK = 1.0        # per stuck event (>1s nonzero-cmd gap while not at goal)
 W_BELOW = 0.1        # per second below speed while not at goal
 W_CLEAR = 5.0        # per meter of min course clearance (bonus)
 KEEP_EPS = 0.5       # fitness must beat best by this many s-equivalent to KEEP
+W_PROGRESS_PFS = 0.05
+P_INCOMPLETE = 30.0
+P_FAILED = 10.0
+P_CONTACT = 100.0
+P_BLOCKING = 10.0
 
 _RECOVERY_KEYS = ("breadcrumb", "gradient", "backup", "spin", "clearcostmap")
 
@@ -67,6 +72,41 @@ def _agg_recovery(runs: list[dict]) -> dict[str, float]:
     return out
 
 
+def _progress_score(run: dict) -> float:
+    """Best-effort ranking for pre-clean candidates.
+
+    This does not weaken the reliability gate. It only gives the loop a way to
+    distinguish "failed immediately" from "almost completed but timed out"
+    before the first clean baseline exists.
+    """
+    score = float(run.get("distance_m") or 0.0)
+    if run.get("finish_reached"):
+        score += 50.0
+    clean = run_clean(run)
+    if clean is None:
+        score -= P_INCOMPLETE
+    elif clean is False:
+        score -= P_FAILED
+    for violation in run.get("violations") or []:
+        if "tape_crossing" in violation or "obstacle_contact" in violation:
+            score -= P_CONTACT
+        elif "blocking_stop" in violation:
+            score -= P_BLOCKING
+        else:
+            score -= 20.0
+    score -= W_PROGRESS_PFS * float(run.get("pathfootprint_rejects") or 0.0)
+    return score
+
+
+def _progress_summary(runs: list[dict]) -> dict[str, float | None]:
+    distances = [r.get("distance_m") for r in runs]
+    progress = [_progress_score(r) for r in runs]
+    return {
+        "distance_mean": None if _mean(distances) is None else round(_mean(distances), 3),
+        "progress_fitness": None if not progress else round(sum(progress) / len(progress), 3),
+    }
+
+
 def evaluate_candidate(runs: list[dict],
                        course: str,
                        tier: int,
@@ -84,6 +124,7 @@ def evaluate_candidate(runs: list[dict],
         "course": course, "tier": tier, "runs": n, "pass": n_clean,
         "commit": commit, "gate": "PASS" if gate else "FAIL",
         "n_incomplete": n_incomplete, "n_fail": n_fail,
+        **_progress_summary(runs),
     }
 
     if n_incomplete >= 2 and not gate:
@@ -169,6 +210,9 @@ def report_card(result: dict, per_run: list[dict]) -> str:
         lines.append(f"fitness={result['fitness']} (t_mean={result.get('t_mean')} "
                      f"R_sec={result.get('R_sec')} J_sec={result.get('J_sec')} "
                      f"C_bonus={result.get('C_bonus')})")
+    elif result.get("progress_fitness") is not None:
+        lines.append(f"progress_fitness={result.get('progress_fitness')} "
+                     f"(distance_mean={result.get('distance_mean')})")
     if result.get("notes"):
         lines.append("notes: " + result["notes"])
     return "\n".join(lines)
@@ -183,6 +227,7 @@ def result_line(result: dict) -> str:
             f"course={g('course')} tier={g('tier')} runs={g('runs')} pass={g('pass')} "
             f"gate={g('gate')} status={g('status')} decision={g('decision')} "
             f"fitness={g('fitness')} t_mean={g('t_mean')} "
+            f"progress={g('progress_fitness')} distance={g('distance_mean')} "
             f"bc={g('breadcrumb')} ge={g('gradient')} bu={g('backup')} sp={g('spin')} "
             f"cc={g('clearcostmap')} pfs={g('pathfootprint_rejects')} "
             f"ang_var={g('ang_var')} stuck={g('stuck_events')} "

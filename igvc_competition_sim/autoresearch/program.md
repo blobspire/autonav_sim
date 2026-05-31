@@ -8,8 +8,10 @@ bank). In the split-repo layout, run from a workspace shaped like
 `autonav_sim/igvc_competition_sim`.
 
 ## Setup
-1. Confirm branch `auto_camera`.
-2. **Resolve the sim env** (see CONTEXT.md "BLOCKER"). The loop cannot score anything until
+1. Confirm the active robot-stack checkout is the branch under test, for example
+   `AutoNav_25-26`/`AutoNavB` on `hailmary`, and confirm `autonav_sim` is on
+   `main`.
+2. **Resolve the sim env**. The loop cannot score anything until
    `evaluate.py --course compact_baseline --runs 1 --tier 1` produces a real result with no orphaned
    `gz`/ros processes left behind.
 3. Run gates: `python3 autoresearch/lib/check_footprint.py` (C-i) and
@@ -67,10 +69,18 @@ KEEP iff: gate passes AND fitness strictly beats current best for that course AN
   to extract metrics, then `lib/fitness.py` to gate+score; print an ASCII report card + one machine line:
   `RESULT course=.. tier=.. runs=.. pass=.. gate=.. status=.. fitness=.. t_mean=.. viol_total=.. bc=.. ge=..
    bu=.. sp=.. cc=.. pfs=.. ang_var=.. stuck=.. min_clear=.. plan_inscribed=.. global_clear_events=.. commit=..`.
-- `lib/run_one.sh`: backend-pluggable via `RUN_PREFIX` (""=host, "docker exec <ctr>", "ssh <host>").
-  Replicates the proven launch+`setsid` group-cleanup from `Run_IGVC_COMPETITION_FORTRESS_TEST.command`;
-  records the superset bag (CONTEXT.md); never hangs (timeouts); writes RUN_DIR/{final_score.txt,mission.log,bag};
-  exits nonzero when mission status fails or the monitor score reports `failed:true`.
+- `lib/run_one.sh`: local single-workspace runner. It expects the machine running
+  it to have ROS Humble, Gazebo, `autonav_sim`, and the active AutoNav checkout
+  in one sourced colcon workspace. It replicates the proven launch+`setsid`
+  group-cleanup from `Run_IGVC_COMPETITION_FORTRESS_TEST.command`; records the
+  superset bag (CONTEXT.md); never hangs (timeouts); writes
+  RUN_DIR/{final_score.txt,mission.log,bag}; exits nonzero when mission status
+  fails or the monitor score reports `failed:true`.
+- Planning/control nightly defaults: `LINE_DETECTION_MODE=ground_truth`,
+  `GROUND_TRUTH_PCA=true`, `PUBLISH_FULL_LIDAR_CLOUD=false`, and
+  `LAUNCH_DETECTION=false`. `AUTORESEARCH_CLEAN_ROS_ENV=true` also clears stale
+  ROS overlay paths before sourcing `/opt/ros/humble` and the selected
+  workspace. Override these env vars only for perception-specific tests.
 - `lib/reaper.sh`: kill leftover gz/ros (CONTEXT.md list), poll clear, `ros2 daemon stop`. Run before+after each run.
 - `lib/metrics.py`: parse score JSON + the superset bag via `rosbag2_py` and the FROZEN `scripts/analyze_*.py`
   (see CONTEXT.md metric table). Graceful: missing topic -> metric=NA, run=INCOMPLETE; >=2 INCOMPLETE -> FLAKY.

@@ -26,6 +26,7 @@ from pathlib import Path
 TOL = 1e-6
 
 SIM_PACKAGE_DIR = Path(__file__).resolve().parents[2]
+SIM_REPO_DIR = SIM_PACKAGE_DIR.parent
 ROS_WS = Path(os.environ.get("ROS_WS", Path(__file__).resolve().parents[5]))
 WORKSPACE_SRC = ROS_WS / "src"
 
@@ -33,9 +34,22 @@ WORKSPACE_SRC = ROS_WS / "src"
 def default_autonav_src() -> Path:
     if os.environ.get("AUTONAV_SRC"):
         return Path(os.environ["AUTONAV_SRC"])
-    matches = sorted(WORKSPACE_SRC.glob("*/isaac_ros-dev/src/slam/config/nav2_params_camera.yaml"))
-    if matches:
-        return matches[0].parents[2]
+    search_roots = [
+        WORKSPACE_SRC,
+        SIM_REPO_DIR.parent,
+        Path("/autonav"),
+    ]
+    for root in search_roots:
+        if not root.is_dir():
+            continue
+        matches = sorted(
+            root.glob("*/isaac_ros-dev/src/slam/config/nav2_params_camera.yaml")
+        )
+        if matches:
+            return matches[0].parents[2]
+        direct = root / "isaac_ros-dev" / "src" / "slam" / "config" / "nav2_params_camera.yaml"
+        if direct.is_file():
+            return direct.parents[2]
     return WORKSPACE_SRC / "AutoNav_25-26" / "isaac_ros-dev" / "src"
 
 
