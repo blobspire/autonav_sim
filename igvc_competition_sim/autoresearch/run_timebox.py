@@ -26,6 +26,8 @@ import subprocess
 import sys
 import time
 
+import log_experiment as ledger
+
 
 HERE = Path(__file__).resolve().parent
 LIB = HERE / "lib"
@@ -164,6 +166,16 @@ def main() -> int:
                     action=argparse.BooleanOptionalAction, default=None)
     ap.add_argument("--ros-ws", default="")
     ap.add_argument("--autonav-src", default="")
+    ap.add_argument("--experiment-hypothesis", default="",
+                    help="record this candidate in results/experiments.jsonl")
+    ap.add_argument("--change-summary", default="")
+    ap.add_argument("--retry-rule", default="")
+    ap.add_argument("--experiment-status", default="needs_review",
+                    choices=["kept", "discarded", "blocked", "needs_rerun",
+                             "needs_review", "baseline"])
+    ap.add_argument("--allow-duplicate-hypothesis", action="store_true")
+    ap.add_argument("--ledger", default=str(ledger.DEFAULT_LEDGER))
+    ap.add_argument("--robot-repo", default=str(ledger.DEFAULT_ROBOT_REPO))
     args = ap.parse_args()
 
     budget_s = parse_duration(args.duration)
@@ -175,6 +187,18 @@ def main() -> int:
     eval_runs = session_root / "runs"
     logs.mkdir(parents=True, exist_ok=True)
     eval_runs.mkdir(parents=True, exist_ok=True)
+
+    ledger_path = Path(args.ledger).expanduser()
+    if args.experiment_hypothesis and not args.allow_duplicate_hypothesis:
+        matches = ledger.find_duplicates(args.experiment_hypothesis, ledger_path)
+        if matches:
+            print("duplicate terminal hypothesis found; refusing to run:")
+            for entry in matches[-5:]:
+                print(
+                    f"- {entry.get('id')} status={entry.get('status')} "
+                    f"retry_rule={entry.get('retry_rule')}")
+            print("use --allow-duplicate-hypothesis to override")
+            return 4
 
     env = build_env(args)
     summary: dict[str, object] = {
@@ -293,6 +317,34 @@ def main() -> int:
         json.dumps(summary, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    if args.experiment_hypothesis and not args.dry_run:
+        log_args = argparse.Namespace(
+            ledger=str(ledger_path),
+            hypothesis=args.experiment_hypothesis,
+            change_summary=args.change_summary or args.description,
+            status=args.experiment_status,
+            conclusion=(
+                "Timebox completed; supervising agent must decide keep/discard."
+            ),
+            retry_rule=args.retry_rule,
+            tier=args.tier,
+            courses=args.courses,
+            result_line="",
+            result_json="",
+            timebox_summary=str(session_root / "summary.json"),
+            files_changed=[],
+            notes=f"timebox_dir={session_root}",
+            robot_repo=args.robot_repo,
+            sim_repo=str(HERE.parent.parent),
+            robot_commit="",
+            sim_commit=git_sha(HERE.parent.parent),
+            capture_diff=False,
+            patch_dir=str(HERE / "results" / "patches"),
+            allow_duplicate=True,
+        )
+        entry = ledger.make_entry(log_args)
+        ledger.append_entry(entry, ledger_path)
+        print(f"experiment ledger appended: {entry['id']}")
     print(f"timebox summary: {session_root}")
     return 0
 

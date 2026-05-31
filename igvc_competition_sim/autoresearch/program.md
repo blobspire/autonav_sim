@@ -89,15 +89,20 @@ KEEP iff: gate passes AND fitness strictly beats current best for that course AN
 ## The experiment loop
 ```
 LOOP until 8h-budget - 20min:
-  1. Read results/run_log.tsv (best per course, open ideas).
+  1. Read results/experiments.jsonl, results/run_log.tsv, and references/CONTEXT.md.
+     Do not repeat a terminal discarded/kept hypothesis unless the retry_rule condition has changed.
   2. Pick ONE change. Priority: (a) missing features [C-ii], (b) bug fixes [if baseline shows high
      pathfootprint_rejects/disruptive_aborts -> C-iii planning clearance first], (c) UNKNOWNS flips, (d) sweeps.
-  3. Edit only EDITABLE files. If C++: colcon build --packages-up-to <pkg>; source install/setup.bash.
-  4. git commit -m "<hypothesis>".
-  5. Tier 1 (1 run): regress vs best (slower OR any violation OR more recovery) -> git reset --hard HEAD~1; log; goto 1.
-  6. Tier 2 (3 runs): not 3/3 clean OR no fitness gain OR reliability regression -> reset; log; goto 1.
-  7. Tier 3 (strong provisional keeps, time permitting): 5-course sweep; clean sweep -> KEEP; else reset.
-  8. Append run_log row + human note in references/CONTEXT.md (hypothesis->change->result->conclusion). Prune bags. goto 1.
+  3. Check duplicate hypothesis:
+     `python3 log_experiment.py check --hypothesis "<hypothesis>"`.
+  4. Edit only EDITABLE files. If C++: colcon build --packages-up-to <pkg>; source install/setup.bash.
+  5. git commit -m "<hypothesis>" if the candidate should be preserved during testing.
+  6. Tier 1 (1 run): regress vs best (slower OR any violation OR more recovery) -> discard candidate changes; log; goto 1.
+  7. Tier 2 (3 runs): not 3/3 clean OR no fitness gain OR reliability regression -> discard candidate changes; log; goto 1.
+  8. Tier 3 (strong provisional keeps, time permitting): 5-course sweep; clean sweep -> KEEP; else discard candidate changes.
+  9. Append structured entry:
+     `python3 log_experiment.py add --hypothesis ... --change-summary ... --status kept|discarded|blocked|needs_rerun --conclusion ... --retry-rule ...`.
+     Also append a human note in references/CONTEXT.md. Prune bags. goto 1.
 ```
 
 ## Features to implement first (then tune)
@@ -122,3 +127,16 @@ deterministic long-run mechanics. The runner performs preflight gates, repeats
 `results/timebox/<timestamp>/{summary.json,attempts.tsv}`, and calls the reaper
 before exit. It does not edit code or choose hypotheses; the supervising agent
 still owns one-change-at-a-time keep/discard decisions.
+
+To tie a timebox to a candidate and enforce duplicate memory:
+
+```
+python3 run_timebox.py --duration 2h --courses compact_baseline --runs 1 --tier 1 \
+  --experiment-hypothesis "<hypothesis>" \
+  --change-summary "<one-line change>" \
+  --description "<same or shorter label>"
+```
+
+This appends a `needs_review` row to `results/experiments.jsonl` at the end.
+Use `log_experiment.py add` afterward to record the final kept/discarded
+conclusion once the supervising agent has made the decision.

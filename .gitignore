@@ -9,4 +9,6 @@ __pycache__/
 igvc_competition_sim/fortress_runs/
 *.db3
 *.mcap
-
+igvc_competition_sim/autoresearch/results/*
+!igvc_competition_sim/autoresearch/results/.gitkeep
+!igvc_competition_sim/autoresearch/results/experiments.jsonl
