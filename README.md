@@ -18,8 +18,8 @@ mkdir -p ~/autonav_ws/src
 cd ~/autonav_ws/src
 
 # Pick whichever AutoNav branch you want to test.
-git clone <AUTONAV_REPO_URL> AutoNav_25-26
-git clone <AUTONAV_SIM_REPO_URL> autonav_sim
+git clone https://github.com/KazakhStallion/AutoNav_25-26.git AutoNav_25-26
+git clone https://github.com/blobspire/autonav_sim.git autonav_sim
 
 cd ~/autonav_ws
 source /opt/ros/humble/setup.bash
@@ -54,7 +54,7 @@ workspace-local file, not a source deletion.
 
 ## Import With vcs
 
-Edit `vcs.yaml` with the real GitHub URLs, then:
+Import both repos with `vcs.yaml`:
 
 ```bash
 mkdir -p ~/autonav_ws/src

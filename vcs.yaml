@@ -1,10 +1,9 @@
 repositories:
   AutoNav_25-26:
     type: git
-    url: https://github.com/YOUR_ORG/AutoNav_25-26.git
+    url: https://github.com/KazakhStallion/AutoNav_25-26.git
     version: main
   autonav_sim:
     type: git
-    url: https://github.com/YOUR_ORG/autonav_sim.git
+    url: https://github.com/blobspire/autonav_sim.git
     version: main
-
