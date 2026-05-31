@@ -312,3 +312,22 @@ RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning o
   (`t_mean=92.03`, `pfs=1.67`, min_clear `0.251`) and ramp 3/3 (`t_mean=78.96`, `pfs=0.33`,
   min_clear `0.168`). If future waypoint stalls recur, inspect whether a fresh `/navigate_to_pose`
   action starts after each `navigate_to_waypoint` acceptance before tuning MPPI or inflation.
+- SOAK finding after the waypoint-delay keep (`results/timebox/20260531_070941`, interrupted for
+  analysis): first 17 oracle Tier 1 attempts all passed, including three full five-course cycles. The
+  remaining quality issue is not line/cone safety; it is intermittent compact-course near-waypoint churn.
+  Compact attempt 16 still finished but slowed to `119.96s` with `gradient_escape=2`, `stuck=9`,
+  `pfs=25`, and no course violations. Logs show GoalBender repeatedly bending to around `(15m,-2m)`,
+  PathGoalConsistent rejecting stale paths, Smac failing to plan to several bent goals, and recovery
+  actions canceling FollowPath. Treat this as a GoalBender/arrival-handling optimization target, not as
+  an inflation or perception failure.
+- DISCARD: widening `gps_handler_node` `NAV2_SETTLE_RADIUS_M` from `0.35m` to `0.75m` after the initial
+  goal delay. Hypothesis was that the wrapper could graduate mission waypoints before the exact Nav2 goal
+  turned behind the robot. In `nav2-settle075-compact-tier2`, the first compact run timed out after the
+  bootstrap waypoint completed at `0.549m`, and the candidate was reverted before run 2 completed. Do not
+  widen the settle radius alone; any retry needs an explicit Nav2 cancel/preempt handshake or a
+  waypoint-radius-aware BT/GoalBender condition.
+- DISCARD: lowering `GoalBender` `bend_angle` from `1.05rad` to `0.65rad`. This targeted the compact
+  logs where bent goals landed near `(15m,-2m)`. Compact improved in a 3-run screen (`t_mean=84.61`,
+  `pfs=10.0`, `stuck=0.33`) and tight/dense/sparse Tier 1 screens passed, but `ramp_turns` failed
+  immediately (`blocking_stop_over_60s`, distance `4.873`, progress `-15.227`). Do not reduce
+  `bend_angle` globally; it overfits compact and removes the turn authority ramp needs.
