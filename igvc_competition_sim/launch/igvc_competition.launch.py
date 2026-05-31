@@ -278,7 +278,13 @@ def _odom_bridge_process(context, *args, **kwargs):
             executable="igvc_odom_bridge",
             name="igvc_odom_bridge",
             output="screen",
-            parameters=[{"use_sim_time": True}],
+            parameters=[{
+                "use_sim_time": True,
+                "max_relay_rate_hz": ParameterValue(
+                    LaunchConfiguration("odom_bridge_rate_hz"),
+                    value_type=float,
+                ),
+            }],
         )
     ]
 
@@ -432,6 +438,7 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("launch_camera_bridge", default_value="true"),
         DeclareLaunchArgument("launch_harness", default_value="true"),
         DeclareLaunchArgument("launch_odom_bridge", default_value="true"),
+        DeclareLaunchArgument("odom_bridge_rate_hz", default_value="30.0"),
         DeclareLaunchArgument("publish_harness_odom_tf", default_value="false"),
         DeclareLaunchArgument("launch_dynamics", default_value="true"),
         DeclareLaunchArgument("launch_robot_state_publisher", default_value="true"),

@@ -114,6 +114,10 @@ ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=0 RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
   ./Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command
 ```
 
+This launches Gazebo plus the simulation adapters by default: the Gazebo bridge,
+camera bridge, sensor harness, odom bridge, calibrated dynamics, and course
+monitor. It intentionally does not launch Nav2 or the robot perception stack.
+
 Robot-stack / Jetson host:
 
 ```bash
@@ -122,8 +126,21 @@ ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=0 RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
   ./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command
 ```
 
+This launches the robot stack by default: robot state publisher, detection,
+PCA scan converters, GPS waypoint handler, Nav2, MPPI, costmaps, and BT
+plugins. It does not launch the sim-only adapters unless
+`LAUNCH_SIM_ADAPTERS=true` is explicitly set.
+
+The Jetson wrapper also defaults NumPy/BLAS thread pools to one thread
+(`OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`, `MKL_NUM_THREADS=1`,
+`NUMEXPR_NUM_THREADS=1`). The GPS waypoint EKF uses very small matrices, so
+thread fanout costs more CPU than it saves on the Jetson.
+
 The wrappers default `ROS_WS` to the containing workspace root. Override
 `ROS_WS=/path/to/workspace` when running from another location.
+If the standalone sim package and robot stack are built in separate workspaces
+on the Jetson, set `AUTONAV_ROS_WS=/path/to/AutoNav/isaac_ros-dev` so the
+wrapper sources the robot packages before the sim overlay.
 
 ## Package Boundaries
 

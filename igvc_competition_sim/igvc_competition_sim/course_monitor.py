@@ -100,9 +100,12 @@ class IgvcCourseMonitor(Node):
         self.distance_m += step_distance
         self.last_pose = (x, y, yaw)
         self.last_time_s = now_s
+        self._check_finish(x, y)
+        if self.finish_reached:
+            self.stop_started_s = None
+            return
         self._update_speed_checks(now_s, speed)
         self._check_course_contact(x, y, yaw)
-        self._check_finish(x, y)
 
     def _update_speed_checks(self, now_s: float, speed: float) -> None:
         if self.speed_check_start_s is None:

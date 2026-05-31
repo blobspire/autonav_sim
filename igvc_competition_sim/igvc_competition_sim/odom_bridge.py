@@ -32,11 +32,19 @@ class IgvcOdomBridge(Node):
             "ground_truth_odom_topic", "/igvc_sim/ground_truth_odom")
         self.declare_parameter("publish_ground_truth_odom", True)
         self.declare_parameter("publish_map_odom_tf", True)
+        self.declare_parameter("max_relay_rate_hz", 30.0)
 
         self.publish_map_odom_tf = bool(
             self.get_parameter("publish_map_odom_tf").value)
         self.publish_ground_truth_odom = bool(
             self.get_parameter("publish_ground_truth_odom").value)
+        self.max_relay_rate_hz = max(
+            0.0, float(self.get_parameter("max_relay_rate_hz").value))
+        self._min_publish_period_s = (
+            0.0 if self.max_relay_rate_hz <= 0.0
+            else 1.0 / self.max_relay_rate_hz
+        )
+        self._last_publish_stamp_s: float | None = None
 
         self.odom_pub = self.create_publisher(
             Odometry,
@@ -64,12 +72,23 @@ class IgvcOdomBridge(Node):
             50,
         )
         self.get_logger().info(
-            "Relaying Gazebo odom to /odom, /local_ekf/odom, and /tf")
+            "Relaying Gazebo odom to /odom, /local_ekf/odom, and /tf "
+            f"(max_relay_rate_hz={self.max_relay_rate_hz:.1f})")
 
     def _odom_callback(self, msg: Odometry) -> None:
         stamp = msg.header.stamp
         if stamp.sec == 0 and stamp.nanosec == 0:
             stamp = self.get_clock().now().to_msg()
+        stamp_s = float(stamp.sec) + float(stamp.nanosec) * 1e-9
+        if (
+            self._last_publish_stamp_s is not None
+            and stamp_s >= self._last_publish_stamp_s
+            and self._min_publish_period_s > 0.0
+            and stamp_s - self._last_publish_stamp_s
+            < self._min_publish_period_s * 0.95
+        ):
+            return
+        self._last_publish_stamp_s = stamp_s
 
         odom_msg = deepcopy(msg)
         odom_msg.header.stamp = stamp

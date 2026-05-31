@@ -166,11 +166,16 @@ docker exec -it -u admin \
   -e ROS_LOCALHOST_ONLY=0 \
   -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
   -e ROS_WS=/autonav_ws \
+  -e AUTONAV_ROS_WS=/autonav_ws \
   koopa-kingdom \
   /bin/bash -lc 'cd /autonav_ws/src/autonav_sim/igvc_competition_sim && ./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command'
 ```
 
-Run Gazebo and the Gazebo bridge on the laptop/ROS VM:
+If the Jetson uses separate workspaces, set `ROS_WS` to the standalone sim
+workspace and `AUTONAV_ROS_WS` to the built AutoNav robot-stack workspace. The
+script sources `AUTONAV_ROS_WS` first and the sim overlay second.
+
+Run Gazebo and the simulation adapters on the laptop/ROS VM:
 
 ```bash
 cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim
@@ -201,20 +206,26 @@ ssh jetson-spare-eth 'docker exec -u admin \
 Role split:
 
 - Laptop/VM: Gazebo Fortress, `ros_gz_bridge`, `/clock`, rendered RGB-D camera,
-  Gazebo odometry, course monitor. The generated world runs physics at 100 Hz
-  so distributed `/clock` traffic does not flood DDS.
-- Jetson: `igvc_camera_bridge` with RGB/depth pairing and odom-gated camera
-  publishing, lightweight `igvc_odom_bridge` for 50 Hz `/odom`,
-  `/local_ekf/odom`, and `/tf`, `igvc_sensor_harness` for simulated
-  lidar/GPS/map support, CUDA camera line detector, PCA detector,
-  pointcloud-to-laserscan converters, GPS waypoint action server, robot state
-  publisher, Nav2, MPPI, custom BT plugins, and calibrated
-  `/cmd_vel -> /cmd_vel_gazebo`.
+  Gazebo odometry, course monitor, `igvc_camera_bridge`, `igvc_odom_bridge`,
+  `igvc_sensor_harness`, and calibrated `/cmd_vel -> /cmd_vel_gazebo`
+  dynamics. These are simulation adapters, so keeping them off the Jetson
+  prevents the sim from stealing CPU from Nav2/MPPI.
+- Jetson: robot state publisher, CUDA camera line detector, PCA detector,
+  pointcloud-to-laserscan converters, GPS waypoint action server, Nav2, MPPI,
+  custom BT plugins, and costmaps.
+
+The Jetson stack wrapper caps NumPy/BLAS thread pools at one thread by default.
+This keeps the GPS waypoint EKF from spending CPU on OpenBLAS thread fanout for
+small matrix operations, leaving more headroom for MPPI.
 
 Do not publish odom/TF from both sides in distributed mode. The VM sim-only
-script disables `launch_odom_bridge`, and the Jetson stack script runs
-`launch_odom_bridge:=true publish_harness_odom_tf:=false` so Nav2 sees one
-monotonic 50 Hz base transform stream.
+script now defaults `launch_odom_bridge:=true publish_harness_odom_tf:=false`,
+and the Jetson stack script defaults `launch_odom_bridge:=false`, so Nav2 sees
+one monotonic 30 Hz base transform stream. This mirrors the expected
+robot-localization cadence closely enough for the GPS waypoint handler without
+overdriving its EKF callback. For fallback/debug, set
+`LAUNCH_SIM_ADAPTERS=true` on the Jetson stack script, but do not run both
+sides with sim adapters enabled at the same time.
 
 The camera bridge intentionally republishes synchronized RGB, depth, and
 camera-info messages under the ZED topic names instead of forwarding Gazebo
