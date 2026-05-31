@@ -21,8 +21,27 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_LEDGER = HERE / "results" / "experiments.jsonl"
-DEFAULT_ROBOT_REPO = Path(os.environ.get(
-    "AUTONAV_REPO", "/Users/cole/code/git/AutoNavB"))
+
+
+def _default_robot_repo() -> Path:
+    configured = os.environ.get("AUTONAV_REPO")
+    candidates = []
+    if configured:
+        candidates.append(Path(configured).expanduser())
+    workspace_src = HERE.parents[2]
+    if workspace_src.name == "src":
+        candidates.append(workspace_src / "AutoNav_25-26")
+    candidates.extend([
+        Path("/Users/cole/code/git/AutoNavB"),
+        Path("/home/cole.guest/autonav-work/AutoNavB"),
+    ])
+    for candidate in candidates:
+        if (candidate / ".git").exists():
+            return candidate
+    return candidates[0]
+
+
+DEFAULT_ROBOT_REPO = _default_robot_repo()
 RESULT_RE = re.compile(r"\b(\w+)=([^\s]+)")
 TERMINAL_STATUSES = {"kept", "discarded", "blocked", "baseline"}
 
@@ -39,6 +58,8 @@ def slug(text: str, limit: int = 44) -> str:
 
 
 def git_cmd(repo: Path, args: list[str]) -> str:
+    if not repo.exists():
+        return ""
     proc = subprocess.run(
         ["git", *args],
         cwd=str(repo),

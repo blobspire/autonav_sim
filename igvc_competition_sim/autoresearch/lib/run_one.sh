@@ -19,7 +19,8 @@
 #   LINE_DETECTION_MODE (ground_truth), GROUND_TRUTH_PCA (true),
 #   LAUNCH_DETECTION (auto: false for oracle planning, true for perception),
 #   AUTORESEARCH_CLEAN_ROS_ENV (true),
-#   STARTUP_WAIT_SEC (12), PRE_MISSION_WAIT_SEC (8), ROS_DOMAIN_ID (auto)
+#   STARTUP_WAIT_SEC (12), PRE_MISSION_WAIT_SEC (8),
+#   FINAL_SCORE_WAIT_SEC (8), ROS_DOMAIN_ID (auto)
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,6 +57,7 @@ if [[ -z "${LAUNCH_DETECTION:-}" ]]; then
 fi
 STARTUP_WAIT_SEC="${STARTUP_WAIT_SEC:-12}"
 PRE_MISSION_WAIT_SEC="${PRE_MISSION_WAIT_SEC:-8}"
+FINAL_SCORE_WAIT_SEC="${FINAL_SCORE_WAIT_SEC:-8}"
 MISSION_TIMEOUT_SEC="${MISSION_TIMEOUT_SEC:-300}"
 
 COURSE_YAML=""; WORLD=""; RUN_DIR=""
@@ -76,6 +78,9 @@ done
 
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-$(( (RANDOM % 200) + 11 ))}"
 mkdir -p "$RUN_DIR"
+ROS_LOG_DIR="${ROS_LOG_DIR:-$RUN_DIR/ros_log}"
+export ROS_LOG_DIR
+mkdir -p "$ROS_LOG_DIR"
 
 if [[ ! -f /opt/ros/humble/setup.bash || ! -f "$ROS_WS/install/setup.bash" ]]; then
   echo "ROS env not ready (need /opt/ros/humble + $ROS_WS/install). Build the workspace." >&2
@@ -148,12 +153,13 @@ sleep "$PRE_MISSION_WAIT_SEC"
 
 mission_status=0
 set +e
-timeout --foreground "${MISSION_TIMEOUT_SEC}s" \
+timeout --kill-after=5s "${MISSION_TIMEOUT_SEC}s" \
   ros2 run igvc_competition_sim igvc_mission_runner \
     --course-config "$COURSE_YAML" --timeout-sec "$MISSION_TIMEOUT_SEC" \
   | tee "$RUN_DIR/mission.log"
 mission_status="${PIPESTATUS[0]}"
-ros2 topic echo --once /igvc_sim/score > "$RUN_DIR/final_score.txt" 2>&1
+timeout --kill-after=2s "${FINAL_SCORE_WAIT_SEC}s" \
+  ros2 topic echo --full-length --once /igvc_sim/score > "$RUN_DIR/final_score.txt" 2>&1 || true
 set -e
 
 echo "$mission_status" > "$RUN_DIR/mission_status.txt"

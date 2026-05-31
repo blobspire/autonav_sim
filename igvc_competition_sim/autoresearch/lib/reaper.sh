@@ -61,8 +61,9 @@ if [[ "$still" == "1" ]]; then
   sleep 1
 fi
 
-# bound the ROS 2 daemon discovery cache between runs
-ros2 daemon stop >/dev/null 2>&1 || true
+# Bound the ROS 2 daemon discovery cache between runs. The CLI can occasionally
+# hang while contacting a stale daemon, which must not block the harness.
+timeout 5s ros2 daemon stop >/dev/null 2>&1 || true
 
 # report what (if anything) survived
 survivors=""
