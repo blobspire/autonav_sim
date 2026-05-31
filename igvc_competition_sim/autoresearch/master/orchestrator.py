@@ -556,7 +556,7 @@ def workspace_report(manifest: dict[str, Any]) -> dict[str, Any]:
     return report
 
 
-def create_bundle(source: str, ref: str, label: str) -> tuple[Path, str]:
+def create_bundle(source: str, ref: str, label: str) -> tuple[Path, str, str]:
     ok, message = require_clean_source(source, label)
     if not ok:
         raise RuntimeError(message)
@@ -566,12 +566,22 @@ def create_bundle(source: str, ref: str, label: str) -> tuple[Path, str]:
     proc = run(["git", "-C", source, "bundle", "create", str(bundle), ref], timeout=180)
     if proc.returncode != 0:
         raise RuntimeError(proc.stdout.strip())
-    return bundle, sha
+    heads = run(["git", "bundle", "list-heads", str(bundle)], timeout=10)
+    if heads.returncode != 0:
+        raise RuntimeError(heads.stdout.strip())
+    fetch_ref = "HEAD"
+    for line in heads.stdout.splitlines():
+        parts = line.split()
+        if len(parts) >= 2:
+            fetch_ref = parts[1]
+            break
+    return bundle, sha, fetch_ref
 
 
 def remote_sync_command(
     destination: str,
     bundle_path: str,
+    bundle_ref: str,
     *,
     stash_dirty_destination: bool,
 ) -> str:
@@ -580,6 +590,7 @@ def remote_sync_command(
 set -eo pipefail
 dest={shlex.quote(destination)}
 bundle={shlex.quote(bundle_path)}
+bundle_ref={shlex.quote(bundle_ref)}
 dirty_handling={shlex.quote(dirty_handling)}
 test -d "$dest/.git"
 cd "$dest"
@@ -592,7 +603,7 @@ if [ -n "$(git status --porcelain)" ]; then
     exit 3
   fi
 fi
-git fetch "$bundle" HEAD
+git fetch "$bundle" "$bundle_ref"
 git checkout --detach FETCH_HEAD
 git status -sb
 git log -1 --oneline
@@ -604,6 +615,7 @@ def sync_bundle_to_vm(
     *,
     vm: str,
     destination: str,
+    bundle_ref: str,
     stash_dirty_destination: bool,
 ) -> subprocess.CompletedProcess[str]:
     remote_bundle = f"/tmp/{bundle.name}"
@@ -615,6 +627,7 @@ def sync_bundle_to_vm(
         remote_sync_command(
             destination,
             remote_bundle,
+            bundle_ref,
             stash_dirty_destination=stash_dirty_destination,
         ),
         timeout=300,
@@ -626,6 +639,7 @@ def sync_bundle_to_ssh(
     *,
     host: str,
     destination: str,
+    bundle_ref: str,
     stash_dirty_destination: bool,
 ) -> subprocess.CompletedProcess[str]:
     remote_bundle = f"/tmp/{bundle.name}"
@@ -648,6 +662,7 @@ def sync_bundle_to_ssh(
         remote_sync_command(
             destination,
             remote_bundle,
+            bundle_ref,
             stash_dirty_destination=stash_dirty_destination,
         ),
         timeout=300,
@@ -668,8 +683,16 @@ def sync_planning_control(manifest: dict[str, Any], args: argparse.Namespace) ->
     robot_source = args.robot_source or manifest["host_repos"]["robot_primary"]
     sim_source = args.sim_source or manifest["host_repos"]["autonav_sim"]
     try:
-        robot_bundle, robot_sha = create_bundle(robot_source, args.robot_ref, "planning-control-robot")
-        sim_bundle, sim_sha = create_bundle(sim_source, args.sim_ref, "planning-control-sim")
+        robot_bundle, robot_sha, robot_fetch_ref = create_bundle(
+            robot_source,
+            args.robot_ref,
+            "planning-control-robot",
+        )
+        sim_bundle, sim_sha, sim_fetch_ref = create_bundle(
+            sim_source,
+            args.sim_ref,
+            "planning-control-sim",
+        )
     except RuntimeError as exc:
         print(f"refusing to sync: {exc}", file=sys.stderr)
         return 2
@@ -682,6 +705,7 @@ def sync_planning_control(manifest: dict[str, Any], args: argparse.Namespace) ->
             robot_bundle,
             vm=lane["vm"],
             destination=f"{lane['workspace']}/src/AutoNav_25-26",
+            bundle_ref=robot_fetch_ref,
             stash_dirty_destination=args.stash_dirty_destination,
         ),
     )
@@ -691,6 +715,7 @@ def sync_planning_control(manifest: dict[str, Any], args: argparse.Namespace) ->
             sim_bundle,
             vm=lane["vm"],
             destination=f"{lane['workspace']}/src/autonav_sim",
+            bundle_ref=sim_fetch_ref,
             stash_dirty_destination=args.stash_dirty_destination,
         ),
     )
@@ -702,8 +727,16 @@ def sync_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) -
     robot_source = args.robot_source or manifest["host_repos"]["robot_primary"]
     sim_source = args.sim_source or manifest["host_repos"]["autonav_sim"]
     try:
-        robot_bundle, robot_sha = create_bundle(robot_source, args.robot_ref, "jetson-perception-robot")
-        sim_bundle, sim_sha = create_bundle(sim_source, args.sim_ref, "jetson-perception-sim")
+        robot_bundle, robot_sha, robot_fetch_ref = create_bundle(
+            robot_source,
+            args.robot_ref,
+            "jetson-perception-robot",
+        )
+        sim_bundle, sim_sha, sim_fetch_ref = create_bundle(
+            sim_source,
+            args.sim_ref,
+            "jetson-perception-sim",
+        )
     except RuntimeError as exc:
         print(f"refusing to sync: {exc}", file=sys.stderr)
         return 2
@@ -716,6 +749,7 @@ def sync_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) -
             sim_bundle,
             vm=lane["sim_vm"],
             destination=f"{lane['sim_workspace']}/src/autonav_sim",
+            bundle_ref=sim_fetch_ref,
             stash_dirty_destination=args.stash_dirty_destination,
         ),
     )
@@ -725,6 +759,7 @@ def sync_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) -
             robot_bundle,
             host=lane["jetson_host"],
             destination=lane["jetson_repo"],
+            bundle_ref=robot_fetch_ref,
             stash_dirty_destination=args.stash_dirty_destination,
         ),
     )
