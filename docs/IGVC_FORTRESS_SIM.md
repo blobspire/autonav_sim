@@ -204,19 +204,25 @@ script sources `AUTONAV_ROS_WS` first and the sim overlay second.
 Run Gazebo and the simulation adapters on the laptop/ROS VM:
 
 ```bash
-cd /tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim
+cd /home/cole.guest/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim
 ROS_DOMAIN_ID=72 ROS_LOCALHOST_ONLY=0 RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
-  FASTRTPS_DEFAULT_PROFILES_FILE=/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml \
-  FASTDDS_DEFAULT_PROFILES_FILE=/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml \
+  FASTRTPS_DEFAULT_PROFILES_FILE=/home/cole.guest/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml \
+  FASTDDS_DEFAULT_PROFILES_FILE=/home/cole.guest/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml \
   ODOM_BRIDGE_RATE_HZ=60.0 \
   ./Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command
 ```
+
+Keep the Jetson-lane VM workspace under `/home/cole.guest`, not `/tmp`.
+Restarting the Lima VM can clear `/tmp`, which removes the built sim workspace,
+Fast DDS profile path, and installed `autonav_interfaces`.
 
 Use the sim-specific Fast DDS profiles above for distributed runs. They pin
 the ROS graph to reachable locators: `192.168.105.2` for the VM and
 `10.66.0.2` for the Jetson. Without them, the VM can advertise unreachable
 Lima/hotspot locators; the Jetson may then miss `/clock`, camera, GPS, and odom
-publishers even though topic names appear in the graph.
+publishers even though topic names appear in the graph. The profiles also keep
+`127.0.0.1` enabled so local ROS participants on the same VM or Jetson can
+discover each other without relying on Ethernet hairpin behavior.
 The Jetson-lane sim side should use a denser `60 Hz` odom/TF relay so Nav2
 costmap message filters have transform samples around the 20 Hz PCA scan
 timestamps despite cross-host DDS jitter.

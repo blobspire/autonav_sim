@@ -6,7 +6,9 @@
   direct Jetson Ethernet address and announce to the sim VM's Lima shared
   address. On this Mac, the VM's direct bridged 10.66.0.4 path passes ICMP but
   not reliable DDS data, so the robust data path is Jetson 10.66.0.2 -> Mac
-  router -> VM 192.168.105.2.
+  router -> VM 192.168.105.2. Keep loopback enabled too so the Jetson's many
+  local ROS participants discover each other without depending on Ethernet
+  hairpin behavior.
 -->
 <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
   <transport_descriptors>
@@ -15,6 +17,7 @@
       <type>UDPv4</type>
       <maxInitialPeersRange>64</maxInitialPeersRange>
       <interfaceWhiteList>
+        <address>127.0.0.1</address>
         <address>10.66.0.2</address>
       </interfaceWhiteList>
     </transport_descriptor>
@@ -43,6 +46,11 @@
           </initialAnnouncements>
         </discovery_config>
         <initialPeersList>
+          <locator>
+            <udpv4>
+              <address>127.0.0.1</address>
+            </udpv4>
+          </locator>
           <locator>
             <udpv4>
               <address>10.66.0.2</address>

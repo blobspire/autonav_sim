@@ -169,7 +169,7 @@ Required endpoints:
   - Jetson container: `igvc_competition_sim/config/fastdds_jetson_robot.xml`
 
 Before launching, `preflight jetson_perception` must pass or report only known
-setup items such as an unprepared `/tmp/autonav_jetson_sim_ws`.
+setup items such as an unprepared VM workspace.
 The preflight also checks VM↔Jetson ping in both directions, Jetson clock skew,
 Fast DDS profile availability, Docker image availability, clean runtime
 checkouts, and forbidden hardware processes.
@@ -196,10 +196,16 @@ filters. The sim camera bridge publishes ZED-compatible image/depth/info topics
 best-effort, and the robot camera line detector subscribes with best-effort
 QoS to remain compatible with both the sim and normal camera-driver behavior.
 
+The runtime workspaces intentionally live under the VM user's home directory,
+not `/tmp`, because restarting a Lima VM can clear `/tmp` and erase the built
+sim workspace, Fast DDS profile path, and installed `autonav_interfaces`.
+
 The Jetson lane uses the standalone `autonav_sim` repo on both sides:
 
-- VM runtime checkout: `/tmp/autonav_jetson_sim_ws/src/autonav_sim`
-- VM robot dependency checkout: `/tmp/autonav_jetson_sim_ws/src/AutoNav_25-26`
+- VM runtime checkout:
+  `/home/cole.guest/autonav_jetson_sim_ws/src/autonav_sim`
+- VM robot dependency checkout:
+  `/home/cole.guest/autonav_jetson_sim_ws/src/AutoNav_25-26`
   for interface packages such as `autonav_interfaces`; this checkout is built
   for message/package discovery only and does not run the robot stack.
 - Jetson host checkout: `/home/vtcro/autonav_sim`

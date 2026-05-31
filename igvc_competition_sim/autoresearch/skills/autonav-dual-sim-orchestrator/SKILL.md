@@ -76,6 +76,14 @@ sed -n '1,220p' DUAL_SIM_MASTER.md
 - The Jetson-lane sim side uses `ODOM_BRIDGE_RATE_HZ=60.0` from the manifest to
   keep `odom -> base_link` TF dense enough for the 20 Hz PCA scan costmap
   filters across DDS jitter.
+- Jetson-lane VM runtime files live under
+  `/home/cole.guest/autonav_jetson_sim_ws`, not `/tmp`; restarting Lima can
+  clear `/tmp` and remove the built workspace, Fast DDS profile path, and
+  installed `autonav_interfaces`.
+- The Fast DDS profiles must include loopback for same-host discovery plus the
+  routed external addresses for VM<->Jetson data. If a CLI in `autonav-ros22`
+  cannot see `/clock` from sim nodes running in that same VM, check loopback in
+  `fastdds_jetson_sim_vm.xml` before chasing Jetson SSH.
 
 ## Branch Policy
 

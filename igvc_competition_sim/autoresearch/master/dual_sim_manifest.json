@@ -23,8 +23,8 @@
     "planning_control": {
       "purpose": "Headless Gazebo plus robot Nav2 stack in one VM, using oracle perception for planning/control autoresearch.",
       "vm": "autonav-gazebo-sim",
-      "workspace": "/tmp/autonav_split_ws",
-      "autoresearch_dir": "/tmp/autonav_split_ws/src/autonav_sim/igvc_competition_sim/autoresearch",
+      "workspace": "/home/cole.guest/autonav_split_ws",
+      "autoresearch_dir": "/home/cole.guest/autonav_split_ws/src/autonav_sim/igvc_competition_sim/autoresearch",
       "ros_domain_id": "master-assigned",
       "default_env": {
         "LINE_DETECTION_MODE": "ground_truth",
@@ -43,7 +43,7 @@
       "sim_ip": "192.168.105.2",
       "sim_direct_ip": "10.66.0.4",
       "ros_domain_id": "72",
-      "sim_workspace": "/tmp/autonav_jetson_sim_ws",
+      "sim_workspace": "/home/cole.guest/autonav_jetson_sim_ws",
       "jetson_repo": "/home/vtcro/AutoNav_25-26",
       "jetson_sim_repo": "/home/vtcro/autonav_sim",
       "jetson_sim_container": "/autonav_sim",
@@ -59,8 +59,8 @@
       },
       "sim_env": {
         "ODOM_BRIDGE_RATE_HZ": "60.0",
-        "FASTRTPS_DEFAULT_PROFILES_FILE": "/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml",
-        "FASTDDS_DEFAULT_PROFILES_FILE": "/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml"
+        "FASTRTPS_DEFAULT_PROFILES_FILE": "/home/cole.guest/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml",
+        "FASTDDS_DEFAULT_PROFILES_FILE": "/home/cole.guest/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml"
       },
       "jetson_env": {
         "FASTRTPS_DEFAULT_PROFILES_FILE": "/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml",
