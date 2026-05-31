@@ -21,6 +21,7 @@ From the host:
 
 ```bash
 cd /Users/cole/code/git/autonav_sim/igvc_competition_sim/autoresearch
+sed -n '1,220p' NEXT_MASTER_RESEARCH_TARGETS.md
 python3 master/orchestrator.py status
 python3 master/orchestrator.py preflight planning_control
 python3 master/orchestrator.py preflight jetson_perception
@@ -127,3 +128,9 @@ outputs when tape is visible, or regression in the other lane.
 
 Keep artifacts with each run: command, environment, logs, bag path, score,
 topic snapshot, git SHAs, dirty diff, and conclusion.
+
+The master should route lane-specific work from `NEXT_MASTER_RESEARCH_TARGETS.md`.
+At the end of each autoresearch session, require the child agent to retire or
+rewrite any target it tested, implemented, or invalidated, and add only
+actionable newly discovered future work. Detailed evidence and the full dead-end
+history belong in `results/experiments.jsonl` and `references/CONTEXT.md`.

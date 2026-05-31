@@ -1,8 +1,10 @@
 # autoresearch — auto_camera Nav2 optimization (loop manual)
 
-Entry point for the autonomous keep/discard loop. Read this, then `references/CONTEXT.md`
-(historical runbook + environment notes) and `references/UNKNOWNS.md` (idea
-bank). In the split-repo layout, run from a workspace shaped like
+Entry point for the autonomous keep/discard loop. Read this, then
+`NEXT_MASTER_RESEARCH_TARGETS.md` (current target queue),
+`references/CONTEXT.md` (historical runbook + environment notes), and
+`references/UNKNOWNS.md` (idea bank). In the split-repo layout, run from a
+workspace shaped like
 `~/autonav_ws/src/{AutoNav_25-26,autonav_sim}`. Robot-stack files live under
 `AutoNav_25-26/isaac_ros-dev/src`; simulation harness files live under
 `autonav_sim/igvc_competition_sim`.
@@ -32,7 +34,11 @@ bank). In the split-repo layout, run from a workspace shaped like
 - detector node sources `autonav_detection/src/{line/node.cpp,grade/*.cpp}` if needed (rebuild).
 
 **FROZEN (never edit — prevents cheating by shrinking the robot / weakening the course / gaming the scorer):**
-- `autoresearch/**` (this harness, courses, worlds, references, program.md).
+- `autoresearch/**` harness/scoring/course files, especially `courses/**`,
+  `lib/**`, `evaluate.py`, `run_timebox.py`, and `program.md`.
+  Logging/handoff files are writable when recording evidence:
+  `results/experiments.jsonl`, `references/CONTEXT.md`, and
+  `NEXT_MASTER_RESEARCH_TARGETS.md`.
 - `igvc_competition_sim/**` python: `course.py`, `course_monitor.py`, `mission_runner.py`,
   `generate_world.py`, `sensor_harness.py`, `camera_bridge.py`, `run_analyzer.py`, dynamics_*.
   `config/igvc_competition_compact.yaml` + `dynamics_calibration.yaml`.
@@ -89,7 +95,8 @@ KEEP iff: gate passes AND fitness strictly beats current best for that course AN
 ## The experiment loop
 ```
 LOOP until 8h-budget - 20min:
-  1. Read results/experiments.jsonl, results/run_log.tsv, and references/CONTEXT.md.
+  1. Read NEXT_MASTER_RESEARCH_TARGETS.md, results/experiments.jsonl,
+     results/run_log.tsv, and references/CONTEXT.md.
      Do not repeat a terminal discarded/kept hypothesis unless the retry_rule condition has changed.
   2. Pick ONE change. Priority: (a) missing features [C-ii], (b) bug fixes [if baseline shows high
      pathfootprint_rejects/disruptive_aborts -> C-iii planning clearance first], (c) UNKNOWNS flips, (d) sweeps.
@@ -102,7 +109,12 @@ LOOP until 8h-budget - 20min:
   8. Tier 3 (strong provisional keeps, time permitting): 5-course sweep; clean sweep -> KEEP; else discard candidate changes.
   9. Append structured entry:
      `python3 log_experiment.py add --hypothesis ... --change-summary ... --status kept|discarded|blocked|needs_rerun --conclusion ... --retry-rule ...`.
-     Also append a human note in references/CONTEXT.md. Prune bags. goto 1.
+     Also append a human note in references/CONTEXT.md. If a target was tested,
+     implemented, invalidated, or newly discovered, update NEXT_MASTER_RESEARCH_TARGETS.md:
+     retire stale targets, rewrite still-open targets with the new evidence, and
+     add only actionable future work. Do not use NEXT_MASTER_RESEARCH_TARGETS.md
+     as the dead-end ledger; experiments.jsonl is the authoritative history.
+     Prune bags. goto 1.
 ```
 
 ## Features to implement first (then tune)

@@ -28,6 +28,7 @@ python3 master/orchestrator.py preflight jetson_perception
 Read the durable workflow if details are needed:
 
 ```bash
+sed -n '1,220p' NEXT_MASTER_RESEARCH_TARGETS.md
 sed -n '1,220p' DUAL_SIM_MASTER.md
 ```
 
@@ -57,6 +58,12 @@ sed -n '1,220p' DUAL_SIM_MASTER.md
 
 Before merging, require clean artifacts and no known regression in the other
 lane.
+
+Use `NEXT_MASTER_RESEARCH_TARGETS.md` as the lane-specific target queue. At the
+end of a session, require the lane agent to retire or rewrite targets it tested,
+implemented, or invalidated, and add only actionable newly discovered future
+work. Keep detailed proof and the full dead-end history in
+`results/experiments.jsonl` and `references/CONTEXT.md`.
 
 ## Useful Commands
 
