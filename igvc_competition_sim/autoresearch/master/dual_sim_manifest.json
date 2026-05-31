@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "host_repos": {
+    "autonav_sim": "/Users/cole/code/git/autonav_sim",
+    "robot_primary": "/Users/cole/code/git/AutoNavB"
+  },
+  "worktrees": {
+    "root": "/Users/cole/code/git/autonav_worktrees",
+    "planning_control": {
+      "repo": "robot_primary",
+      "branch_prefix": "AutoNavB-control"
+    },
+    "jetson_perception": {
+      "repo": "robot_primary",
+      "branch_prefix": "AutoNavB-perception"
+    },
+    "harness": {
+      "repo": "autonav_sim",
+      "branch_prefix": "autonav_sim-master"
+    }
+  },
+  "lanes": {
+    "planning_control": {
+      "purpose": "Headless Gazebo plus robot Nav2 stack in one VM, using oracle perception for planning/control autoresearch.",
+      "vm": "autonav-gazebo-sim",
+      "workspace": "/tmp/autonav_split_ws",
+      "autoresearch_dir": "/tmp/autonav_split_ws/src/autonav_sim/igvc_competition_sim/autoresearch",
+      "ros_domain_id": "master-assigned",
+      "default_env": {
+        "LINE_DETECTION_MODE": "ground_truth",
+        "GROUND_TRUTH_PCA": "true",
+        "PUBLISH_FULL_LIDAR_CLOUD": "false",
+        "LAUNCH_DETECTION": "false",
+        "AUTORESEARCH_CLEAN_ROS_ENV": "true"
+      },
+      "default_command": "python3 run_timebox.py --duration 45m --courses compact_baseline tight_gaps dense_obstacles sparse_lines ramp_turns --runs 1 --tier 1 --timeout 300 --description master-planning-control"
+    },
+    "jetson_perception": {
+      "purpose": "Headless Gazebo in a VM with simulated sensors feeding the Jetson robot stack for perception/full-stack testing.",
+      "sim_vm": "autonav-ros22",
+      "jetson_host": "jetson-spare-eth",
+      "jetson_ip": "10.66.0.2",
+      "ros_domain_id": "72",
+      "sim_workspace": "/tmp/autonav_jetson_sim_ws",
+      "jetson_repo": "/home/vtcro/AutoNav_25-26",
+      "sim_entrypoint": "src/autonav_sim/igvc_competition_sim/Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command",
+      "jetson_entrypoint": "isaac_ros-dev/src/igvc_competition_sim/Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command",
+      "default_env": {
+        "LINE_DETECTION_MODE": "camera",
+        "GROUND_TRUTH_PCA": "false",
+        "PUBLISH_FULL_LIDAR_CLOUD": "true",
+        "ROS_LOCALHOST_ONLY": "0",
+        "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp"
+      }
+    }
+  },
+  "forbidden_jetson_process_patterns": [
+    "control_node",
+    "zed_camera.launch.py",
+    "sick_multiscan.launch.py",
+    "bringup.launch.py",
+    "sensors.launch.py"
+  ],
+  "notes": [
+    "Do not stop unmanaged autoresearch runs unless the user explicitly asks.",
+    "Use separate worktrees/branches for control and perception candidates.",
+    "Do not run real hardware drivers or motor control during Jetson-in-the-loop simulation."
+  ]
+}
