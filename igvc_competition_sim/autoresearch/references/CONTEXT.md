@@ -270,3 +270,23 @@ it's an x86/CUDA-12.9/NPP portability bug in the CERIAS integral-image path (src
 cuda.cu). (2) Compare real ZED resolution/FOV/camera height to the sim so the 3in tape subtends the same
 pixels the detector was tuned for. (3) A robust offline check: feed the detector a recorded REAL-robot
 RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning only improves blind driving.
+
+## 6-hour oracle planning loop, 2026-05-31
+- Baseline on `hailmary` + oracle perception: compact/dense mostly passed; tight and sparse showed some
+  nondeterminism; ramp_turns repeatedly failed around the apex barrel with PathFootprintSafe rejects and
+  GoalBender/BreadcrumbReverse churn.
+- DISCARD: robot-side GoalBender costmap sampling. It removed the ramp barrel contact in one screen but
+  still stalled (`distance=12.745` then `12.849`, `pfs=36` in v2). Root cause was not GoalBender cost
+  selection.
+- ROOT CAUSE #1 (sim fidelity): `igvc_competition.launch.py` used Nav2 bringup directly and did not start
+  the robot stack's standalone `breadcrumb_buffer`, so `/breadcrumb_tail` was absent and the BT always saw
+  `crumbs_empty=1`. Fixed by launching `custom_behavior_tree_plugins/breadcrumb_buffer`, recording
+  `/breadcrumb_tail`, and narrowing the reaper pattern so it does not kill the evaluator.
+- ROOT CAUSE #2 (course validity): `ramp_turns` placed `turn_apex_barrel` essentially on the centerline of
+  a 10 ft lane. That leaves about 1.24 m / 4.1 ft on each side, violating IGVC's 5 ft minimum passage
+  guarantee. Moved the barrel to `y=-0.55`, regenerated `ramp_turns.sdf`, and added an offline validator
+  check that every obstacle leaves at least one 5 ft side passage relative to its nearest lane segment.
+- KEEP: with breadcrumb_buffer enabled and the legal ramp gap, all five oracle Tier 1 screens passed:
+  compact (`pfs=9`, min_clear `0.126`), tight (`pfs=0`, `0.287`), dense (`pfs=0`, `0.353`), sparse
+  (`pfs=0`, `0.240`), ramp (`pfs=0`, `0.159`, distance `35.787`). Treat future ramp failures as robot
+  planning/control only after `validate_course.py courses/*.yaml` passes and `/breadcrumb_tail` is present.

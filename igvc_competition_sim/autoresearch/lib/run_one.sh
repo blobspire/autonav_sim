@@ -137,6 +137,7 @@ ros2 bag record -o "$RUN_DIR/bag" \
   /clock /tf /tf_static \
   /odom /local_ekf/odom /igvc_sim/ground_truth_odom \
   /cmd_vel /cmd_vel_nav \
+  /breadcrumb_tail \
   /navigate_to_pose/_action/status /navigate_to_waypoint/_action/status \
   /follow_path/_action/status /compute_path_to_pose/_action/status \
   /back_up/_action/status /spin/_action/status /drive_on_heading/_action/status \

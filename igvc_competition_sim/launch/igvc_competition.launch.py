@@ -194,6 +194,30 @@ def _nav2_process(context, *args, **kwargs):
     ]
 
 
+def _breadcrumb_buffer_process(context, *args, **kwargs):
+    if not _truthy(context, "launch_nav"):
+        return []
+    if not _truthy(context, "launch_breadcrumb_buffer"):
+        return []
+    params_arg = LaunchConfiguration("nav2_params").perform(context)
+    params_source = params_arg or _default_nav2_params()
+    if not params_source:
+        raise FileNotFoundError(
+            "Could not find slam/config/nav2_params_camera.yaml from the "
+            "active ROS package index. Build and source the workspace "
+            "containing the AutoNav slam package, or pass "
+            "nav2_params:=/absolute/path/to/nav2_params_camera.yaml.")
+    return [
+        Node(
+            package="custom_behavior_tree_plugins",
+            executable="breadcrumb_buffer",
+            name="breadcrumb_buffer",
+            output="screen",
+            parameters=[params_source, {"use_sim_time": True}],
+        )
+    ]
+
+
 def _camera_bridge_process(context, *args, **kwargs):
     if not _truthy(context, "launch_camera_bridge"):
         return []
@@ -447,6 +471,7 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("launch_pca_scan_converters", default_value="true"),
         DeclareLaunchArgument("launch_gps_handler", default_value="true"),
         DeclareLaunchArgument("launch_nav", default_value="true"),
+        DeclareLaunchArgument("launch_breadcrumb_buffer", default_value="true"),
         DeclareLaunchArgument("use_calibrated_dynamics", default_value="true"),
         DeclareLaunchArgument(
             "dynamics_calibration",
@@ -499,5 +524,6 @@ def generate_launch_description() -> LaunchDescription:
         pca_scan,
         pca_scan_clear,
         gps_handler,
+        OpaqueFunction(function=_breadcrumb_buffer_process),
         OpaqueFunction(function=_nav2_process),
     ])

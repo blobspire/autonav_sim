@@ -52,7 +52,7 @@ centerline:
   - {x_m: 34.0, y_m: 1.50,  width_m: 3.048}
 
 obstacles:
-  - {name: turn_apex_barrel, type: barrel, x_m: 12.5, y_m: 0.10, radius_m: 0.28, height_m: 0.85}
+  - {name: turn_apex_barrel, type: barrel, x_m: 12.5, y_m: -0.55, radius_m: 0.28, height_m: 0.85}
   - {name: exit_post, type: post, x_m: 31.5, y_m: 0.10, radius_m: 0.18, height_m: 1.10}
 
 ramps:

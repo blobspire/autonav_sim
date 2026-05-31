@@ -17,6 +17,7 @@ PATTERNS=(
   'planner_server'
   'bt_navigator'
   'behavior_server'
+  '/breadcrumb_buffer( |$)'
   'smoother_server'
   'velocity_smoother'
   'waypoint_follower'

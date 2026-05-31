@@ -27,15 +27,73 @@ from scipy.ndimage import binary_dilation, label
 # import the FROZEN course loader from the package
 PKG = Path(__file__).resolve().parents[2]  # .../igvc_competition_sim
 sys.path.insert(0, str(PKG))
-from igvc_competition_sim.course import load_course, course_bounds  # noqa: E402
+from igvc_competition_sim.course import load_course, course_bounds, load_yaml  # noqa: E402
 
 RES = 0.05
+MIN_LEGAL_PASSAGE_M = 1.524  # 5 ft IGVC minimum passage.
 
 
 def _disk(radius_cells: int) -> np.ndarray:
     r = max(1, int(radius_cells))
     yy, xx = np.ogrid[-r:r + 1, -r:r + 1]
     return (xx * xx + yy * yy) <= r * r
+
+
+def _nearest_centerline_gap(
+        centerline: list[tuple[float, float, float]],
+        x: float,
+        y: float,
+        radius_m: float) -> tuple[float, float, float]:
+    best: tuple[float, float, float] | None = None
+    for idx in range(len(centerline) - 1):
+        ax, ay, aw = centerline[idx]
+        bx, by, bw = centerline[idx + 1]
+        dx = bx - ax
+        dy = by - ay
+        seg_len2 = dx * dx + dy * dy
+        if seg_len2 <= 1e-9:
+            continue
+        t = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / seg_len2))
+        px = ax + t * dx
+        py = ay + t * dy
+        width = aw + t * (bw - aw)
+        seg_len = math.sqrt(seg_len2)
+        nx = -dy / seg_len
+        ny = dx / seg_len
+        lateral = (x - px) * nx + (y - py) * ny
+        left_gap = 0.5 * width - lateral - radius_m
+        right_gap = 0.5 * width + lateral - radius_m
+        distance2 = (x - px) * (x - px) + (y - py) * (y - py)
+        candidate = (distance2, left_gap, right_gap)
+        if best is None or candidate[0] < best[0]:
+            best = candidate
+    if best is None:
+        return 0.0, -math.inf, -math.inf
+    _, left_gap, right_gap = best
+    return max(left_gap, right_gap), left_gap, right_gap
+
+
+def legal_passage_problems(course_path: Path) -> list[str]:
+    data = load_yaml(course_path)
+    centerline = [
+        (float(p["x_m"]), float(p["y_m"]), float(p["width_m"]))
+        for p in data.get("centerline", [])
+    ]
+    if len(centerline) < 2:
+        return []
+    problems = []
+    for raw in data.get("obstacles", []):
+        x = float(raw["x_m"])
+        y = float(raw["y_m"])
+        radius_m = float(raw["radius_m"])
+        best_gap, left_gap, right_gap = _nearest_centerline_gap(
+            centerline, x, y, radius_m)
+        if best_gap + 1e-6 < MIN_LEGAL_PASSAGE_M:
+            problems.append(
+                f"{raw.get('name', 'obstacle')} leaves no 5 ft passage "
+                f"(best={best_gap:.2f}m left={left_gap:.2f}m "
+                f"right={right_gap:.2f}m)")
+    return problems
 
 
 def validate(course_path: Path) -> tuple[bool, str]:
@@ -97,6 +155,7 @@ def validate(course_path: Path) -> tuple[bool, str]:
             problems.append(msg)
         elif lab != start_lab:
             problems.append(f"{name} ({x:.2f},{y:.2f}) not connected to start")
+    problems.extend(legal_passage_problems(course_path))
     free_frac = float(free.mean())
     detail = (f"grid={nx}x{ny} r_in={r_in:.2f}m free={free_frac*100:.0f}% "
               f"wp={len(c.mission_waypoints)}")
