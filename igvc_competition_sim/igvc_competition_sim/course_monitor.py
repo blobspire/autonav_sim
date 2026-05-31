@@ -72,6 +72,8 @@ class IgvcCourseMonitor(Node):
         self.stop_started_s: float | None = None
         self.autonomous = True
         self.failures: list[str] = []
+        self.failure_details: list[dict[str, object]] = []
+        self.first_failure: dict[str, object] | None = None
         self.max_speed_mps = 0.0
         self.finish_reached = False
         self.create_timer(1.0, self._publish_score)
@@ -112,14 +114,17 @@ class IgvcCourseMonitor(Node):
             avg = self.course.speed_check.end_distance_m / elapsed
             if avg < self.course.speed_check.minimum_average_mps:
                 self._fail(
-                    "first_44ft_speed_below_1mph: %.3f m/s" % avg)
+                    "first_44ft_speed_below_1mph: %.3f m/s" % avg,
+                    failure_type="speed_check")
         if speed > self.course.speed_check.maximum_speed_mps:
-            self._fail("max_speed_exceeded: %.3f m/s" % speed)
+            self._fail("max_speed_exceeded: %.3f m/s" % speed,
+                       failure_type="speed_check")
         if speed < 0.02:
             if self.stop_started_s is None:
                 self.stop_started_s = now_s
             elif now_s - self.stop_started_s > self.course.speed_check.blocking_stop_s:
-                self._fail("blocking_stop_over_60s")
+                self._fail("blocking_stop_over_60s",
+                           failure_type="speed_check")
         else:
             self.stop_started_s = None
 
@@ -141,21 +146,31 @@ class IgvcCourseMonitor(Node):
             if self._segment_hits_body(
                     tape.start, tape.end, tape.width_m * 0.5,
                     nav_x, nav_y, yaw, hx, hy):
-                self._fail("tape_crossing:" + tape.name)
+                self._fail(
+                    "tape_crossing:" + tape.name,
+                    failure_type="tape_crossing",
+                    hazard=tape.name,
+                    pose=(base_x, base_y, yaw),
+                )
         for obstacle in self.course.obstacles:
             if self._circle_hits_body(
                     obstacle.center, obstacle.radius_m, nav_x, nav_y,
                     yaw, hx, hy):
-                self._fail("obstacle_contact:" + obstacle.name)
-        for pothole in self.course.potholes:
-            if self._circle_hits_body(
-                    pothole.center, pothole.radius_m, nav_x, nav_y,
-                    yaw, hx, hy):
-                self._fail("pothole_contact:" + pothole.name)
+                self._fail(
+                    "obstacle_contact:" + obstacle.name,
+                    failure_type="obstacle_contact",
+                    hazard=obstacle.name,
+                    pose=(base_x, base_y, yaw),
+                )
         for ramp in self.course.ramps:
             if ramp.start_x_m <= nav_x <= ramp.end_x_m:
                 if abs(nav_y - ramp.center_y_m) > ramp.width_m * 0.5 + hy:
-                    self._fail("ramp_edge_departure:" + ramp.name)
+                    self._fail(
+                        "ramp_edge_departure:" + ramp.name,
+                        failure_type="ramp_edge_departure",
+                        hazard=ramp.name,
+                        pose=(base_x, base_y, yaw),
+                    )
 
     def _segment_hits_body(self,
                            start: tuple[float, float],
@@ -200,16 +215,41 @@ class IgvcCourseMonitor(Node):
         s = math.sin(yaw)
         return c * dx + s * dy, -s * dx + c * dy
 
-    def _fail(self, reason: str) -> None:
+    def _fail(self,
+              reason: str,
+              *,
+              failure_type: str = "unknown",
+              hazard: str = "",
+              pose: tuple[float, float, float] | None = None) -> None:
         if reason not in self.failures:
             self.failures.append(reason)
-            self.get_logger().error("IGVC sim failure: %s" % reason)
+            pose = pose if pose is not None else self.last_pose
+            detail: dict[str, object] = {
+                "reason": reason,
+                "type": failure_type,
+                "hazard": hazard,
+                "sim_time_s": round(_stamp_s(self), 3),
+            }
+            if pose is not None:
+                detail.update({
+                    "base_x_m": round(pose[0], 3),
+                    "base_y_m": round(pose[1], 3),
+                    "yaw_rad": round(pose[2], 3),
+                })
+            self.failure_details.append(detail)
+            if self.first_failure is None:
+                self.first_failure = detail
+            self.get_logger().error(
+                "IGVC sim failure: %s detail=%s"
+                % (reason, json.dumps(detail, sort_keys=True)))
 
     def _publish_score(self) -> None:
         score = {
             "course_id": self.course.course_id,
             "failed": bool(self.failures),
             "failures": self.failures,
+            "first_failure": self.first_failure,
+            "failure_details": self.failure_details,
             "distance_m": round(self.distance_m, 3),
             "max_speed_mps": round(self.max_speed_mps, 3),
             "finish_reached": self.finish_reached,

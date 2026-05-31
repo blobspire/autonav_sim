@@ -37,6 +37,7 @@ setup(
             "igvc_camera_bridge = igvc_competition_sim.camera_bridge:main",
             "igvc_course_monitor = igvc_competition_sim.course_monitor:main",
             "igvc_dynamics_replay = igvc_competition_sim.dynamics_replay:main",
+            "igvc_line_health_analyzer = igvc_competition_sim.line_health_analyzer:main",
             "igvc_mission_runner = igvc_competition_sim.mission_runner:main",
             "igvc_odom_bridge = igvc_competition_sim.odom_bridge:main",
             "igvc_run_analyzer = igvc_competition_sim.run_analyzer:main",

@@ -26,6 +26,16 @@ def _cost_counts(msg: Any) -> dict[str, int]:
     }
 
 
+def _point_count(topic: str, msg: Any) -> int:
+    if topic == "/scan_pca_filtered_points":
+        return int(getattr(msg, "width", 0)) * int(getattr(msg, "height", 0))
+    if topic in ("/scan_pca_filtered", "/scan_pca_filtered_clear"):
+        return sum(1 for value in msg.ranges if math.isfinite(float(value)))
+    if topic in ("/line_points", "/lidar_line_points"):
+        return len(msg.points)
+    return 0
+
+
 def analyze_bag(bag_dir: Path) -> dict[str, Any]:
     import rosbag2_py
     from rclpy.serialization import deserialize_message
@@ -146,10 +156,16 @@ def analyze_bag(bag_dir: Path) -> dict[str, Any]:
                     "start": [float(start.x), float(start.y)],
                     "end": [float(end.x), float(end.y)],
                 })
-        elif topic in ("/line_points", "/lidar_line_points"):
+        elif topic in (
+            "/scan_pca_filtered_points",
+            "/scan_pca_filtered",
+            "/scan_pca_filtered_clear",
+            "/line_points",
+            "/lidar_line_points",
+        ):
             detector_counts.setdefault(topic, []).append({
                 "rel_s": rel_s,
-                "points": len(msg.points),
+                "points": _point_count(topic, msg),
             })
         elif topic.endswith("costmap_raw") or topic in (
             "/line_costmap",
@@ -234,6 +250,8 @@ def analyze_bag(bag_dir: Path) -> dict[str, Any]:
         "plan_count": len(plans),
         "stale_path_warnings": stale_path_warnings,
         "final_score": scores[-1] if scores else None,
+        "first_monitor_failure": (
+            scores[-1].get("first_failure") if scores else None),
         "odom_final": odom[-1] if odom else None,
         "odom_max_x": max((sample["x"] for sample in odom), default=None),
         "detector_point_ranges": {},
@@ -292,12 +310,15 @@ def main(argv: list[str] | None = None) -> int:
     print("IGVC run analysis")
     print(f"  bag: {summary['bag']}")
     print(f"  final_score: {summary['final_score']}")
+    print(f"  first_monitor_failure: {summary['first_monitor_failure']}")
     print(f"  odom_final: {summary['odom_final']}")
     print(f"  goals: /goal_pose={summary['goal_pose_count']} /goal_update={summary['goal_update_count']} /nav_goal={summary['nav_goal_count']}")
     print(f"  plans: {summary['plan_count']} stale_path_warnings={len(summary['stale_path_warnings'])}")
     print(f"  wall_stamped_detector_topics: {summary['wall_stamped_detector_topics']}")
     print(f"  log: {summary['log']}")
     for topic, ranges in sorted(summary["costmap_ranges"].items()):
+        print(f"  {topic}: {ranges}")
+    for topic, ranges in sorted(summary["detector_point_ranges"].items()):
         print(f"  {topic}: {ranges}")
 
     if args.json_out:

@@ -21,7 +21,11 @@ Useful commands after building and sourcing the workspace:
 ros2 run igvc_competition_sim igvc_calibration_report --decode-rosbag
 ros2 run igvc_competition_sim igvc_dynamics_replay --list
 ros2 run igvc_competition_sim igvc_dynamics_replay arc_ladder_1 --ros-args -p use_sim_time:=true
+./Run_IGVC_COMPETITION_FORTRESS_ORACLE_TEST.command
 ```
+
+The oracle test uses ground-truth tape and ground-truth barrel/post obstacles to
+isolate Nav2/control from camera-line and PCA perception issues.
 
 `igvc_calibration_report --decode-rosbag` uses `rosbag2_py` in a sourced ROS
 environment, or the optional Python `rosbags` package when ROS is unavailable.

@@ -47,7 +47,7 @@ It includes:
 - 10-20 ft lane widths.
 - 3-inch plain white boundary tape plus an internal no-cross line.
 - Legal 5 ft passages and narrower decoy geometry.
-- Barrels/posts, two 2 ft white-circle potholes, and a ramp below 15% grade.
+- Barrels/posts and a ramp below 15% grade.
 - A four-leg mission using `/navigate_to_waypoint`, with the first local leg
   giving the GPS EKF enough motion before GPS waypoint legs.
 - First-44-ft speed-check metadata and live scoring stations.
@@ -76,6 +76,26 @@ Run the full test:
 ```bash
 cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim
 ./Run_IGVC_COMPETITION_FORTRESS_TEST.command
+```
+
+Run the oracle isolation test before blaming the robot stack:
+
+```bash
+cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim
+./Run_IGVC_COMPETITION_FORTRESS_ORACLE_TEST.command
+```
+
+The oracle test uses ground-truth tape on `/line_points` plus ground-truth
+barrel/post obstacles on `/scan_pca_filtered_points`. If oracle fails, inspect
+Nav2/control/config. If oracle passes but camera/PCA mode fails, inspect sim
+perception, sensor timing, or costmap ingestion first.
+
+Analyze a completed run:
+
+```bash
+ros2 run igvc_competition_sim igvc_run_analyzer /path/to/run_dir
+ros2 run igvc_competition_sim igvc_line_health_analyzer /path/to/run_dir \
+  --course-config config/igvc_competition_compact.yaml
 ```
 
 The runner starts Gazebo Fortress, bridges `/clock`, `/cmd_vel`, Gazebo
@@ -224,13 +244,16 @@ Line-source modes:
 - `ground_truth`: publishes sampled course tape directly on `/line_points` to isolate Nav2 planning/control from camera perception.
 - `lidar`: runs the SICK RSSI lidar-line detector for legacy retroreflective-tape regressions; pair it with `nav2_params_lidar.yaml`.
 
+Potholes are intentionally not modeled in the active competition sim because
+they are not part of the current competition course contract.
+
 ## Pass/Fail
 
 `igvc_course_monitor` publishes `/igvc_sim/score` and `/igvc_sim/fail`. Current
 hard failures are:
 
 - Footprint crossing boundary tape, dashed tape, or internal no-cross lines.
-- Footprint contact with obstacles or pothole discs.
+- Footprint contact with barrels/posts.
 - Leaving the legal ramp corridor while on the ramp.
 - First 44 ft average speed below 1 mph.
 - Speed above 5 mph.

@@ -51,7 +51,6 @@ RANGE_MIN_M = 0.20
 RANGE_MAX_M = 8.5
 FLOOR_RSSI = 30000.0
 TAPE_RSSI = 52000.0
-POTHOLE_RSSI = 50000.0
 OBSTACLE_RSSI = 33000.0
 OBSTACLE_REFLECTOR_RSSI = 50000.0
 CMD_TIMEOUT_S = 0.40
@@ -87,7 +86,7 @@ class IgvcSensorHarness(Node):
         self.declare_parameter("odom_rate_hz", 50.0)
         self.declare_parameter("map_rate_hz", 1.0)
         self.declare_parameter("gps_rate_hz", 10.0)
-        self.declare_parameter("ground_truth_line_rate_hz", 10.0)
+        self.declare_parameter("ground_truth_line_rate_hz", 20.0)
         self.declare_parameter("ground_truth_line_spacing_m", 0.05)
         self.declare_parameter("ground_truth_line_lateral_spacing_m", 0.025)
         self.declare_parameter("gps_noise_std_m", 0.05)
@@ -196,12 +195,11 @@ class IgvcSensorHarness(Node):
         self._publish_map()
         self.get_logger().info(
             "IGVC competition harness loaded %s: tapes=%d obstacles=%d "
-            "potholes=%d ramps=%d mission_waypoints=%d"
+            "ramps=%d mission_waypoints=%d"
             % (
                 self.course.course_id,
                 len(self.course.tapes),
                 len(self.course.obstacles),
-                len(self.course.potholes),
                 len(self.course.ramps),
                 len(self.course.mission_waypoints),
             )
@@ -551,16 +549,13 @@ class IgvcSensorHarness(Node):
                             world_angle)
                         if floor_range < best_range:
                             on_tape = self._point_on_tape(floor_x, floor_y)
-                            on_pothole = self._point_in_pothole(
-                                floor_x, floor_y)
                             best_range = floor_range
                             best = (
                                 floor_x,
                                 floor_y,
                                 0.0,
-                                POTHOLE_RSSI if on_pothole else (
-                                    TAPE_RSSI if on_tape else FLOOR_RSSI),
-                                on_tape or on_pothole,
+                                TAPE_RSSI if on_tape else FLOOR_RSSI,
+                                on_tape,
                             )
                 if best is None:
                     continue
@@ -592,13 +587,6 @@ class IgvcSensorHarness(Node):
                     0.5 * tape.width_m):
                 return True
         return False
-
-    def _point_in_pothole(self, x: float, y: float) -> bool:
-        return any(
-            math.hypot(x - pothole.center[0], y - pothole.center[1])
-            <= pothole.radius_m
-            for pothole in self.course.potholes
-        )
 
     @staticmethod
     def _point_segment_distance(x: float,

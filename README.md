@@ -95,6 +95,17 @@ cd src/autonav_sim/igvc_competition_sim
 ./Run_IGVC_COMPETITION_FORTRESS_TEST.command
 ```
 
+Oracle isolation test:
+
+```bash
+cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim
+./Run_IGVC_COMPETITION_FORTRESS_ORACLE_TEST.command
+```
+
+The oracle run uses ground-truth course tape and ground-truth barrel/post
+obstacles. Use it to separate robot-stack planning/control failures from
+camera-line or PCA perception issues.
+
 Sim-only host:
 
 ```bash

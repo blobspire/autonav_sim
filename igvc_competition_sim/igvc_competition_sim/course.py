@@ -54,13 +54,6 @@ class Obstacle:
 
 
 @dataclass(frozen=True)
-class Pothole:
-    name: str
-    center: tuple[float, float]
-    radius_m: float
-
-
-@dataclass(frozen=True)
 class Ramp:
     name: str
     start_x_m: float
@@ -130,7 +123,6 @@ class Course:
     robot: RobotSpec
     tapes: tuple[TapeSegment, ...]
     obstacles: tuple[Obstacle, ...]
-    potholes: tuple[Pothole, ...]
     ramps: tuple[Ramp, ...]
     mission_waypoints: tuple[MissionWaypoint, ...]
     analysis_stations: tuple[AnalysisStation, ...]
@@ -449,14 +441,6 @@ def load_course(path: str | Path | None = None) -> Course:
             )
             for raw in data.get("obstacles", [])
         ),
-        potholes=tuple(
-            Pothole(
-                name=str(raw["name"]),
-                center=(float(raw["x_m"]), float(raw["y_m"])),
-                radius_m=float(raw["radius_m"]),
-            )
-            for raw in data.get("potholes", [])
-        ),
         ramps=tuple(
             Ramp(
                 name=str(raw["name"]),
@@ -527,8 +511,6 @@ def iter_course_points(course: Course) -> Iterable[tuple[float, float]]:
         yield tape.end
     for obstacle in course.obstacles:
         yield obstacle.center
-    for pothole in course.potholes:
-        yield pothole.center
     for ramp in course.ramps:
         yield ramp.start_x_m, ramp.center_y_m
         yield ramp.end_x_m, ramp.center_y_m

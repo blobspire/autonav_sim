@@ -242,16 +242,6 @@ def generate_world(course: Course) -> str:
             color,
             collide=True,
         ))
-    for pothole in course.potholes:
-        models.append(_cylinder_model(
-            pothole.name,
-            pothole.center[0],
-            pothole.center[1],
-            pothole.radius_m,
-            0.012,
-            (0.96, 0.96, 0.90, 1.0),
-            collide=False,
-        ))
     models.append(_ramp_model(course))
     models.append(_robot_model(course))
 

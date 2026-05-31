@@ -317,30 +317,6 @@
         </visual>
       </link>
     </model>
-    <model name='white_circle_pothole_0'>
-      <static>1</static>
-      <pose>11.0000 -0.1500 0 0 0 0</pose>
-      <link name='link'>
-        
-        <visual name='visual'>
-          <pose>0 0 0.0060 0 0 0</pose>
-          <geometry><cylinder><radius>0.3048</radius><length>0.0120</length></cylinder></geometry>
-          <material><ambient>0.96 0.96 0.9 1.0</ambient><diffuse>0.96 0.96 0.9 1.0</diffuse><specular>0.05 0.05 0.05 1</specular></material>
-        </visual>
-      </link>
-    </model>
-    <model name='white_circle_pothole_1'>
-      <static>1</static>
-      <pose>27.8000 -0.1000 0 0 0 0</pose>
-      <link name='link'>
-        
-        <visual name='visual'>
-          <pose>0 0 0.0060 0 0 0</pose>
-          <geometry><cylinder><radius>0.3048</radius><length>0.0120</length></cylinder></geometry>
-          <material><ambient>0.96 0.96 0.9 1.0</ambient><diffuse>0.96 0.96 0.9 1.0</diffuse><specular>0.05 0.05 0.05 1</specular></material>
-        </visual>
-      </link>
-    </model>
     <model name='legal_approach_ramp'>
       <static>1</static>
       <pose>25.0000 -0.5500 0.2000 0.000000 -0.099669 0.000000</pose>

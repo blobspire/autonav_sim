@@ -73,8 +73,6 @@ dashed_lines:
 obstacles:
   - {name: lone_barrel, type: barrel, x_m: 24.0, y_m: 0.80, radius_m: 0.28, height_m: 0.85}
 
-potholes: []
-
 ramps: []
 
 speed_check:

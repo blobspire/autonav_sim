@@ -71,10 +71,6 @@ obstacles:
   - {name: decoy_gap_barrel, type: barrel, x_m: 18.8, y_m: -0.95, radius_m: 0.28, height_m: 0.85}
   - {name: post_obstacle, type: post, x_m: 32.0, y_m: 1.70, radius_m: 0.18, height_m: 1.10}
 
-potholes:
-  - {name: white_circle_pothole_0, x_m: 11.0, y_m: -0.15, radius_m: 0.3048}
-  - {name: white_circle_pothole_1, x_m: 27.8, y_m: -0.10, radius_m: 0.3048}
-
 ramps:
   - name: legal_approach_ramp
     start_x_m: 23.0
@@ -93,10 +89,8 @@ speed_check:
 mission_waypoints:
   - {label: bootstrap_local, type: local, x_m: 6.0, y_m: 0.25, radius_m: 0.75}
   - {label: obstacle_gps, type: gps, x_m: 15.8, y_m: -0.75, radius_m: 1.0}
-  # Keep the ramp goal on the drivable lower half of the ramp lane. The
-  # previous centerline target put the padded robot footprint over the
-  # nearby white pothole marker, so the line/pothole memory correctly made
-  # the requested goal unreachable.
+  # Keep the ramp goal on the drivable lower half of the ramp lane so the
+  # padded footprint remains inside the ramp corridor.
   - {label: ramp_gps, type: gps, x_m: 27.2, y_m: -1.00, radius_m: 1.0}
   - {label: finish_gps, type: gps, x_m: 38.0, y_m: -0.10, radius_m: 1.25}
 

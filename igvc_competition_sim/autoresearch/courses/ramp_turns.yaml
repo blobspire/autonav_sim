@@ -1,5 +1,5 @@
 course_id: ramp_turns
-description: "auto_camera suite #5: grade + potholes near lines + sharp curvature -> recovery, turning radius vs footprint"
+description: "auto_camera suite #5: grade + sharp curvature -> recovery, turning radius vs footprint"
 
 datum:
   latitude_deg: 37.23027
@@ -38,9 +38,9 @@ robot:
 tape_width_m: 0.0762
 
 # Serpentine 10 ft lane with large lateral swings (sharp turns relative to the
-# 0.5 m turning radius / rectangular footprint), a legal ramp, and potholes
-# placed near the boundary tape. Stresses turning-radius-vs-footprint planning
-# and recovery without the robot wedging itself or wiggling in place.
+# 0.5 m turning radius / rectangular footprint) and a legal ramp. Stresses
+# turning-radius-vs-footprint planning and recovery without the robot wedging
+# itself or wiggling in place.
 centerline:
   - {x_m: 0.0,  y_m: 0.00,  width_m: 3.048}
   - {x_m: 5.0,  y_m: 1.60,  width_m: 3.048}
@@ -54,10 +54,6 @@ centerline:
 obstacles:
   - {name: turn_apex_barrel, type: barrel, x_m: 12.5, y_m: 0.10, radius_m: 0.28, height_m: 0.85}
   - {name: exit_post, type: post, x_m: 31.5, y_m: 0.10, radius_m: 0.18, height_m: 1.10}
-
-potholes:
-  - {name: pothole_near_left,  x_m: 7.5,  y_m: 1.05, radius_m: 0.3048}
-  - {name: pothole_near_right, x_m: 17.5, y_m: 1.05, radius_m: 0.3048}
 
 ramps:
   - name: legal_grade_ramp

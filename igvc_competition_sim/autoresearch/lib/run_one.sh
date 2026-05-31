@@ -136,4 +136,11 @@ sleep 2
 cleanup
 trap - EXIT INT TERM
 echo "run_one: done (mission_status=$mission_status) -> $RUN_DIR"
+if [[ "$mission_status" -ne 0 ]]; then
+  exit "$mission_status"
+fi
+if grep -q '"failed": true' "$RUN_DIR/final_score.txt"; then
+  echo "run_one: IGVC monitor reported a failure. See $RUN_DIR/final_score.txt" >&2
+  exit 1
+fi
 exit 0

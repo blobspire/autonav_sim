@@ -2,6 +2,10 @@
 
 Keep this file current. It is the durable handoff for future agents.
 
+Note: entries before the no-pothole update are historical. Potholes are not part
+of the active competition course contract and should not drive current sim
+acceptance or robot-stack tuning.
+
 ## Status
 
 - Branch: `auto_camera`

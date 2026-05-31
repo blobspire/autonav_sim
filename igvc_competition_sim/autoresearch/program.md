@@ -14,7 +14,9 @@ bank). In the split-repo layout, run from a workspace shaped like
    `gz`/ros processes left behind.
 3. Run gates: `python3 autoresearch/lib/check_footprint.py` (C-i) and
    `python3 autoresearch/lib/validate_course.py autoresearch/courses/*.yaml`.
-4. Phase 0: wall-clock-calibrate one `compact_baseline` mission; auto-size tiers to the 8 h budget;
+4. Run `./Run_IGVC_COMPETITION_FORTRESS_ORACLE_TEST.command` before tuning. If oracle fails, fix
+   Nav2/control/config before blaming camera lines or PCA.
+5. Phase 0: wall-clock-calibrate one `compact_baseline` mission; auto-size tiers to the 8 h budget;
    establish the Tier-2 baseline (status=BASELINE) — the bar every KEEP must beat.
 
 ## File permissions
@@ -67,7 +69,8 @@ KEEP iff: gate passes AND fitness strictly beats current best for that course AN
    bu=.. sp=.. cc=.. pfs=.. ang_var=.. stuck=.. min_clear=.. plan_inscribed=.. global_clear_events=.. commit=..`.
 - `lib/run_one.sh`: backend-pluggable via `RUN_PREFIX` (""=host, "docker exec <ctr>", "ssh <host>").
   Replicates the proven launch+`setsid` group-cleanup from `Run_IGVC_COMPETITION_FORTRESS_TEST.command`;
-  records the superset bag (CONTEXT.md); never hangs (timeouts); writes RUN_DIR/{final_score.txt,mission.log,bag}.
+  records the superset bag (CONTEXT.md); never hangs (timeouts); writes RUN_DIR/{final_score.txt,mission.log,bag};
+  exits nonzero when mission status fails or the monitor score reports `failed:true`.
 - `lib/reaper.sh`: kill leftover gz/ros (CONTEXT.md list), poll clear, `ros2 daemon stop`. Run before+after each run.
 - `lib/metrics.py`: parse score JSON + the superset bag via `rosbag2_py` and the FROZEN `scripts/analyze_*.py`
   (see CONTEXT.md metric table). Graceful: missing topic -> metric=NA, run=INCOMPLETE; >=2 INCOMPLETE -> FLAKY.

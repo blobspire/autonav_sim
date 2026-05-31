@@ -55,9 +55,9 @@ sim is blocked.
   --timeout-sec <T>` — sends each `mission_waypoints` entry as a NavigateToWaypoint goal; exit 0 iff ALL
   succeed; per-waypoint log `"[label] status=N succeeded=BOOL final_distance=.. reason=.."`.
 - Score (authoritative gate): `ros2 topic echo --once /igvc_sim/score` -> JSON
-  `{course_id, failed, failures[], distance_m, max_speed_mps, finish_reached, speed_check_complete}`.
+  `{course_id, failed, failures[], first_failure, failure_details, distance_m, max_speed_mps, finish_reached, speed_check_complete}`.
   `course_monitor.py` judges the **padded footprint (+/-0.595 x +/-0.460 m at nav_center +0.225)** on
-  `/odom`. failure strings: `tape_crossing:<n>`, `obstacle_contact:<n>`, `pothole_contact:<n>`,
+  `/odom`. failure strings: `tape_crossing:<n>`, `obstacle_contact:<n>`,
   `ramp_edge_departure:<n>`, `max_speed_exceeded`, `first_44ft_speed_below_1mph`, `blocking_stop_over_60s`.
 - Cleanup: launch under `setsid`; INT/TERM/KILL the process GROUP; then a reaper `pkill`s
   `gz sim|ruby|parameter_bridge|controller_server|planner_server|bt_navigator|behavior_server|costmap|
@@ -70,6 +70,15 @@ sim is blocked.
   (`line_detector.yaml` max_depth/base_max_x). Use this for the C-ii clearing cone (~ +/-0.96 rad, 0-5 m).
 
 ## Status (2026-05-30)
+CURRENT SIM CONTRACT UPDATE:
+- Potholes are not part of the active competition course contract. Current
+  courses, worlds, sensor harness, monitor, and scorer ignore potholes. Older
+  run notes mentioning pothole failures are historical and should not drive new
+  robot-stack changes.
+- Use `Run_IGVC_COMPETITION_FORTRESS_ORACLE_TEST.command` first. It combines
+  `LINE_DETECTION_MODE=ground_truth` and `GROUND_TRUTH_PCA=true` so failures
+  isolate Nav2/control/config before camera/PCA perception is blamed.
+
 DONE + VERIFIED on host:
 - Branch `auto_camera` created.
 - **C-i footprint accuracy: PASS** — consistent across course RobotSpec, nav2 local+global, URDF
@@ -132,14 +141,14 @@ DEFERRED until the sim env is available:
   VALIDATED end-to-end against the real sim (camera line + PCA obstacle + Nav2 + scorer + metrics).
 - 2026-05-30 BASELINE (compact_baseline, current C-ii/C-iii config): FAILS. The robot traverses most of the
   course but (a) gets STUCK >60s mid-course -> timeout/non-completion (blocking_stop_over_60s), (b) clips
-  right_boundary_1 + pothole_0 early (min_course_clear ~ -0.16 to -0.45), (c) slow (~0.40-0.42 m/s over the
+  right_boundary_1 plus obsolete pothole geometry early (min_course_clear ~ -0.16 to -0.45), (c) slow (~0.40-0.42 m/s over the
   first 44ft, under the 0.447 = 1 mph minimum). High run-to-run variance (one run finished at ~144s, another
   stalled) -> the 3-run gate is essential. While failing, rank candidates by PROGRESS (distance reached,
   fewer violations, better clearance, completion) since fitness is gate-gated. Primary targets: eliminate the
-  stuck-stall, raise speed, keep margin off boundaries/potholes.
+  stuck-stall, raise speed, keep margin off boundaries and obstacles.
 - 2026-05-30 exp1 KEEP (commit d5901a95): MPPI vx_std 0.25->0.40. Baseline stalled mid-course & timed
   out; with 0.40 the robot completed all 4 waypoints in 2/2 runs (eliminated the blocking_stop). Trade:
-  more jitter (rev ~80 vs 26) + more tape/pothole clipping. Completion is the prerequisite gain. KEPT.
+  more jitter (rev ~80 vs 26) + more tape clipping. Completion is the prerequisite gain. KEPT.
 - 2026-05-30 exp2 DISCARD: wz_std 0.45->0.30. Reduced angular jitter variance (0.07-0.10 vs 0.27) BUT
   hurt reliability: 2/3 completed, one run logged pfs=122 (massive PathFootprintSafe-reject struggle) +
   one stalled. Narrower angular sampling -> can't turn out of tight spots -> rejects pile up. Reverted.
@@ -160,36 +169,29 @@ DEFERRED until the sim env is available:
    line-costmap representation + planner/controller interaction, not any single gain. Likely the line
    halo geometry (line_layer inflation/inscribed/cost_scaling, A8) + planner clearance need co-tuning,
    or the controller needs a stability fix.
-3. **POTHOLE DETECTION GAP (qualification blocker).** White-circle potholes are crossed in EVERY run.
-   They are ~0.6 m circles; the camera line detector's cluster gates (min_length 0.40, max_width 0.60,
-   min_aspect 1.50) reject low-aspect blobs, so potholes are NEVER put in the costmap -> never avoided.
-   Courses with potholes (compact, dense, ramp) CANNOT produce a clean run until this is fixed. Fix
-   options: add blob/pothole detection, or relax the line cluster gates to accept circular marks
-   (watch false positives), or a dedicated pothole detector. THIS IS THE #1 PRIORITY for qualification.
+3. **Oracle-first isolation is now required.** A clean oracle run proves Nav2/control can satisfy the
+   authored course with perfect tape and obstacle input. Camera/PCA runs should not be used to tune robot
+   navigation until oracle passes.
 4. **Planner routes too close to the right boundary** (exp3 diagnostic) -- the user's exact "paths
    planned too close to inflation" complaint. cost_penalty alone (exp4) backfired (stalls); the line
    keep-out (A8 inscribed/inflation) likely needs widening *together with* keeping the robot moving.
 5. **Speed**: ~0.39-0.42 m/s over the first 44 ft (< 0.447 = 1 mph min). The robot slows for the early
-   barrel/pothole; raising vx_std alone didn't fix it.
+   barrel; raising vx_std alone didn't fix it.
 
 ## Prioritized next experiments (the loop should continue with these)
-P1. Pothole detection: relax line_detector cluster gates (min_aspect 1.5->~1.0, raise max_width) OR add
-    a circular-mark detector; verify potholes appear in /line_costmap; watch for false-positive lines.
-    (Rebuild autonav_detection after config edit -- copy-mode install.)
+P1. Oracle baseline: run the oracle script on compact_baseline. If monitor fails, debug Nav2/control/config.
+    If it passes, run camera-lines + ground-truth PCA and compare `/line_points` with the authored tape.
 P2. Line keep-out co-tuning (A8): line_layer inscribed_radius 0.05->~0.15 AND cost_scaling 1.8->~2.5 so
     the planner routes off boundaries WITHOUT closing the 5 ft gaps; pair with keeping vx_std 0.40 so it
-    doesn't stall. Test on tight_gaps (no potholes) where a clean run is achievable.
+    doesn't stall. Test on tight_gaps where a clean run is achievable.
 P3. Variance reduction: try MPPI temperature/gamma, batch_size up, or noise settings; measure completion
     consistency over 5 runs.
-P4. Validate C-ii on sparse_lines (no potholes): confirm global_clear_events>0 and that camera-confirmed
+P4. Validate C-ii on sparse_lines: confirm global_clear_events>0 and that camera-confirmed
     clearing prevents stale-line phantom blocks under EKF drift.
 P5. Speed: once clean-ish, push vx_max/velocity_smoother + PreferForward to raise the first-44ft average.
 
-NOTE: a clean GATE pass is only achievable on the NO-pothole courses (tight_gaps, sparse_lines)
-until P1 lands. Recommend running the loop primarily on sparse_lines next.
-
 - 2026-05-30 sparse_lines eval (best config vx_std 0.40, 3 runs): **COMPLETES 3/3 reliably** (no stalls
-  on the wide pothole-free lane). All 3 still gate-FAIL on TWO CONSISTENT issues: (a) first_44ft speed
+  on the wide lane). All 3 still gate-FAIL on TWO CONSISTENT issues: (a) first_44ft speed
   ~0.375-0.397 (< 0.447), (b) crosses the SAME two boundaries every run: right_boundary_2 (early) +
   internal_no_cross_far (x~36). Consistent (low-variance) crossings => the planned path routes too close
   at those specific spots => directly tunable (NOT the chaotic knife's-edge of compact). So sparse_lines
@@ -223,7 +225,7 @@ speed-legal, near-clean."
 ## Next (resume here): (1) internal_no_cross_far -- check line-detection latency for that segment + try a
 small targeted clearance only there / verify Smac footprint-collision is using the line lethal cells;
 (2) cross-course clearance for tight_gaps; (3) inject odom drift in sensor_harness to actually exercise
-C-ii; (4) pothole detection (P1, still the hard qualification blocker on pothole courses).
+C-ii; (4) camera-vs-ground-truth line health comparison on every canonical course.
 
 ## CAMERA LINE DETECTION INVESTIGATION (2026-05-30, sim-fidelity)
 FINDING: the camera line detector emits ZERO line points on EVERY course (all /line_points msgs empty)

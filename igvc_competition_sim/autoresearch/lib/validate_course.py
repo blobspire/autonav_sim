@@ -3,7 +3,7 @@
 
 Without running the sim, confirm each authored course is at least geometrically
 feasible for the padded robot: build a costmap-resolution occupancy grid where
-tapes / obstacles / potholes are lethal, inflate by the robot inscribed radius
+tapes and obstacles are lethal, inflate by the robot inscribed radius
 (physical_half_width + padding), and verify that start -> every mission waypoint
 -> finish lie in one connected free region (8-connected). Catches gross errors
 (a gap narrower than the robot, a waypoint inside an obstacle/tape) that would
@@ -68,8 +68,6 @@ def validate(course_path: Path) -> tuple[bool, str]:
             stamp(ax + (bx - ax) * s, ay + (by - ay) * s, t.width_m * 0.5)
     for o in c.obstacles:
         stamp(o.center[0], o.center[1], o.radius_m)
-    for p in c.potholes:
-        stamp(p.center[0], p.center[1], p.radius_m)
 
     # inflate by inscribed radius (half-width + padding); the robot cannot be
     # closer than this to any lethal cell without a footprint violation.

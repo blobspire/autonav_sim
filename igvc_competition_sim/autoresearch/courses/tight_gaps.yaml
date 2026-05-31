@@ -65,8 +65,6 @@ obstacles:
   - {name: gap4_left, type: post, x_m: 30.0, y_m: 0.98, radius_m: 0.18, height_m: 1.10}
   - {name: gap4_right, type: post, x_m: 30.0, y_m: -0.98, radius_m: 0.18, height_m: 1.10}
 
-potholes: []
-
 ramps: []
 
 speed_check:
