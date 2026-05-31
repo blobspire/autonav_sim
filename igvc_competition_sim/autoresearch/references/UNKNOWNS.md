@@ -39,7 +39,10 @@ Enable decrease + front cone; cone half-angle/range; whether `overwrite_master` 
 local_mirror_layer.cpp change is needed. Metric: global_clear_events, sparse_lines t_mean/recovery. (goal #4)
 
 ### A10. Local line_layer view-gate cone (+/-0.40 rad, 1.2-4.5 m) + observation_persistence_ms (8000)
-Must widen toward the real ZED HFOV (1.918862 rad) so FREE cells are produced where the camera sees;
+Must match the rectified ZED calibration used by the detector, not the raw
+marketing HFOV. Real bags report 960x540, fx=fy=539.702, cx=472.965,
+cy=255.161, equivalent HFOV ~=1.454 rad; FREE cells should cover the same
+camera-visible ground region.
 persistence vs premature clearing under EKF drift. Metric: global_clear_events, false line marks. (goal #4)
 
 ### A11. breadcrumb_reverse (max_crumbs_per_session 15, lethal_cost_threshold 253, bonus_crumb_after_forward true)
@@ -61,8 +64,10 @@ Metric: pca_first_s, obstacle_contact, ramp behavior. (goal #2)
 - **R1. Footprint dims** verified consistent across course RobotSpec / nav2 local+global / URDF
   nav_center_joint (0.225) / BT PathFootprintSafe: half_len 0.545, half_w 0.410, pad 0.050. **FROZEN — do
   not shrink.** Padded scorer box +/-0.595 x +/-0.460 at nav_center. (check_footprint.py)
-- **R2. ZED HFOV = 1.918862 rad (~110 deg)**, pitched down 0.349 rad, usable ground range ~5 m — the
-  reference for the C-ii / A9 / A10 clearing cone.
+- **R2. ZED rectified camera calibration** from real bags: 960x540,
+  fx=fy=539.702, cx=472.965, cy=255.161, effective HFOV ~=1.454 rad,
+  pitched down 0.349 rad, usable ground range ~5 m — the reference for the
+  C-ii / A9 / A10 clearing cone.
 - **R3. PathFootprintSafe rejects on LETHAL only** (inscribed_threshold==254), so observed rejects are
   real lethal-cell overlaps -> the fix is wider planning (A1/A2), not loosening the gate.
 - **R4. 5 courses feasibility-validated** (padded-robot connectivity) — gross-infeasibility ruled out;

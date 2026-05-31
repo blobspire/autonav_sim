@@ -66,8 +66,11 @@ sim is blocked.
 - **Recovery signals are NOT in the stock test bag** — the harness records its OWN superset bag adding
   `/rosout`, `/back_up/_action/status`, `/drive_on_heading/_action/status`, `/spin/_action/status`,
   `/unsmoothed_plan` (and may drop heavy image/cloud topics to save disk).
-- ZED real HFOV = **1.918862 rad (~110 deg)**, pitched down 0.349 rad; usable ground range ~5 m
-  (`line_detector.yaml` max_depth/base_max_x). Use this for the C-ii clearing cone (~ +/-0.96 rad, 0-5 m).
+- ZED rectified calibration from real bags: **960x540, bgra8,
+  frame=zed_left_camera_frame_optical, fx=fy=539.702, cx=472.965,
+  cy=255.161**, effective HFOV ~= **1.454 rad**, pitched down 0.349 rad;
+  usable ground range ~5 m (`line_detector.yaml` max_depth/base_max_x). Use
+  this for the C-ii clearing cone and sim camera projection.
 
 ## Status (2026-05-30)
 CURRENT SIM CONTRACT UPDATE:

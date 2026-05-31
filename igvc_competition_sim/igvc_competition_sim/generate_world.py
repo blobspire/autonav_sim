@@ -160,7 +160,7 @@ def _robot_model(course: Course) -> str:
           <visualize>false</visualize>
           <topic>/igvc_sim/zed</topic>
           <camera>
-            <horizontal_fov>1.918862</horizontal_fov>
+            <horizontal_fov>1.453833</horizontal_fov>
             <image>
               <width>960</width>
               <height>540</height>

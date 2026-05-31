@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from array import array
 from copy import deepcopy
 import math
 import sys
@@ -25,6 +26,11 @@ try:
     from rclpy.exceptions import RCLError
 except ImportError:
     RCLError = Exception
+
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - deployment environment issue.
+    np = None
 
 
 def _q_from_rpy(roll: float, pitch: float, yaw: float
@@ -75,12 +81,18 @@ class IgvcCameraBridge(Node):
         self.declare_parameter(
             "output_depth_info_topic", "/zed/zed_node/depth/depth_info")
         self.declare_parameter("camera_link_frame_id", "zed_camera_link")
-        self.declare_parameter("camera_frame_id", "zed2i_left_camera_frame")
+        self.declare_parameter("camera_center_frame_id", "zed_camera_center")
+        self.declare_parameter("camera_frame_id", "zed_left_camera_frame")
         self.declare_parameter(
-            "optical_frame_id", "zed2i_left_camera_frame_optical")
+            "optical_frame_id", "zed_left_camera_frame_optical")
+        self.declare_parameter("output_color_encoding", "bgra8")
         self.declare_parameter("fallback_width", 960)
         self.declare_parameter("fallback_height", 540)
-        self.declare_parameter("fallback_horizontal_fov_rad", 1.918862)
+        self.declare_parameter("fallback_horizontal_fov_rad", 1.453833)
+        self.declare_parameter("fallback_fx", 539.702)
+        self.declare_parameter("fallback_fy", 539.702)
+        self.declare_parameter("fallback_cx", 472.965)
+        self.declare_parameter("fallback_cy", 255.161)
         self.declare_parameter("override_inconsistent_camera_info", True)
         self.declare_parameter("sync_rgb_depth", True)
         self.declare_parameter("max_rgb_depth_pair_delta_ms", 120)
@@ -92,12 +104,20 @@ class IgvcCameraBridge(Node):
         self.optical_frame_id = str(
             self.get_parameter("optical_frame_id").value)
         self.camera_frame_id = str(self.get_parameter("camera_frame_id").value)
+        self.camera_center_frame_id = str(
+            self.get_parameter("camera_center_frame_id").value)
         self.camera_link_frame_id = str(
             self.get_parameter("camera_link_frame_id").value)
+        self.output_color_encoding = str(
+            self.get_parameter("output_color_encoding").value).lower()
         self.fallback_width = int(self.get_parameter("fallback_width").value)
         self.fallback_height = int(self.get_parameter("fallback_height").value)
         self.fallback_horizontal_fov_rad = float(
             self.get_parameter("fallback_horizontal_fov_rad").value)
+        self.fallback_fx = float(self.get_parameter("fallback_fx").value)
+        self.fallback_fy = float(self.get_parameter("fallback_fy").value)
+        self.fallback_cx = float(self.get_parameter("fallback_cx").value)
+        self.fallback_cy = float(self.get_parameter("fallback_cy").value)
         self.override_inconsistent_camera_info = bool(
             self.get_parameter("override_inconsistent_camera_info").value)
         self.sync_rgb_depth = bool(
@@ -122,6 +142,7 @@ class IgvcCameraBridge(Node):
         self.latest_camera_info: CameraInfo | None = None
         self.image_buffer: list[Image] = []
         self.depth_buffer: list[Image] = []
+        self._warned_color_conversion = False
 
         image_qos = QoSProfile(depth=10)
         info_qos = QoSProfile(depth=1)
@@ -194,6 +215,7 @@ class IgvcCameraBridge(Node):
         self._stamp_if_zero(msg)
         msg.header.frame_id = self.optical_frame_id
         if not self.sync_rgb_depth:
+            self._convert_color_image(msg)
             self.image_pub.publish(msg)
             return
         self.image_buffer.append(msg)
@@ -279,6 +301,7 @@ class IgvcCameraBridge(Node):
                 out_msg.header.stamp = pair_stamp
                 out_msg.header.frame_id = self.optical_frame_id
 
+            self._convert_color_image(out_image)
             self._fill_camera_info_if_empty(out_info)
             self.camera_info_pub.publish(out_info)
             self.depth_info_pub.publish(out_info)
@@ -319,10 +342,10 @@ class IgvcCameraBridge(Node):
         height = int(msg.height) if msg.height else self.fallback_height
         msg.width = width
         msg.height = height
-        fx = (0.5 * width) / math.tan(0.5 * self.fallback_horizontal_fov_rad)
-        fy = fx
-        cx = 0.5 * (width - 1)
-        cy = 0.5 * (height - 1)
+        fx = self._fallback_fx(width)
+        fy = self._fallback_fy(width)
+        cx = self._fallback_cx(width)
+        cy = self._fallback_cy(height)
         msg.distortion_model = "plumb_bob"
         msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
         msg.k = [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0]
@@ -337,24 +360,124 @@ class IgvcCameraBridge(Node):
 
         width = int(msg.width) if msg.width else self.fallback_width
         height = int(msg.height) if msg.height else self.fallback_height
-        expected_cx = 0.5 * (width - 1)
-        expected_cy = 0.5 * (height - 1)
+        expected_fx = self._fallback_fx(width)
+        expected_fy = self._fallback_fy(width)
+        expected_cx = self._fallback_cx(width)
+        expected_cy = self._fallback_cy(height)
         # ros_gz_bridge/Fortress can report 960x540 image dimensions while
         # leaving 320x240 intrinsics in K/P. Projection then maps real ground
         # tape pixels to impossible base-frame heights, so treat a principal
-        # point far from the declared image center as invalid.
+        # point or focal length far from the bag-derived ZED calibration as
+        # invalid.
+        fx_bad = (
+            abs(float(msg.k[0]) - expected_fx)
+            > max(5.0, 0.05 * expected_fx)
+        )
+        fy_bad = (
+            abs(float(msg.k[4]) - expected_fy)
+            > max(5.0, 0.05 * expected_fy)
+        )
         return (
-            abs(float(msg.k[2]) - expected_cx) > max(4.0, 0.05 * width)
+            fx_bad
+            or fy_bad
+            or abs(float(msg.k[2]) - expected_cx) > max(4.0, 0.05 * width)
             or abs(float(msg.k[5]) - expected_cy) > max(4.0, 0.05 * height)
         )
 
+    def _fallback_fx(self, width: int) -> float:
+        if self.fallback_fx > 0.0:
+            return self.fallback_fx
+        return (0.5 * width) / math.tan(0.5 * self.fallback_horizontal_fov_rad)
+
+    def _fallback_fy(self, width: int) -> float:
+        if self.fallback_fy > 0.0:
+            return self.fallback_fy
+        return self._fallback_fx(width)
+
+    def _fallback_cx(self, width: int) -> float:
+        if self.fallback_cx >= 0.0:
+            return self.fallback_cx
+        return 0.5 * (width - 1)
+
+    def _fallback_cy(self, height: int) -> float:
+        if self.fallback_cy >= 0.0:
+            return self.fallback_cy
+        return 0.5 * (height - 1)
+
+    def _convert_color_image(self, msg: Image) -> None:
+        target = self.output_color_encoding
+        if target in ("", "preserve") or msg.encoding.lower() == target:
+            return
+        if target != "bgra8" or np is None:
+            if not self._warned_color_conversion:
+                self.get_logger().warning(
+                    "Cannot convert image encoding %s -> %s; publishing as %s"
+                    % (msg.encoding, target, msg.encoding))
+                self._warned_color_conversion = True
+            return
+
+        src = msg.encoding.lower()
+        width = int(msg.width)
+        height = int(msg.height)
+        try:
+            if src == "rgb8":
+                rgb = np.frombuffer(msg.data, dtype=np.uint8).reshape(
+                    height, msg.step)[:, :width * 3].reshape(height, width, 3)
+                bgra = np.empty((height, width, 4), dtype=np.uint8)
+                bgra[..., 0] = rgb[..., 2]
+                bgra[..., 1] = rgb[..., 1]
+                bgra[..., 2] = rgb[..., 0]
+                bgra[..., 3] = 255
+            elif src == "bgr8":
+                bgr = np.frombuffer(msg.data, dtype=np.uint8).reshape(
+                    height, msg.step)[:, :width * 3].reshape(height, width, 3)
+                bgra = np.empty((height, width, 4), dtype=np.uint8)
+                bgra[..., :3] = bgr
+                bgra[..., 3] = 255
+            elif src == "rgba8":
+                rgba = np.frombuffer(msg.data, dtype=np.uint8).reshape(
+                    height, msg.step)[:, :width * 4].reshape(height, width, 4)
+                bgra = rgba[..., [2, 1, 0, 3]].copy()
+            else:
+                if not self._warned_color_conversion:
+                    self.get_logger().warning(
+                        "Unsupported color conversion %s -> %s; publishing as %s"
+                        % (msg.encoding, target, msg.encoding))
+                    self._warned_color_conversion = True
+                return
+        except ValueError:
+            if not self._warned_color_conversion:
+                self.get_logger().warning(
+                    "Image buffer shape does not match %sx%s %s; publishing "
+                    "without conversion" % (width, height, msg.encoding))
+                self._warned_color_conversion = True
+            return
+
+        msg.encoding = "bgra8"
+        msg.step = width * 4
+        msg.is_bigendian = 0
+        msg.data = array("B", bgra.reshape(-1).tobytes())
+
     def _publish_static_camera_transforms(self) -> None:
         stamp = self.get_clock().now().to_msg()
+        transforms = []
+
+        parent_frame = self.camera_link_frame_id
+        if self.camera_center_frame_id:
+            to_center = TransformStamped()
+            to_center.header.stamp = stamp
+            to_center.header.frame_id = self.camera_link_frame_id
+            to_center.child_frame_id = self.camera_center_frame_id
+            to_center.transform.rotation.w = 1.0
+            transforms.append(to_center)
+            parent_frame = self.camera_center_frame_id
+
         to_camera_frame = TransformStamped()
         to_camera_frame.header.stamp = stamp
-        to_camera_frame.header.frame_id = self.camera_link_frame_id
+        to_camera_frame.header.frame_id = parent_frame
         to_camera_frame.child_frame_id = self.camera_frame_id
         to_camera_frame.transform.rotation.w = 1.0
+        transforms.append(to_camera_frame)
 
         to_optical = TransformStamped()
         to_optical.header.stamp = stamp
@@ -365,8 +488,9 @@ class IgvcCameraBridge(Node):
         to_optical.transform.rotation.y = qy
         to_optical.transform.rotation.z = qz
         to_optical.transform.rotation.w = qw
+        transforms.append(to_optical)
 
-        self.tf_static.sendTransform([to_camera_frame, to_optical])
+        self.tf_static.sendTransform(transforms)
 
 
 def main(argv: list[str] | None = None) -> int:

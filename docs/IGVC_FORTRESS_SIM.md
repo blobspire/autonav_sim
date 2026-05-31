@@ -232,7 +232,13 @@ camera-info messages under the ZED topic names instead of forwarding Gazebo
 RGB/depth independently. This prevents the detector from pairing a fresh RGB
 frame with stale depth, and it holds paired camera frames until `/local_ekf/odom`
 has reached the frame stamp so stamped TF lookups remain deterministic. The
-camera line detector also buffers recent RGB/depth inputs and selects the newest
+bridge also matches the real bag-observed ZED output shape: `bgra8` RGB,
+`32FC1` depth, `zed_left_camera_frame_optical`, 960x540, and camera intrinsics
+fx=fy=539.702, cx=472.965, cy=255.161. The rendered Gazebo camera uses the
+equivalent rectified horizontal FOV of about 1.454 rad, not the raw ZED
+marketing HFOV.
+
+The camera line detector also buffers recent RGB/depth inputs and selects the newest
 synchronized pair on each detection tick, which avoids callback-order races
 between the two image subscriptions. In the distributed profile it also prefers
 the newest synchronized pair whose stamped odom-to-base TF is already present in
