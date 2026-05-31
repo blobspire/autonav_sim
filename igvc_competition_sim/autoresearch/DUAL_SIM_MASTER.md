@@ -188,6 +188,14 @@ value is better; the local costmap consumes 20 Hz PCA LaserScans from the
 Jetson and needs dense cross-host `odom -> base_link` TF samples to avoid
 message-filter drops from small timestamp gaps.
 
+Raw RGB-D camera traffic must stay on sensor-data/best-effort QoS in the
+distributed lane. Reliable 960x540 RGB plus depth streams can backpressure the
+routed DDS link when the Jetson falls behind, which has been observed to stall
+unrelated `/clock` and `/tf` samples and then wedge Nav2 costmap message
+filters. The sim camera bridge publishes ZED-compatible image/depth/info topics
+best-effort, and the robot camera line detector subscribes with best-effort
+QoS to remain compatible with both the sim and normal camera-driver behavior.
+
 The Jetson lane uses the standalone `autonav_sim` repo on both sides:
 
 - VM runtime checkout: `/tmp/autonav_jetson_sim_ws/src/autonav_sim`

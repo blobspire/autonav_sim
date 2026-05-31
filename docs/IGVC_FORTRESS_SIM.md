@@ -276,7 +276,10 @@ bridge also matches the real bag-observed ZED output shape: `bgra8` RGB,
 `32FC1` depth, `zed_left_camera_frame_optical`, 960x540, and camera intrinsics
 fx=fy=539.702, cx=472.965, cy=255.161. The rendered Gazebo camera uses the
 equivalent rectified horizontal FOV of about 1.454 rad, not the raw ZED
-marketing HFOV.
+marketing HFOV. In distributed mode these image/depth/info outputs must use
+sensor-data/best-effort QoS, and the line detector must subscribe with
+best-effort QoS. Reliable raw camera streams can saturate or backpressure the
+routed VM-to-Jetson DDS link and stall unrelated `/clock` and `/tf` samples.
 
 The camera line detector also buffers recent RGB/depth inputs and selects the newest
 synchronized pair on each detection tick, which avoids callback-order races

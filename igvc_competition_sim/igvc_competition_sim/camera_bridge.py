@@ -10,7 +10,7 @@ try:
     import rclpy
     from rclpy.executors import ExternalShutdownException
     from rclpy.node import Node
-    from rclpy.qos import QoSProfile, qos_profile_sensor_data
+    from rclpy.qos import QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
     from geometry_msgs.msg import TransformStamped
     from nav_msgs.msg import Odometry
     from sensor_msgs.msg import CameraInfo, Image
@@ -144,8 +144,14 @@ class IgvcCameraBridge(Node):
         self.depth_buffer: list[Image] = []
         self._warned_color_conversion = False
 
-        image_qos = QoSProfile(depth=10)
+        # Camera topics are high-bandwidth sensor streams. Publishing them
+        # reliable can backpressure the routed VM<->Jetson DDS link when the
+        # subscriber falls behind, which stalls unrelated topics like /clock
+        # and /tf. Match normal camera-driver behavior here.
+        image_qos = QoSProfile(depth=5)
+        image_qos.reliability = ReliabilityPolicy.BEST_EFFORT
         info_qos = QoSProfile(depth=1)
+        info_qos.reliability = ReliabilityPolicy.BEST_EFFORT
 
         self.image_pub = self.create_publisher(
             Image,
