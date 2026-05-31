@@ -1,0 +1,12 @@
+build/
+install/
+log/
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+igvc_competition_sim/fortress_runs/
+*.db3
+*.mcap
+
