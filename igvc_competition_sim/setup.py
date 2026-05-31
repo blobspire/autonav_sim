@@ -16,6 +16,8 @@ setup(
              "config/igvc_competition_compact.yaml",
              "config/dynamics_calibration.yaml",
              "config/dynamics_replay_profiles.yaml",
+             "config/fastdds_jetson_robot.xml",
+             "config/fastdds_jetson_sim_vm.xml",
          ]),
         ("share/" + package_name + "/launch",
          ["launch/igvc_competition.launch.py"]),

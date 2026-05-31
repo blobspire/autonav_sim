@@ -125,26 +125,46 @@ Network baseline:
 
 - Mac/laptop Ethernet: `10.66.0.1/24`
 - Spare Jetson Ethernet: `10.66.0.2/24`
-- Gazebo Lima VM Ethernet: `10.66.0.3/24` on the direct Jetson Ethernet
-  bridge.
+- Jetson perception Gazebo VM shared address: `192.168.105.2/24`
+- Jetson perception Gazebo VM direct bridge address: `10.66.0.4/24` on the
+  direct Jetson Ethernet bridge. Keep it for link checks, but do not use it as
+  the DDS data locator on this Mac; raw UDP/TCP over that bridged path is
+  unreliable even when ICMP ping works.
 - SSH alias: `jetson-spare-eth`
-- Recommended ROS graph: `ROS_DOMAIN_ID=42`, `ROS_LOCALHOST_ONLY=0`
+- Recommended Jetson-in-the-loop ROS graph: `ROS_DOMAIN_ID=72`,
+  `ROS_LOCALHOST_ONLY=0`
 - Confirm the link is gigabit before testing: `1000baseT <full-duplex>` on the
   laptop and `Speed: 1000Mb/s` on the Jetson.
 
-For the current Mac/Lima setup, the Gazebo VM is `autonav-gazebo-sim`. Its
-`~/.lima/autonav-gazebo-sim/lima.yaml` should include both the normal bridged
-network and the direct Jetson Ethernet bridge:
+For the current Mac/Lima dual-lane setup, the Jetson perception Gazebo VM is
+`autonav-ros22`. Its `~/.lima/autonav-ros22/lima.yaml` should include both the
+stable Lima shared management network and the direct Jetson Ethernet bridge:
 
 ```yaml
 networks:
-- lima: bridged
+- lima: shared
 - lima: jetsoneth
 ```
 
-The VM should assign the Jetson-side interface `10.66.0.3/24`; on the current
+The VM should assign the Jetson-side interface `10.66.0.4/24`; on the current
 machine this is handled by the VM-local systemd unit
-`autonav-jetsoneth-ip.service`.
+`autonav-jetsoneth-ip.service`. The same unit should route Jetson traffic over
+Lima shared networking so DDS data uses `192.168.105.2`:
+
+```text
+10.66.0.2 via 192.168.105.1 dev lima0 src 192.168.105.2
+```
+
+The Jetson Ethernet connection should have the reciprocal persistent route:
+
+```text
+192.168.105.0/24 via 10.66.0.1
+```
+
+If the Mac hotspot or Ethernet cabling changes, do not trust a stale running
+VM. Stop any master-owned Jetson smoke, restart `autonav-ros22`, and re-run the
+preflight until pings and raw UDP probes pass between Jetson `10.66.0.2` and
+VM `192.168.105.2`.
 
 Before running camera-line tests, confirm the generated SDF world contains the
 Gazebo Sensors system. Without it, Gazebo publishes `/clock` and odometry but
@@ -159,16 +179,22 @@ Run the Jetson stack inside the `koopa-kingdom` container:
 
 ```bash
 ssh jetson-spare-eth
-cd ~/autonav_ws/src/AutoNav_25-26
-ROS_DOMAIN_ID=42 AUTONAV_CONTAINER_GUI=0 ./env/docker/run-container.sh --no-attach
+cd /home/vtcro/AutoNav_25-26
+ROS_DOMAIN_ID=72 AUTONAV_CONTAINER_GUI=0 \
+  AUTONAV_SIM_SOURCE=/home/vtcro/autonav_sim \
+  FASTRTPS_DEFAULT_PROFILES_FILE=/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml \
+  FASTDDS_DEFAULT_PROFILES_FILE=/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml \
+  ./env/docker/run-container.sh --no-attach
 docker exec -it -u admin \
-  -e ROS_DOMAIN_ID=42 \
+  -e ROS_DOMAIN_ID=72 \
   -e ROS_LOCALHOST_ONLY=0 \
   -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
-  -e ROS_WS=/autonav_ws \
-  -e AUTONAV_ROS_WS=/autonav_ws \
+  -e FASTRTPS_DEFAULT_PROFILES_FILE=/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml \
+  -e FASTDDS_DEFAULT_PROFILES_FILE=/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml \
+  -e ROS_WS=/autonav/isaac_ros-dev \
+  -e AUTONAV_ROS_WS=/autonav/isaac_ros-dev \
   koopa-kingdom \
-  /bin/bash -lc 'cd /autonav_ws/src/autonav_sim/igvc_competition_sim && ./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command'
+  /bin/bash -lc 'cd /autonav_sim/igvc_competition_sim && ./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command'
 ```
 
 If the Jetson uses separate workspaces, set `ROS_WS` to the standalone sim
@@ -178,29 +204,43 @@ script sources `AUTONAV_ROS_WS` first and the sim overlay second.
 Run Gazebo and the simulation adapters on the laptop/ROS VM:
 
 ```bash
-cd ~/autonav_ws/src/autonav_sim/igvc_competition_sim
-ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=0 RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
+cd /tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim
+ROS_DOMAIN_ID=72 ROS_LOCALHOST_ONLY=0 RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
+  FASTRTPS_DEFAULT_PROFILES_FILE=/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml \
+  FASTDDS_DEFAULT_PROFILES_FILE=/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml \
+  ODOM_BRIDGE_RATE_HZ=60.0 \
   ./Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command
 ```
+
+Use the sim-specific Fast DDS profiles above for distributed runs. They pin
+the ROS graph to reachable locators: `192.168.105.2` for the VM and
+`10.66.0.2` for the Jetson. Without them, the VM can advertise unreachable
+Lima/hotspot locators; the Jetson may then miss `/clock`, camera, GPS, and odom
+publishers even though topic names appear in the graph.
+The Jetson-lane sim side should use a denser `60 Hz` odom/TF relay so Nav2
+costmap message filters have transform samples around the 20 Hz PCA scan
+timestamps despite cross-host DDS jitter.
 
 Quick link validation:
 
 ```bash
 # VM -> Jetson
-limactl shell autonav-gazebo-sim ping -c 2 10.66.0.2
+limactl shell autonav-ros22 ping -c 2 10.66.0.2
 
-# Jetson -> VM
-ssh jetson-spare-eth 'ping -c 2 10.66.0.3'
+# Jetson -> VM DDS path
+ssh jetson-spare-eth 'ping -c 2 192.168.105.2'
 
 # ROS camera topics visible from inside the Jetson container
 ssh jetson-spare-eth 'docker exec -u admin \
-  -e ROS_DOMAIN_ID=42 \
+  -e ROS_DOMAIN_ID=72 \
   -e ROS_LOCALHOST_ONLY=0 \
   -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
+  -e FASTRTPS_DEFAULT_PROFILES_FILE=/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml \
+  -e FASTDDS_DEFAULT_PROFILES_FILE=/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml \
   koopa-kingdom \
   bash -lc "source /opt/ros/humble/setup.bash && \
-    source /autonav_ws/install/setup.bash && \
-    timeout 4s ros2 topic hz /igvc_sim/zed/image"'
+    source /autonav/isaac_ros-dev/install/setup.bash && \
+    timeout 4s ros2 topic echo --once --qos-reliability best_effort /zed/zed_node/rgb/color/rect/image >/dev/null"'
 ```
 
 Role split:

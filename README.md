@@ -141,6 +141,10 @@ The wrappers default `ROS_WS` to the containing workspace root. Override
 If the standalone sim package and robot stack are built in separate workspaces
 on the Jetson, set `AUTONAV_ROS_WS=/path/to/AutoNav/isaac_ros-dev` so the
 wrapper sources the robot packages before the sim overlay.
+For the split Docker setup used by the dual-sim orchestrator, mount this repo
+with `AUTONAV_SIM_SOURCE=/home/vtcro/autonav_sim` when starting
+`koopa-kingdom`, then run the wrapper from `/autonav_sim/igvc_competition_sim`
+with `ROS_WS=/autonav/isaac_ros-dev`.
 
 ## Package Boundaries
 

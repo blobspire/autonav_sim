@@ -398,6 +398,72 @@ def preflight_planning(
     return ok, messages
 
 
+def udp_probe(
+    *,
+    listener,
+    sender,
+    listener_label: str,
+    sender_label: str,
+    listener_ip: str,
+    sender_ip: str,
+    port: int,
+    token: str,
+) -> tuple[bool, str]:
+    out = f"/tmp/autonav_udp_probe_{port}.out"
+    err = f"/tmp/autonav_udp_probe_{port}.err"
+    listener_py = (
+        "import pathlib,socket;"
+        "s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);"
+        f"s.bind(({listener_ip!r},{port}));"
+        "s.settimeout(4);"
+        "data,addr=s.recvfrom(2048);"
+        f"pathlib.Path({out!r}).write_text(data.decode('utf-8','replace'))"
+    )
+    start = listener(
+        f"rm -f {shlex.quote(out)} {shlex.quote(err)}; "
+        f"nohup python3 -c {shlex.quote(listener_py)} "
+        f">{shlex.quote(err)} 2>&1 &",
+        timeout=10,
+    )
+    if start.returncode != 0:
+        return False, (
+            f"{listener_label} failed to start UDP listener on "
+            f"{listener_ip}:{port}: {start.stdout.strip()}"
+        )
+    time.sleep(0.25)
+    sender_py = (
+        "import socket;"
+        "s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);"
+        f"s.bind(({sender_ip!r},0));"
+        f"s.sendto({token!r}.encode(),({listener_ip!r},{port}))"
+    )
+    send = sender(f"python3 -c {shlex.quote(sender_py)}", timeout=10)
+    if send.returncode != 0:
+        return False, (
+            f"{sender_label} failed to send UDP probe to "
+            f"{listener_ip}:{port}: {send.stdout.strip()}"
+        )
+    check = listener(
+        (
+            f"for i in $(seq 1 40); do "
+            f"if [ -s {shlex.quote(out)} ]; then cat {shlex.quote(out)}; exit 0; fi; "
+            "sleep 0.1; "
+            "done; "
+            f"cat {shlex.quote(err)} 2>/dev/null || true; exit 1"
+        ),
+        timeout=8,
+    )
+    if check.returncode != 0 or token not in check.stdout:
+        detail = check.stdout.strip()
+        if not detail:
+            detail = "listener timed out"
+        return False, (
+            f"UDP probe {sender_label} {sender_ip} -> "
+            f"{listener_label} {listener_ip}:{port} failed: {detail}"
+        )
+    return True, ""
+
+
 def preflight_jetson(
     manifest: dict[str, Any],
     *,
@@ -416,6 +482,53 @@ def preflight_jetson(
         ok = False
         messages.append(f"cannot ssh to {host}: {probe.stdout.strip()}")
         return ok, messages
+    jetson_time = ssh(host, "date -u +%s", timeout=12)
+    if jetson_time.returncode == 0:
+        try:
+            skew_s = abs(int(jetson_time.stdout.strip()) - int(time.time()))
+            if skew_s > 60:
+                ok = False
+                messages.append(f"Jetson clock differs from host by {skew_s}s")
+        except ValueError:
+            ok = False
+            messages.append(f"cannot parse Jetson clock: {jetson_time.stdout.strip()}")
+    else:
+        ok = False
+        messages.append(f"cannot read Jetson clock: {jetson_time.stdout.strip()}")
+    sim_ip = lane.get("sim_ip", "")
+    if sim_ip:
+        reverse_ping = ssh(host, f"ping -c 1 -W 2 {shlex.quote(sim_ip)} >/dev/null", timeout=12)
+        if reverse_ping.returncode != 0:
+            ok = False
+            messages.append(f"Jetson cannot ping {lane['sim_vm']} at {sim_ip}")
+    if sim_ip:
+        base_port = 45600 + (int(time.time()) % 800)
+        vm_to_jetson, vm_to_jetson_msg = udp_probe(
+            listener=lambda command, timeout=20: ssh(host, command, timeout=timeout),
+            sender=lambda command, timeout=20: lima(lane["sim_vm"], command, timeout=timeout),
+            listener_label="Jetson",
+            sender_label=lane["sim_vm"],
+            listener_ip=lane["jetson_ip"],
+            sender_ip=sim_ip,
+            port=base_port,
+            token=f"vm-to-jetson-{base_port}",
+        )
+        if not vm_to_jetson:
+            ok = False
+            messages.append(vm_to_jetson_msg)
+        jetson_to_vm, jetson_to_vm_msg = udp_probe(
+            listener=lambda command, timeout=20: lima(lane["sim_vm"], command, timeout=timeout),
+            sender=lambda command, timeout=20: ssh(host, command, timeout=timeout),
+            listener_label=lane["sim_vm"],
+            sender_label="Jetson",
+            listener_ip=sim_ip,
+            sender_ip=lane["jetson_ip"],
+            port=base_port + 1,
+            token=f"jetson-to-vm-{base_port + 1}",
+        )
+        if not jetson_to_vm:
+            ok = False
+            messages.append(jetson_to_vm_msg)
     forbidden_pattern = "|".join(manifest["forbidden_jetson_process_patterns"])
     forbidden = process_lines_ssh(host, forbidden_pattern)
     if forbidden:
@@ -435,19 +548,63 @@ def preflight_jetson(
         messages.append(
             f"sim workspace {lane['sim_workspace']} is not prepared yet; run setup/rsync/build before launch"
         )
+    sim_fastdds = lane_env(lane, "sim").get("FASTRTPS_DEFAULT_PROFILES_FILE", "")
+    if sim_fastdds:
+        sim_fastdds_check = lima(lane["sim_vm"], f"test -f {shlex.quote(sim_fastdds)}")
+        if sim_fastdds_check.returncode != 0:
+            ok = False
+            messages.append(f"Jetson-lane sim Fast DDS profile is missing: {sim_fastdds}")
     jetson_script = ssh(
         host,
-        f"test -f {shlex.quote(lane['jetson_repo'])}/{shlex.quote(lane['jetson_entrypoint'])}",
+        f"test -f {shlex.quote(lane['jetson_sim_repo'])}/{shlex.quote(lane['jetson_entrypoint'])}",
     )
     if jetson_script.returncode != 0:
         ok = False
         messages.append("Jetson stack entrypoint is missing")
+    jetson_fastdds = lane_env(lane, "jetson").get("FASTRTPS_DEFAULT_PROFILES_FILE", "")
+    if jetson_fastdds and jetson_fastdds.startswith(lane["jetson_sim_container"] + "/"):
+        jetson_fastdds_host = (
+            Path(lane["jetson_sim_repo"]) /
+            Path(jetson_fastdds).relative_to(lane["jetson_sim_container"])
+        )
+        jetson_fastdds_check = ssh(host, f"test -f {shlex.quote(str(jetson_fastdds_host))}")
+        if jetson_fastdds_check.returncode != 0:
+            ok = False
+            messages.append(f"Jetson Fast DDS profile is missing: {jetson_fastdds_host}")
+    docker_image = ssh(host, "docker image inspect dev:koopa-kingdom >/dev/null 2>&1")
+    if docker_image.returncode != 0:
+        ok = False
+        messages.append("Jetson Docker image dev:koopa-kingdom is missing")
+    container_mount = ssh(
+        host,
+        (
+            "if docker ps --format '{{.Names}}' | grep -qx koopa-kingdom; then "
+            f"docker exec koopa-kingdom test -f {shlex.quote(lane['jetson_sim_container'])}/{shlex.quote(lane['jetson_entrypoint'])}; "
+            "fi"
+        ),
+    )
+    if container_mount.returncode != 0:
+        ok = False
+        messages.append("running Jetson container does not have the standalone sim repo mounted")
     active_sim = process_lines_vm(lane["sim_vm"], "igvc_competition.launch.py|ign gazebo|ros2 bag")
     if active_sim:
         messages.append("Jetson-lane sim VM already has sim processes: " + "; ".join(active_sim))
+    sim_vm_setup = lima(
+        lane["sim_vm"],
+        (
+            f"bash -lc 'source /opt/ros/humble/setup.bash && "
+            f"source {shlex.quote(lane['sim_workspace'])}/install/setup.bash && "
+            "ros2 pkg prefix autonav_interfaces >/dev/null'"
+        ),
+    )
+    if sim_vm_setup.returncode != 0:
+        ok = False
+        messages.append("Jetson-lane sim VM is missing autonav_interfaces in its built workspace")
     sim_info = git_info_vm(lane["sim_vm"], f"{lane['sim_workspace']}/src/autonav_sim")
+    sim_robot_info = git_info_vm(lane["sim_vm"], f"{lane['sim_workspace']}/src/AutoNav_25-26")
+    jetson_sim_info = git_info_ssh(host, lane["jetson_sim_repo"])
     jetson_info = git_info_ssh(host, lane["jetson_repo"])
-    for msg in runtime_dirty_messages([sim_info, jetson_info], allow_dirty=allow_dirty_runtime):
+    for msg in runtime_dirty_messages([sim_info, sim_robot_info, jetson_sim_info, jetson_info], allow_dirty=allow_dirty_runtime):
         ok = False
         messages.append(msg)
     return ok, messages
@@ -503,6 +660,11 @@ def workspace_report(manifest: dict[str, Any]) -> dict[str, Any]:
         jetson["sim_vm"],
         f"{jetson['sim_workspace']}/src/autonav_sim",
     )
+    jetson_robot_sim_vm = git_info_vm(
+        jetson["sim_vm"],
+        f"{jetson['sim_workspace']}/src/AutoNav_25-26",
+    )
+    jetson_sim_on_jetson = git_info_ssh(jetson["jetson_host"], jetson["jetson_sim_repo"])
     jetson_robot = git_info_ssh(jetson["jetson_host"], jetson["jetson_repo"])
     report: dict[str, Any] = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -523,6 +685,8 @@ def workspace_report(manifest: dict[str, Any]) -> dict[str, Any]:
             "sim_vm": jetson["sim_vm"],
             "jetson_host": jetson["jetson_host"],
             "autonav_sim": jetson_sim,
+            "robot_dependency": jetson_robot_sim_vm,
+            "autonav_sim_jetson": jetson_sim_on_jetson,
             "robot": jetson_robot,
             "sim_processes": process_lines_vm(
                 jetson["sim_vm"],
@@ -538,6 +702,8 @@ def workspace_report(manifest: dict[str, Any]) -> dict[str, Any]:
     compare_heads(report, "planning_control.autonav_sim", host_sim, planning_sim)
     compare_heads(report, "planning_control.robot", host_robot, planning_robot)
     compare_heads(report, "jetson_perception.autonav_sim", host_sim, jetson_sim)
+    compare_heads(report, "jetson_perception.robot_dependency", host_robot, jetson_robot_sim_vm)
+    compare_heads(report, "jetson_perception.autonav_sim_jetson", host_sim, jetson_sim_on_jetson)
     compare_heads(report, "jetson_perception.robot", host_robot, jetson_robot)
     forbidden_pattern = "|".join(manifest["forbidden_jetson_process_patterns"])
     forbidden = process_lines_ssh(jetson["jetson_host"], forbidden_pattern)
@@ -592,7 +758,14 @@ dest={shlex.quote(destination)}
 bundle={shlex.quote(bundle_path)}
 bundle_ref={shlex.quote(bundle_ref)}
 dirty_handling={shlex.quote(dirty_handling)}
-test -d "$dest/.git"
+if [ -e "$dest" ] && [ ! -d "$dest/.git" ]; then
+  echo "destination exists but is not a git repo: $dest" >&2
+  exit 3
+fi
+if [ ! -d "$dest/.git" ]; then
+  mkdir -p "$dest"
+  git init "$dest" >/dev/null
+fi
 cd "$dest"
 if [ -n "$(git status --porcelain)" ]; then
   if [ "$dirty_handling" = "stash" ]; then
@@ -744,11 +917,31 @@ def sync_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) -
     print(f"jetson_perception sim source {sim_source}@{args.sim_ref} -> {sim_sha}")
     ok = True
     ok &= print_sync_result(
+        "jetson_perception.robot_sim_vm_dependency",
+        sync_bundle_to_vm(
+            robot_bundle,
+            vm=lane["sim_vm"],
+            destination=f"{lane['sim_workspace']}/src/AutoNav_25-26",
+            bundle_ref=robot_fetch_ref,
+            stash_dirty_destination=args.stash_dirty_destination,
+        ),
+    )
+    ok &= print_sync_result(
         "jetson_perception.autonav_sim",
         sync_bundle_to_vm(
             sim_bundle,
             vm=lane["sim_vm"],
             destination=f"{lane['sim_workspace']}/src/autonav_sim",
+            bundle_ref=sim_fetch_ref,
+            stash_dirty_destination=args.stash_dirty_destination,
+        ),
+    )
+    ok &= print_sync_result(
+        "jetson_perception.autonav_sim_jetson",
+        sync_bundle_to_ssh(
+            sim_bundle,
+            host=lane["jetson_host"],
+            destination=lane["jetson_sim_repo"],
             bundle_ref=sim_fetch_ref,
             stash_dirty_destination=args.stash_dirty_destination,
         ),
@@ -826,21 +1019,33 @@ limactl shell {lane['vm']} -- env -i HOME=/home/cole.guest USER=cole LOGNAME=col
 """
     if lane_name == "jetson_perception":
         lane = manifest["lanes"][lane_name]
-        env = " ".join(
-            f"{key}={shlex.quote(value)}" for key, value in lane["default_env"].items()
+        sim_env = " ".join(
+            f"{key}={shlex.quote(value)}" for key, value in lane_env(lane, "sim").items()
+        )
+        jetson_env = " ".join(
+            f"{key}={shlex.quote(value)}" for key, value in lane_env(lane, "jetson").items()
+        )
+        docker_flags = docker_env_flags(
+            lane_env(lane, "jetson"),
+            lane["ros_domain_id"],
+            {
+                "ROS_WS": lane["robot_container_workspace"],
+                "AUTONAV_ROS_WS": lane["robot_container_workspace"],
+            },
         )
         return f"""# Jetson perception lane: start sim side in {lane['sim_vm']}
 limactl shell {lane['sim_vm']} -- bash -lc '
   set -eo pipefail
   cd {lane['sim_workspace']}/{Path(lane['sim_entrypoint']).parent}
-  ROS_DOMAIN_ID={lane['ros_domain_id']} {env} ./Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command
+  ROS_DOMAIN_ID={lane['ros_domain_id']} {sim_env} ./Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command
 '
 
 # Jetson perception lane: start robot stack on {lane['jetson_host']}
 ssh {lane['jetson_host']} '
   set -eo pipefail
-  cd {lane['jetson_repo']}/{Path(lane['jetson_entrypoint']).parent}
-  ROS_DOMAIN_ID={lane['ros_domain_id']} {env} ./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command
+  cd {lane['jetson_repo']}
+  ROS_DOMAIN_ID={lane['ros_domain_id']} AUTONAV_CONTAINER_GUI=0 AUTONAV_SIM_SOURCE={shlex.quote(lane['jetson_sim_repo'])} {jetson_env} ./env/docker/run-container.sh --no-attach
+  docker exec -i -u admin {docker_flags} koopa-kingdom bash -lc "cd {shlex.quote(lane['jetson_sim_container'])}/{Path(lane['jetson_entrypoint']).parent} && ./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command"
 '
 """
     raise SystemExit(f"unknown lane: {lane_name}")
@@ -892,19 +1097,48 @@ def create_worktree(manifest: dict[str, Any], args: argparse.Namespace) -> int:
 def prepare_jetson_sim_workspace(manifest: dict[str, Any], build: bool) -> int:
     lane = manifest["lanes"]["jetson_perception"]
     autonav_sim = manifest["host_repos"]["autonav_sim"]
+    robot = manifest["host_repos"]["robot_primary"]
     workspace = lane["sim_workspace"]
     command = f"""
 set -eo pipefail
 mkdir -p {shlex.quote(workspace)}/src
-ln -sfn {shlex.quote(autonav_sim)} {shlex.quote(workspace)}/src/autonav_sim
+if [ -L {shlex.quote(workspace)}/src/autonav_sim ]; then
+  rm {shlex.quote(workspace)}/src/autonav_sim
+fi
+if [ -e {shlex.quote(workspace)}/src/autonav_sim ] && [ ! -d {shlex.quote(workspace)}/src/autonav_sim/.git ]; then
+  echo "destination exists but is not a git repo: {workspace}/src/autonav_sim" >&2
+  exit 3
+fi
+if [ ! -d {shlex.quote(workspace)}/src/autonav_sim/.git ]; then
+  git clone {shlex.quote(autonav_sim)} {shlex.quote(workspace)}/src/autonav_sim
+fi
+if [ -e {shlex.quote(workspace)}/src/AutoNav_25-26 ] && [ ! -d {shlex.quote(workspace)}/src/AutoNav_25-26/.git ]; then
+  echo "destination exists but is not a git repo: {workspace}/src/AutoNav_25-26" >&2
+  exit 3
+fi
+if [ ! -d {shlex.quote(workspace)}/src/AutoNav_25-26/.git ]; then
+  git clone {shlex.quote(robot)} {shlex.quote(workspace)}/src/AutoNav_25-26
+fi
+if [ -d {shlex.quote(workspace)}/src/AutoNav_25-26/isaac_ros-dev/src/igvc_competition_sim ]; then
+  touch {shlex.quote(workspace)}/src/AutoNav_25-26/isaac_ros-dev/src/igvc_competition_sim/COLCON_IGNORE
+fi
 cd {shlex.quote(workspace)}
 if [ {str(build).lower()} = true ]; then
   source /opt/ros/humble/setup.bash
-  colcon build --symlink-install --packages-select igvc_competition_sim
+  colcon build --symlink-install \
+    --packages-select \
+      autonav_interfaces \
+      bringup \
+      slam \
+      autonav_detection \
+      gps_waypoint_handler \
+      igvc_competition_sim
 fi
 test -f {shlex.quote(workspace)}/{shlex.quote(lane['sim_entrypoint'])}
 if [ {str(build).lower()} = true ]; then
   test -f {shlex.quote(workspace)}/install/setup.bash
+  source {shlex.quote(workspace)}/install/setup.bash
+  ros2 pkg prefix autonav_interfaces >/dev/null
 fi
 """
     proc = lima(lane["sim_vm"], command, timeout=600 if build else 30)
@@ -917,6 +1151,98 @@ def build_remote_env(env: dict[str, str], ros_domain_id: str) -> str:
     return " ".join(f"{key}={shlex.quote(value)}" for key, value in pairs.items())
 
 
+def lane_env(lane: dict[str, Any], side: str) -> dict[str, str]:
+    env = dict(lane.get("default_env", {}))
+    env.update(lane.get(f"{side}_env", {}))
+    return env
+
+
+def docker_env_flags(
+    env: dict[str, str],
+    ros_domain_id: str,
+    extra: dict[str, str] | None = None,
+) -> str:
+    pairs = {"ROS_DOMAIN_ID": ros_domain_id, **env}
+    if extra:
+        pairs.update(extra)
+    return " ".join(f"-e {key}={shlex.quote(value)}" for key, value in pairs.items())
+
+
+def jetson_container_prepare_command(
+    lane: dict[str, Any],
+    *,
+    build: bool,
+    ros_domain_id: str | None = None,
+) -> str:
+    ros_domain_id = ros_domain_id or lane["ros_domain_id"]
+    jetson_env = lane_env(lane, "jetson")
+    shell_env = build_remote_env(jetson_env, ros_domain_id)
+    docker_flags = docker_env_flags(
+        jetson_env,
+        ros_domain_id,
+        {
+            "ROS_WS": lane["robot_container_workspace"],
+            "AUTONAV_ROS_WS": lane["robot_container_workspace"],
+        },
+    )
+    build_command = ""
+    if build:
+        build_command = """
+source /opt/ros/humble/setup.bash
+cd /autonav/isaac_ros-dev
+colcon build --symlink-install \
+  --base-paths src /autonav_sim/igvc_competition_sim \
+  --packages-select \
+    autonav_interfaces \
+    custom_behavior_tree_plugins \
+    local_mirror_layer \
+    line_layer \
+    autonav_detection \
+    gps_waypoint_handler \
+    slam \
+    bringup \
+    igvc_competition_sim
+"""
+    return f"""
+set -eo pipefail
+cd {shlex.quote(lane['jetson_repo'])}
+if docker ps --format '{{{{.Names}}}}' | grep -qx koopa-kingdom; then
+  if ! docker exec koopa-kingdom test -f {shlex.quote(lane['jetson_sim_container'])}/{shlex.quote(lane['jetson_entrypoint'])}; then
+    echo "running koopa-kingdom container does not have {lane['jetson_sim_container']} mounted" >&2
+    echo "stop that container before preparing the Jetson sim runtime" >&2
+    exit 4
+  fi
+else
+  if docker ps -a --format '{{{{.Names}}}}' | grep -qx koopa-kingdom; then
+    docker rm koopa-kingdom >/dev/null
+  fi
+  AUTONAV_CONTAINER_GUI=0 AUTONAV_SIM_SOURCE={shlex.quote(lane['jetson_sim_repo'])} {shell_env} ./env/docker/run-container.sh --no-attach
+fi
+docker exec -u admin {docker_flags} koopa-kingdom bash -lc {shlex.quote(f'''
+set -eo pipefail
+test -f {lane['jetson_sim_container']}/{lane['jetson_entrypoint']}
+{build_command}
+source /opt/ros/humble/setup.bash
+source {lane['robot_container_workspace']}/install/setup.bash
+ros2 pkg prefix igvc_competition_sim >/dev/null
+ros2 pkg prefix bringup >/dev/null
+ros2 pkg prefix slam >/dev/null
+ros2 pkg prefix autonav_detection >/dev/null
+''')}
+"""
+
+
+def prepare_jetson_runtime(manifest: dict[str, Any], build: bool) -> int:
+    lane = manifest["lanes"]["jetson_perception"]
+    proc = ssh(
+        lane["jetson_host"],
+        jetson_container_prepare_command(lane, build=build),
+        timeout=1800 if build else 120,
+    )
+    print(proc.stdout, end="")
+    return proc.returncode
+
+
 def start_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) -> int:
     ensure_state_dirs()
     state = active_state("jetson_perception")
@@ -924,8 +1250,7 @@ def start_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) 
         print("jetson_perception is already owned by master:", active_state_path("jetson_perception"))
         return 2
     ok, messages = preflight_jetson(manifest)
-    hard_failures = [msg for msg in messages if not msg.startswith("sim workspace ")]
-    if not ok or hard_failures:
+    if not ok:
         print("jetson_perception preflight failed")
         for msg in messages:
             print(" -", msg)
@@ -939,15 +1264,35 @@ def start_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) 
         return 2
     run_dir = RUNS_DIR / f"{timestamp()}_jetson_perception_{args.name}"
     run_dir.mkdir(parents=True)
-    env = build_remote_env(lane["default_env"], str(args.ros_domain_id or lane["ros_domain_id"]))
+    ros_domain_id = str(args.ros_domain_id or lane["ros_domain_id"])
+    sim_env = lane_env(lane, "sim")
+    jetson_env = lane_env(lane, "jetson")
+    env = build_remote_env(sim_env, ros_domain_id)
     sim_command = (
         f"set -eo pipefail; cd {shlex.quote(str(Path(sim_script).parent))}; "
         f"{env} ./Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command"
     )
-    jetson_script = f"{lane['jetson_repo']}/{lane['jetson_entrypoint']}"
+    jetson_script = f"{lane['jetson_sim_container']}/{lane['jetson_entrypoint']}"
+    docker_flags = docker_env_flags(
+        jetson_env,
+        ros_domain_id,
+        {
+            "ROS_WS": lane["robot_container_workspace"],
+            "AUTONAV_ROS_WS": lane["robot_container_workspace"],
+        },
+    )
     jetson_command = (
-        f"set -eo pipefail; cd {shlex.quote(str(Path(jetson_script).parent))}; "
-        f"{env} ./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command"
+        jetson_container_prepare_command(
+            lane,
+            build=False,
+            ros_domain_id=ros_domain_id,
+        )
+        + "\n"
+        + f"docker exec -i -u admin {docker_flags} koopa-kingdom bash -lc "
+        + shlex.quote(
+            f"set -eo pipefail; cd {shlex.quote(str(Path(jetson_script).parent))}; "
+            "./Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command"
+        )
     )
     sim_log = open(run_dir / "sim_vm.log", "w", encoding="utf-8")
     jetson_log = open(run_dir / "jetson_stack.log", "w", encoding="utf-8")
@@ -1068,9 +1413,121 @@ def start_planning(manifest: dict[str, Any], args: argparse.Namespace) -> int:
     return 0
 
 
-def stop_owned(lane: str) -> int:
+def remote_kill_command(patterns: list[str]) -> str:
+    payload = f"""
+import os
+import signal
+import subprocess
+import time
+
+patterns = {patterns!r}
+self_pid = os.getpid()
+
+def matching_pids():
+    proc = subprocess.run(
+        ["ps", "-eo", "pid=,command="],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    pids = []
+    for line in proc.stdout.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) != 2:
+            continue
+        pid = int(parts[0])
+        command = parts[1]
+        if pid == self_pid or "python3 -" in command:
+            continue
+        if any(pattern in command for pattern in patterns):
+            pids.append(pid)
+    return sorted(set(pids))
+
+for sig in (signal.SIGINT, signal.SIGTERM):
+    pids = matching_pids()
+    for pid in pids:
+        try:
+            os.kill(pid, sig)
+        except ProcessLookupError:
+            pass
+    time.sleep(2)
+for pid in matching_pids():
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+"""
+    return "python3 - <<'PY'\n" + payload + "\nPY"
+
+
+def cleanup_remote_lane(manifest: dict[str, Any], lane: str) -> None:
+    if lane == "planning_control":
+        vm = manifest["lanes"]["planning_control"]["vm"]
+        lima(
+            vm,
+            remote_kill_command(
+                [
+                    "run_timebox.py",
+                    "evaluate.py",
+                    "igvc_competition.launch.py",
+                    "ign gazebo",
+                    "ros2 bag record",
+                    "igvc_mission_runner",
+                ]
+            ),
+            timeout=30,
+        )
+        return
+    if lane == "jetson_perception":
+        lane_doc = manifest["lanes"]["jetson_perception"]
+        lima(
+            lane_doc["sim_vm"],
+            remote_kill_command(
+                [
+                    "igvc_competition.launch.py",
+                    "ign gazebo",
+                    "parameter_bridge",
+                    "igvc_calibrated_dynamics",
+                    "igvc_camera_bridge",
+                    "igvc_odom_bridge",
+                    "igvc_sensor_harness",
+                    "igvc_course_monitor",
+                ]
+            ),
+            timeout=30,
+        )
+        ssh(
+            lane_doc["jetson_host"],
+            "docker exec koopa-kingdom bash -lc "
+            + shlex.quote(
+                remote_kill_command(
+                    [
+                        "igvc_competition.launch.py",
+                        "line_detector",
+                        "grade_detector",
+                        "pointcloud_to_laserscan",
+                        "gps_handler_node",
+                        "breadcrumb_buffer",
+                        "controller_server",
+                        "smoother_server",
+                        "planner_server",
+                        "behavior_server",
+                        "bt_navigator",
+                        "waypoint_follower",
+                        "velocity_smoother",
+                        "lifecycle_manager",
+                    ]
+                )
+            )
+            + " || true",
+            timeout=30,
+        )
+
+
+def stop_owned(manifest: dict[str, Any], lane: str) -> int:
     state = active_state(lane)
     if not state:
+        cleanup_remote_lane(manifest, lane)
         print(f"no master-owned active state for {lane}")
         return 0
     pids = []
@@ -1095,6 +1552,7 @@ def stop_owned(lane: str) -> int:
                 os.kill(pid, signal.SIGTERM)
             except ProcessLookupError:
                 pass
+    cleanup_remote_lane(manifest, lane)
     active_state_path(lane).unlink(missing_ok=True)
     print(f"cleared master-owned state for {lane}")
     return 0
@@ -1118,6 +1576,8 @@ def main(argv: list[str]) -> int:
     wt.add_argument("--print-only", action="store_true")
     prep = sub.add_parser("prepare-jetson-sim-workspace")
     prep.add_argument("--build", action="store_true")
+    prep_runtime = sub.add_parser("prepare-jetson-runtime")
+    prep_runtime.add_argument("--build", action="store_true")
     sync_plan = sub.add_parser("sync-planning-control")
     sync_plan.add_argument("--robot-source", default="")
     sync_plan.add_argument("--robot-ref", default="HEAD")
@@ -1175,6 +1635,8 @@ def main(argv: list[str]) -> int:
         return create_worktree(manifest, args)
     if args.cmd == "prepare-jetson-sim-workspace":
         return prepare_jetson_sim_workspace(manifest, args.build)
+    if args.cmd == "prepare-jetson-runtime":
+        return prepare_jetson_runtime(manifest, args.build)
     if args.cmd == "sync-planning-control":
         return sync_planning_control(manifest, args)
     if args.cmd == "sync-jetson-perception":
@@ -1184,7 +1646,7 @@ def main(argv: list[str]) -> int:
     if args.cmd == "start-jetson-perception":
         return start_jetson_perception(manifest, args)
     if args.cmd == "stop-owned":
-        return stop_owned(args.lane)
+        return stop_owned(manifest, args.lane)
     raise AssertionError(args.cmd)
 
 

@@ -40,17 +40,31 @@
       "sim_vm": "autonav-ros22",
       "jetson_host": "jetson-spare-eth",
       "jetson_ip": "10.66.0.2",
+      "sim_ip": "192.168.105.2",
+      "sim_direct_ip": "10.66.0.4",
       "ros_domain_id": "72",
       "sim_workspace": "/tmp/autonav_jetson_sim_ws",
       "jetson_repo": "/home/vtcro/AutoNav_25-26",
+      "jetson_sim_repo": "/home/vtcro/autonav_sim",
+      "jetson_sim_container": "/autonav_sim",
+      "robot_container_workspace": "/autonav/isaac_ros-dev",
       "sim_entrypoint": "src/autonav_sim/igvc_competition_sim/Run_IGVC_COMPETITION_FORTRESS_SIM_ONLY.command",
-      "jetson_entrypoint": "isaac_ros-dev/src/igvc_competition_sim/Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command",
+      "jetson_entrypoint": "igvc_competition_sim/Run_IGVC_COMPETITION_FORTRESS_JETSON_STACK.command",
       "default_env": {
         "LINE_DETECTION_MODE": "camera",
         "GROUND_TRUTH_PCA": "false",
         "PUBLISH_FULL_LIDAR_CLOUD": "true",
         "ROS_LOCALHOST_ONLY": "0",
         "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp"
+      },
+      "sim_env": {
+        "ODOM_BRIDGE_RATE_HZ": "60.0",
+        "FASTRTPS_DEFAULT_PROFILES_FILE": "/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml",
+        "FASTDDS_DEFAULT_PROFILES_FILE": "/tmp/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/config/fastdds_jetson_sim_vm.xml"
+      },
+      "jetson_env": {
+        "FASTRTPS_DEFAULT_PROFILES_FILE": "/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml",
+        "FASTDDS_DEFAULT_PROFILES_FILE": "/autonav_sim/igvc_competition_sim/config/fastdds_jetson_robot.xml"
       }
     }
   },

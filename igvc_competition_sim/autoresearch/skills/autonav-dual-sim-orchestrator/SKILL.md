@@ -37,8 +37,11 @@ sed -n '1,220p' DUAL_SIM_MASTER.md
 
 - `planning_control`: `autonav-gazebo-sim` only. Gazebo is headless, Nav2 runs
   in the same VM, and perception is oracle-backed. Do not involve the Jetson.
-- `jetson_perception`: `autonav-ros22` runs headless Gazebo/sim sensors; the
-  Jetson at `jetson-spare-eth` / `10.66.0.2` runs the sim-safe robot stack.
+- `jetson_perception`: `autonav-ros22` runs headless Gazebo/sim sensors and
+  advertises DDS on `192.168.105.2`; the Jetson at `jetson-spare-eth` /
+  `10.66.0.2` runs the
+  sim-safe robot stack in Docker with `/home/vtcro/autonav_sim` mounted at
+  `/autonav_sim`.
 - `autonav-rviz`: optional visualization only; it should be stopped when not
   actively needed.
 
@@ -51,7 +54,28 @@ sed -n '1,220p' DUAL_SIM_MASTER.md
   branch for each candidate.
 - Sync the chosen clean worktree into the runtime workspace before testing it;
   `verify-workspaces` must show the intended commit and no dirty runtime repo.
+- Treat Jetson clock skew as a hard preflight failure; stale 1970 time causes
+  bad build timestamps and confusing run artifacts.
+- Jetson-in-the-loop runs must use the lane-specific Fast DDS profiles:
+  `fastdds_jetson_sim_vm.xml` on `autonav-ros22` and
+  `fastdds_jetson_robot.xml` inside the Jetson container. If `/clock`, camera,
+  GPS, or odom publishers are visible in the VM but not on the Jetson, suspect
+  DDS interface/locator selection before changing Nav2.
+  If only the first few nodes are visible, check `maxInitialPeersRange`.
 - Keep ROS domains separate. The default Jetson lane domain is `72`.
+- Keep `jetsoneth` dedicated to `autonav-ros22`; `autonav-gazebo-sim` should
+  not attach to the direct Jetson Ethernet bridge.
+- `autonav-ros22` should use `shared + jetsoneth`, not Wi-Fi `bridged +
+  jetsoneth`, so Lima management SSH survives hotspot changes. After cable,
+  adapter, or hotspot changes, restart `autonav-ros22` with no active run and
+  verify VM/Jetson ping plus raw UDP probes.
+- DDS data uses VM `192.168.105.2` through the Mac router to Jetson
+  `10.66.0.2`. The VM's direct bridge address `10.66.0.4` is kept for link
+  checks, but raw UDP/TCP over that bridged locator has failed on this Mac even
+  when ICMP ping worked.
+- The Jetson-lane sim side uses `ODOM_BRIDGE_RATE_HZ=60.0` from the manifest to
+  keep `odom -> base_link` TF dense enough for the 20 Hz PCA scan costmap
+  filters across DDS jitter.
 
 ## Branch Policy
 
@@ -89,6 +113,7 @@ Prepare the Jetson-lane sim workspace once before launching that lane:
 
 ```bash
 python3 master/orchestrator.py prepare-jetson-sim-workspace --build
+python3 master/orchestrator.py prepare-jetson-runtime --build
 ```
 
 Sync runtime workspaces from clean host worktrees:

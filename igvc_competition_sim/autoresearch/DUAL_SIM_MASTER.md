@@ -79,6 +79,7 @@ Jetson-in-the-loop launch:
 
 ```bash
 python3 master/orchestrator.py prepare-jetson-sim-workspace --build
+python3 master/orchestrator.py prepare-jetson-runtime --build
 ```
 
 Only start a master-owned planning/control run after any existing unmanaged
@@ -123,6 +124,19 @@ Do not use `stop-owned` for the current unmanaged AutoResearch run.
 ## Isolation Rules
 
 - Use separate ROS domains for the two lanes.
+- Keep the direct `jetsoneth` Lima network dedicated to `autonav-ros22`.
+  `autonav-gazebo-sim` should not attach to `jetsoneth`; planning/control does
+  not need Jetson Ethernet, and multiple VMs on that bridge can leave only one
+  VM reachable from the Jetson.
+- Configure `autonav-ros22` with `shared + jetsoneth`, not Wi-Fi `bridged +
+  jetsoneth`, so Lima management SSH does not depend on the Mac hotspot address.
+  After cable, adapter, or hotspot changes, stop any master-owned Jetson smoke,
+  restart `autonav-ros22`, and require VM/Jetson ping plus raw UDP probes to
+  pass before launching.
+- Use the routed Lima shared path for DDS data on this Mac:
+  VM `192.168.105.2` -> Mac router -> Jetson `10.66.0.2`. The VM also has
+  `10.66.0.4` on the direct bridge for link checks, but raw UDP/TCP over that
+  bridged locator was observed to fail while ICMP still passed.
 - Use separate worktrees and branches for candidate edits:
   - `AutoNavB-control/<experiment>` for planning/control changes.
   - `AutoNavB-perception/<experiment>` for camera/perception/Jetson changes.
@@ -147,10 +161,46 @@ Required endpoints:
 - VM: `autonav-ros22`
 - Jetson: `jetson-spare-eth`
 - Jetson IP: `10.66.0.2`
+- VM DDS IP: `192.168.105.2`
+- VM direct bridge IP for link checks: `10.66.0.4`
 - Default ROS domain: `72`
+- Fast DDS profiles:
+  - VM: `igvc_competition_sim/config/fastdds_jetson_sim_vm.xml`
+  - Jetson container: `igvc_competition_sim/config/fastdds_jetson_robot.xml`
 
 Before launching, `preflight jetson_perception` must pass or report only known
 setup items such as an unprepared `/tmp/autonav_jetson_sim_ws`.
+The preflight also checks VM↔Jetson ping in both directions, Jetson clock skew,
+Fast DDS profile availability, Docker image availability, clean runtime
+checkouts, and forbidden hardware processes.
+
+The Jetson lane must use the sim-specific Fast DDS profiles above. They force
+the VM to advertise `192.168.105.2` and the Jetson container to advertise
+`10.66.0.2`, and they raise `maxInitialPeersRange` so all local participants on
+each host are discovered, not only the first few. Without this, DDS may discover
+topic names through one interface while advertising unreachable Lima/hotspot or
+broken bridged locators for VM publishers; the Jetson then misses `/clock`,
+camera, GPS, and odom, and Nav2 costmaps drop sim-stamped messages against
+wall-time TF.
+The master manifest also sets `ODOM_BRIDGE_RATE_HZ=60.0` on the sim side. Keep
+that rate for Jetson-in-the-loop smokes unless a later run proves a different
+value is better; the local costmap consumes 20 Hz PCA LaserScans from the
+Jetson and needs dense cross-host `odom -> base_link` TF samples to avoid
+message-filter drops from small timestamp gaps.
+
+The Jetson lane uses the standalone `autonav_sim` repo on both sides:
+
+- VM runtime checkout: `/tmp/autonav_jetson_sim_ws/src/autonav_sim`
+- VM robot dependency checkout: `/tmp/autonav_jetson_sim_ws/src/AutoNav_25-26`
+  for interface packages such as `autonav_interfaces`; this checkout is built
+  for message/package discovery only and does not run the robot stack.
+- Jetson host checkout: `/home/vtcro/autonav_sim`
+- Jetson container mount: `/autonav_sim`
+
+Do not restore the old `igvc_competition_sim` package under
+`AutoNav_25-26/isaac_ros-dev/src`. The Jetson Docker launcher supports
+`AUTONAV_SIM_SOURCE=/home/vtcro/autonav_sim` and mounts that repo into
+`koopa-kingdom`; the sim wrapper then uses `ROS_WS=/autonav/isaac_ros-dev`.
 
 ## Merge Discipline
 
