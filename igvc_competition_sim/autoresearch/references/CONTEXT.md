@@ -296,3 +296,19 @@ RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning o
   `evaluate.py` retries startup-not-ready runs. Also added `--include-hidden-topics` to bag recording so
   action status topics are actually captured; this restores real traversal-time scoring for speed tuning
   (`compact_baseline` smoke recorded `t_mean=85.44s` instead of the previous false `0.0s`).
+- BASELINE SWEEP after harness fix (`results/timebox/20260531_061022`, robot `a85862ca31d9`, sim
+  `4c53ae003f48`): compact, tight, and dense passed; sparse failed at `past_barrel`
+  (`blocking_stop_over_60s`, distance `19.721`, no PFS, high clearance), and ramp failed at `ramp_goal`
+  (`blocking_stop_over_60s`, distance `15.906`, `pfs=2`). Bag action timelines showed the same mechanism:
+  the next `/navigate_to_waypoint` goal was accepted while the previous NavigateToPose was still finishing;
+  the first `/goal_pose` for the new leg was consumed by the old action's terminal tick, then only
+  `/goal_update` remained, which cannot start a fresh NavigateToPose action. MPPI stopped after Nav2
+  reported the stale short goal succeeded.
+- KEEP: robot commit `5034bdb9b7ab` adds a 0.45 s initial `/goal_pose` delay in
+  `gps_handler_node` before the first publish of each accepted waypoint. It prevents the stale terminal
+  action race without touching costmaps, MPPI, line inflation, BT safety gates, or course geometry.
+  Tier 1 with the candidate passed all five courses: sparse and ramp both completed instead of stalling;
+  compact/tight/dense did not regress. Tier 2 repeated validation passed sparse 3/3
+  (`t_mean=92.03`, `pfs=1.67`, min_clear `0.251`) and ramp 3/3 (`t_mean=78.96`, `pfs=0.33`,
+  min_clear `0.168`). If future waypoint stalls recur, inspect whether a fresh `/navigate_to_pose`
+  action starts after each `navigate_to_waypoint` acceptance before tuning MPPI or inflation.
