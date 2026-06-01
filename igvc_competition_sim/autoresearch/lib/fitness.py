@@ -45,6 +45,9 @@ def run_clean(m: dict) -> bool | None:
     """True=clean, False=hard fail, None=indeterminate (INCOMPLETE)."""
     if m.get("startup_not_ready"):
         return None
+    mission_status = str(m.get("mission_status") or "").strip()
+    if mission_status and mission_status != "0":
+        return False
     if not m.get("score_loaded"):
         return None
     if m.get("failed"):
@@ -146,7 +149,12 @@ def evaluate_candidate(runs: list[dict],
                 if c is None:
                     reason = r.get("startup_status") or "INCOMPLETE"
                 else:
-                    reason = ",".join(r.get("violations") or ["incomplete/timeout"])
+                    mission_status = str(r.get("mission_status") or "").strip()
+                    reason = (
+                        f"mission_status={mission_status}"
+                        if mission_status and mission_status != "0"
+                        else ",".join(r.get("violations") or ["incomplete/timeout"])
+                    )
                 reasons.append(f"run{i + 1}:{reason}")
         result["notes"] = "; ".join(reasons)
         return result

@@ -216,6 +216,21 @@ def main() -> int:
                     resf.get("progress_fitness") is not None
                     and resf.get("distance_mean") is not None)
 
+        # mission runner abort with a superficially clean monitor score must
+        # still fail the reliability gate.
+        abort_dir = tmp / "abort"
+        abort_dir.mkdir(parents=True)
+        write_bag(abort_dir, fail=False)
+        (abort_dir / "mission_status.txt").write_text("1\n", encoding="utf-8")
+        (abort_dir / "mission.log").write_text(
+            "[ros2run]: Process exited with failure 1\n", encoding="utf-8")
+        ma = M.compute_metrics(abort_dir, COURSE)
+        resa = F.evaluate_candidate([ma], course="compact_baseline", tier=1)
+        ok &= check("mission_status nonzero -> gate FAIL",
+                    F.run_clean(ma) is False
+                    and resa["gate"] == "FAIL"
+                    and "mission_status=1" in resa.get("notes", ""))
+
         # incomplete run (no score) -> not clean
         inc_dir = tmp / "inc"
         (inc_dir / "bag").mkdir(parents=True)
