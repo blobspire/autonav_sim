@@ -29,21 +29,39 @@ SIM_PACKAGE_DIR="$(cd "$HERE/../.." && pwd)"
 SIM_REPO_DIR="$(cd "$SIM_PACKAGE_DIR/.." && pwd)"
 ROS_WS="${ROS_WS:-$(cd "$HERE/../../../../.." && pwd)}"
 WORKSPACE_SRC="$ROS_WS/src"
+NAV2_PARAM_NAMES=(
+  "nav2_params_camera.yaml"
+  "nav2_paramsv2.yaml"
+  "nav2_params.yaml"
+)
 
 find_autonav_src() {
   local nav2
   for root in "$WORKSPACE_SRC" "$SIM_REPO_DIR/.." "/autonav"; do
     [[ -d "$root" ]] || continue
-    nav2="$(find "$root" -path '*/isaac_ros-dev/src/slam/config/nav2_params_camera.yaml' -print -quit 2>/dev/null || true)"
-    if [[ -n "$nav2" ]]; then
-      dirname "$(dirname "$(dirname "$nav2")")"
+    for name in "${NAV2_PARAM_NAMES[@]}"; do
+      nav2="$(find "$root" -path "*/isaac_ros-dev/src/slam/config/$name" -print -quit 2>/dev/null || true)"
+      if [[ -n "$nav2" ]]; then
+        dirname "$(dirname "$(dirname "$nav2")")"
+        return 0
+      fi
+    done
+  done
+}
+
+find_nav2_params_src() {
+  local candidate
+  for name in "${NAV2_PARAM_NAMES[@]}"; do
+    candidate="$AUTONAV_SRC/slam/config/$name"
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
       return 0
     fi
   done
 }
 
 AUTONAV_SRC="${AUTONAV_SRC:-$(find_autonav_src)}"
-NAV2_PARAMS_SRC="${NAV2_PARAMS_SRC:-$AUTONAV_SRC/slam/config/nav2_params_camera.yaml}"
+NAV2_PARAMS_SRC="${NAV2_PARAMS_SRC:-$(find_nav2_params_src)}"
 BT_XML_SRC="${BT_XML_SRC:-$AUTONAV_SRC/slam/behavior_trees/bt_nav.xml}"
 DYN_CAL="${DYNAMICS_CALIBRATION:-$SIM_PACKAGE_DIR/config/dynamics_calibration.yaml}"
 LINE_DETECTION_MODE="${LINE_DETECTION_MODE:-ground_truth}"

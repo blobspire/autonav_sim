@@ -1,0 +1,3649 @@
+course_id: blender_competition_course
+description: "Exported from Blender Course.blend"
+course_geometry: explicit_blender
+
+# export_warning: 4: used custom property 'prop'=4 as waypoint_order fallback
+# export_warning: 5: used custom property 'prop'=5 as waypoint_order fallback
+# export_warning: inferred +x course heading from start to first waypoint; heading_rad=2.976642
+
+datum:
+  latitude_deg: 37.2303
+  longitude_deg: -80.425
+  altitude_m: 650
+
+start:
+  x_m: 0.0
+  y_m: 0.0
+  yaw_rad: 0.0
+
+finish:
+  x_m: 0.0638
+  y_m: 0.0106
+  radius_m: 1.25
+
+robot:
+  base_link_to_nav_center_m: 0.225
+  lidar_x_from_base_link_m: 0.6598
+  lidar_z_from_base_link_m: 0.2057
+  base_link_height_above_ground_m: 0.113
+  gps_x_from_base_link_m: -0.2122
+  gps_y_from_base_link_m: -0.0001
+  gps_z_from_base_link_m: 0.6616
+  wheel_track_m: 0.7233
+  wheel_radius_m: 0.1295
+  physical_half_length_m: 0.545
+  physical_half_width_m: 0.41
+  footprint_padding_m: 0.05
+  max_linear_speed_mps: 0.5
+  max_angular_speed_radps: 1
+  cmd_latency_s: 0.08
+  linear_time_constant_s: 0.2
+  angular_time_constant_s: 0.18
+
+tape_width_m: 0.0762
+
+centerline:
+  - {x_m: 0, y_m: 0, width_m: 6.096}
+  - {x_m: 32.2813, y_m: 0, width_m: 6.096}
+  - {x_m: 30.5614, y_m: 9.5442, width_m: 6.096}
+  - {x_m: 29.744, y_m: 13.6074, width_m: 6.096}
+  - {x_m: 27.6885, y_m: 19.9499, width_m: 6.096}
+  - {x_m: 0.0638, y_m: 0.0106, width_m: 6.096}
+
+# Disable generated centerline boundaries; Blender line meshes below are authoritative.
+line_breaks:
+  - {segment_index: 0, boundary: both, start_fraction: 0.0, end_fraction: 1.0}
+  - {segment_index: 1, boundary: both, start_fraction: 0.0, end_fraction: 1.0}
+  - {segment_index: 2, boundary: both, start_fraction: 0.0, end_fraction: 1.0}
+  - {segment_index: 3, boundary: both, start_fraction: 0.0, end_fraction: 1.0}
+  - {segment_index: 4, boundary: both, start_fraction: 0.0, end_fraction: 1.0}
+
+internal_lines:
+  - name: "Line.001_0000"
+    start: {x_m: 32.3918, y_m: 16.4142}
+    end: {x_m: 32.49, y_m: 16.433}
+    width_m: 0.0762
+  - name: "Line.001_0001"
+    start: {x_m: 32.3918, y_m: 16.4142}
+    end: {x_m: 32.3404, y_m: 16.683}
+    width_m: 0.0762
+  - name: "Line.001_0002"
+    start: {x_m: 32.5882, y_m: 16.4518}
+    end: {x_m: 32.49, y_m: 16.433}
+    width_m: 0.0762
+  - name: "Line.001_0003"
+    start: {x_m: 32.5882, y_m: 16.4518}
+    end: {x_m: 32.5369, y_m: 16.7201}
+    width_m: 0.0762
+  - name: "Line.001_0004"
+    start: {x_m: 32.3404, y_m: 16.683}
+    end: {x_m: 32.2624, y_m: 17.1027}
+    width_m: 0.0762
+  - name: "Line.001_0005"
+    start: {x_m: 32.5369, y_m: 16.7201}
+    end: {x_m: 32.459, y_m: 17.1395}
+    width_m: 0.0762
+  - name: "Line.001_0006"
+    start: {x_m: 32.2624, y_m: 17.1027}
+    end: {x_m: 32.1606, y_m: 17.6422}
+    width_m: 0.0762
+  - name: "Line.001_0007"
+    start: {x_m: 32.459, y_m: 17.1395}
+    end: {x_m: 32.357, y_m: 17.6799}
+    width_m: 0.0762
+  - name: "Line.001_0008"
+    start: {x_m: 32.1606, y_m: 17.6422}
+    end: {x_m: 32.0378, y_m: 18.2712}
+    width_m: 0.0762
+  - name: "Line.001_0009"
+    start: {x_m: 32.357, y_m: 17.6799}
+    end: {x_m: 32.2339, y_m: 18.3105}
+    width_m: 0.0762
+  - name: "Line.001_0010"
+    start: {x_m: 32.0378, y_m: 18.2712}
+    end: {x_m: 31.8965, y_m: 18.9591}
+    width_m: 0.0762
+  - name: "Line.001_0011"
+    start: {x_m: 32.2339, y_m: 18.3105}
+    end: {x_m: 32.0922, y_m: 19.0006}
+    width_m: 0.0762
+  - name: "Line.001_0012"
+    start: {x_m: 31.8965, y_m: 18.9591}
+    end: {x_m: 31.7397, y_m: 19.6752}
+    width_m: 0.0762
+  - name: "Line.001_0013"
+    start: {x_m: 32.0922, y_m: 19.0006}
+    end: {x_m: 31.9346, y_m: 19.7198}
+    width_m: 0.0762
+  - name: "Line.001_0014"
+    start: {x_m: 31.7397, y_m: 19.6752}
+    end: {x_m: 31.5699, y_m: 20.3887}
+    width_m: 0.0762
+  - name: "Line.001_0015"
+    start: {x_m: 31.9346, y_m: 19.7198}
+    end: {x_m: 31.7639, y_m: 20.4374}
+    width_m: 0.0762
+  - name: "Line.001_0016"
+    start: {x_m: 31.5699, y_m: 20.3887}
+    end: {x_m: 31.3902, y_m: 21.0687}
+    width_m: 0.0762
+  - name: "Line.001_0017"
+    start: {x_m: 31.7639, y_m: 20.4374}
+    end: {x_m: 31.5826, y_m: 21.1233}
+    width_m: 0.0762
+  - name: "Line.001_0018"
+    start: {x_m: 31.3902, y_m: 21.0687}
+    end: {x_m: 31.2035, y_m: 21.6839}
+    width_m: 0.0762
+  - name: "Line.001_0019"
+    start: {x_m: 31.5826, y_m: 21.1233}
+    end: {x_m: 31.3932, y_m: 21.7475}
+    width_m: 0.0762
+  - name: "Line.001_0020"
+    start: {x_m: 31.2035, y_m: 21.6839}
+    end: {x_m: 31.0134, y_m: 22.2024}
+    width_m: 0.0762
+  - name: "Line.001_0021"
+    start: {x_m: 31.3932, y_m: 21.7475}
+    end: {x_m: 31.1974, y_m: 22.2807}
+    width_m: 0.0762
+  - name: "Line.001_0022"
+    start: {x_m: 31.0134, y_m: 22.2024}
+    end: {x_m: 30.8256, y_m: 22.5897}
+    width_m: 0.0762
+  - name: "Line.001_0023"
+    start: {x_m: 31.1974, y_m: 22.2807}
+    end: {x_m: 30.995, y_m: 22.696}
+    width_m: 0.0762
+  - name: "Line.001_0024"
+    start: {x_m: 30.8256, y_m: 22.5897}
+    end: {x_m: 30.6489, y_m: 22.8147}
+    width_m: 0.0762
+  - name: "Line.001_0025"
+    start: {x_m: 30.995, y_m: 22.696}
+    end: {x_m: 30.7826, y_m: 22.9635}
+    width_m: 0.0762
+  - name: "Line.001_0026"
+    start: {x_m: 30.6489, y_m: 22.8147}
+    end: {x_m: 30.4059, y_m: 22.9662}
+    width_m: 0.0762
+  - name: "Line.001_0027"
+    start: {x_m: 30.7826, y_m: 22.9635}
+    end: {x_m: 30.5007, y_m: 23.1424}
+    width_m: 0.0762
+  - name: "Line.001_0028"
+    start: {x_m: 30.4059, y_m: 22.9662}
+    end: {x_m: 30.0297, y_m: 23.1365}
+    width_m: 0.0762
+  - name: "Line.001_0029"
+    start: {x_m: 30.5007, y_m: 23.1424}
+    end: {x_m: 30.1055, y_m: 23.3216}
+    width_m: 0.0762
+  - name: "Line.001_0030"
+    start: {x_m: 30.0297, y_m: 23.1365}
+    end: {x_m: 29.5488, y_m: 23.313}
+    width_m: 0.0762
+  - name: "Line.001_0031"
+    start: {x_m: 30.1055, y_m: 23.3216}
+    end: {x_m: 29.6131, y_m: 23.5024}
+    width_m: 0.0762
+  - name: "Line.001_0032"
+    start: {x_m: 29.5488, y_m: 23.313}
+    end: {x_m: 28.9877, y_m: 23.4885}
+    width_m: 0.0762
+  - name: "Line.001_0033"
+    start: {x_m: 29.6131, y_m: 23.5024}
+    end: {x_m: 29.0438, y_m: 23.6804}
+    width_m: 0.0762
+  - name: "Line.001_0034"
+    start: {x_m: 28.9877, y_m: 23.4885}
+    end: {x_m: 28.3697, y_m: 23.6567}
+    width_m: 0.0762
+  - name: "Line.001_0035"
+    start: {x_m: 29.0438, y_m: 23.6804}
+    end: {x_m: 28.4191, y_m: 23.8505}
+    width_m: 0.0762
+  - name: "Line.001_0036"
+    start: {x_m: 28.3697, y_m: 23.6567}
+    end: {x_m: 27.7177, y_m: 23.8119}
+    width_m: 0.0762
+  - name: "Line.001_0037"
+    start: {x_m: 28.4191, y_m: 23.8505}
+    end: {x_m: 27.761, y_m: 24.0071}
+    width_m: 0.0762
+  - name: "Line.001_0038"
+    start: {x_m: 27.7177, y_m: 23.8119}
+    end: {x_m: 27.0544, y_m: 23.9481}
+    width_m: 0.0762
+  - name: "Line.001_0039"
+    start: {x_m: 27.761, y_m: 24.0071}
+    end: {x_m: 27.0914, y_m: 24.1447}
+    width_m: 0.0762
+  - name: "Line.001_0040"
+    start: {x_m: 27.0544, y_m: 23.9481}
+    end: {x_m: 26.4026, y_m: 24.0597}
+    width_m: 0.0762
+  - name: "Line.001_0041"
+    start: {x_m: 27.0914, y_m: 24.1447}
+    end: {x_m: 26.4325, y_m: 24.2574}
+    width_m: 0.0762
+  - name: "Line.001_0042"
+    start: {x_m: 26.4026, y_m: 24.0597}
+    end: {x_m: 25.785, y_m: 24.1408}
+    width_m: 0.0762
+  - name: "Line.001_0043"
+    start: {x_m: 26.4325, y_m: 24.2574}
+    end: {x_m: 25.8061, y_m: 24.3397}
+    width_m: 0.0762
+  - name: "Line.001_0044"
+    start: {x_m: 25.785, y_m: 24.1408}
+    end: {x_m: 25.225, y_m: 24.1859}
+    width_m: 0.0762
+  - name: "Line.001_0045"
+    start: {x_m: 25.8061, y_m: 24.3397}
+    end: {x_m: 25.2337, y_m: 24.3857}
+    width_m: 0.0762
+  - name: "Line.001_0046"
+    start: {x_m: 25.225, y_m: 24.1859}
+    end: {x_m: 24.7466, y_m: 24.1895}
+    width_m: 0.0762
+  - name: "Line.001_0047"
+    start: {x_m: 25.2337, y_m: 24.3857}
+    end: {x_m: 24.7361, y_m: 24.3893}
+    width_m: 0.0762
+  - name: "Line.001_0048"
+    start: {x_m: 24.7466, y_m: 24.1895}
+    end: {x_m: 24.3724, y_m: 24.1472}
+    width_m: 0.0762
+  - name: "Line.001_0049"
+    start: {x_m: 24.7361, y_m: 24.3893}
+    end: {x_m: 24.3354, y_m: 24.3437}
+    width_m: 0.0762
+  - name: "Line.001_0050"
+    start: {x_m: 24.3724, y_m: 24.1472}
+    end: {x_m: 24.0642, y_m: 24.0651}
+    width_m: 0.0762
+  - name: "Line.001_0051"
+    start: {x_m: 24.3354, y_m: 24.3437}
+    end: {x_m: 24.0083, y_m: 24.2571}
+    width_m: 0.0762
+  - name: "Line.001_0052"
+    start: {x_m: 24.0642, y_m: 24.0651}
+    end: {x_m: 23.6201, y_m: 23.924}
+    width_m: 0.0762
+  - name: "Line.001_0053"
+    start: {x_m: 24.0083, y_m: 24.2571}
+    end: {x_m: 23.5576, y_m: 24.114}
+    width_m: 0.0762
+  - name: "Line.001_0054"
+    start: {x_m: 23.6201, y_m: 23.924}
+    end: {x_m: 23.0688, y_m: 23.7364}
+    width_m: 0.0762
+  - name: "Line.001_0055"
+    start: {x_m: 23.5576, y_m: 24.114}
+    end: {x_m: 23.0034, y_m: 23.9254}
+    width_m: 0.0762
+  - name: "Line.001_0056"
+    start: {x_m: 23.0688, y_m: 23.7364}
+    end: {x_m: 22.4359, y_m: 23.514}
+    width_m: 0.0762
+  - name: "Line.001_0057"
+    start: {x_m: 23.0034, y_m: 23.9254}
+    end: {x_m: 22.3692, y_m: 23.7026}
+    width_m: 0.0762
+  - name: "Line.001_0058"
+    start: {x_m: 22.4359, y_m: 23.514}
+    end: {x_m: 21.7462, y_m: 23.2687}
+    width_m: 0.0762
+  - name: "Line.001_0059"
+    start: {x_m: 22.3692, y_m: 23.7026}
+    end: {x_m: 21.6791, y_m: 23.4571}
+    width_m: 0.0762
+  - name: "Line.001_0060"
+    start: {x_m: 21.7462, y_m: 23.2687}
+    end: {x_m: 21.0242, y_m: 23.012}
+    width_m: 0.0762
+  - name: "Line.001_0061"
+    start: {x_m: 21.6791, y_m: 23.4571}
+    end: {x_m: 20.9575, y_m: 23.2006}
+    width_m: 0.0762
+  - name: "Line.001_0062"
+    start: {x_m: 21.0242, y_m: 23.012}
+    end: {x_m: 20.2944, y_m: 22.7557}
+    width_m: 0.0762
+  - name: "Line.001_0063"
+    start: {x_m: 20.9575, y_m: 23.2006}
+    end: {x_m: 20.2288, y_m: 22.9446}
+    width_m: 0.0762
+  - name: "Line.001_0064"
+    start: {x_m: 20.2944, y_m: 22.7557}
+    end: {x_m: 19.5812, y_m: 22.5112}
+    width_m: 0.0762
+  - name: "Line.001_0065"
+    start: {x_m: 20.2288, y_m: 22.9446}
+    end: {x_m: 19.5176, y_m: 22.7008}
+    width_m: 0.0762
+  - name: "Line.001_0066"
+    start: {x_m: 19.5812, y_m: 22.5112}
+    end: {x_m: 18.909, y_m: 22.2903}
+    width_m: 0.0762
+  - name: "Line.001_0067"
+    start: {x_m: 19.5176, y_m: 22.7008}
+    end: {x_m: 18.8484, y_m: 22.4809}
+    width_m: 0.0762
+  - name: "Line.001_0068"
+    start: {x_m: 18.909, y_m: 22.2903}
+    end: {x_m: 18.3016, y_m: 22.1043}
+    width_m: 0.0762
+  - name: "Line.001_0069"
+    start: {x_m: 18.8484, y_m: 22.4809}
+    end: {x_m: 18.2464, y_m: 22.2965}
+    width_m: 0.0762
+  - name: "Line.001_0070"
+    start: {x_m: 18.3016, y_m: 22.1043}
+    end: {x_m: 17.7825, y_m: 21.9648}
+    width_m: 0.0762
+  - name: "Line.001_0071"
+    start: {x_m: 18.2464, y_m: 22.2965}
+    end: {x_m: 17.7369, y_m: 22.1595}
+    width_m: 0.0762
+  - name: "Line.001_0072"
+    start: {x_m: 17.7825, y_m: 21.9648}
+    end: {x_m: 17.3756, y_m: 21.8835}
+    width_m: 0.0762
+  - name: "Line.001_0073"
+    start: {x_m: 17.7369, y_m: 22.1595}
+    end: {x_m: 17.3451, y_m: 22.0812}
+    width_m: 0.0762
+  - name: "Line.001_0074"
+    start: {x_m: 17.3756, y_m: 21.8835}
+    end: {x_m: 17.0796, y_m: 21.851}
+    width_m: 0.0762
+  - name: "Line.001_0075"
+    start: {x_m: 17.3451, y_m: 22.0812}
+    end: {x_m: 17.0614, y_m: 22.0501}
+    width_m: 0.0762
+  - name: "Line.001_0076"
+    start: {x_m: 17.0796, y_m: 21.851}
+    end: {x_m: 16.7114, y_m: 21.8239}
+    width_m: 0.0762
+  - name: "Line.001_0077"
+    start: {x_m: 17.0614, y_m: 22.0501}
+    end: {x_m: 16.6987, y_m: 22.0235}
+    width_m: 0.0762
+  - name: "Line.001_0078"
+    start: {x_m: 16.7114, y_m: 21.8239}
+    end: {x_m: 16.2824, y_m: 21.8012}
+    width_m: 0.0762
+  - name: "Line.001_0079"
+    start: {x_m: 16.6987, y_m: 22.0235}
+    end: {x_m: 16.2731, y_m: 22.0009}
+    width_m: 0.0762
+  - name: "Line.001_0080"
+    start: {x_m: 16.2824, y_m: 21.8012}
+    end: {x_m: 15.8058, y_m: 21.782}
+    width_m: 0.0762
+  - name: "Line.001_0081"
+    start: {x_m: 16.2731, y_m: 22.0009}
+    end: {x_m: 15.7985, y_m: 21.9818}
+    width_m: 0.0762
+  - name: "Line.001_0082"
+    start: {x_m: 15.8058, y_m: 21.782}
+    end: {x_m: 15.2949, y_m: 21.7655}
+    width_m: 0.0762
+  - name: "Line.001_0083"
+    start: {x_m: 15.7985, y_m: 21.9818}
+    end: {x_m: 15.2889, y_m: 21.9654}
+    width_m: 0.0762
+  - name: "Line.001_0084"
+    start: {x_m: 15.2949, y_m: 21.7655}
+    end: {x_m: 14.7632, y_m: 21.7509}
+    width_m: 0.0762
+  - name: "Line.001_0085"
+    start: {x_m: 15.2889, y_m: 21.9654}
+    end: {x_m: 14.758, y_m: 21.9509}
+    width_m: 0.0762
+  - name: "Line.001_0086"
+    start: {x_m: 14.7632, y_m: 21.7509}
+    end: {x_m: 14.2244, y_m: 21.7376}
+    width_m: 0.0762
+  - name: "Line.001_0087"
+    start: {x_m: 14.758, y_m: 21.9509}
+    end: {x_m: 14.2195, y_m: 21.9375}
+    width_m: 0.0762
+  - name: "Line.001_0088"
+    start: {x_m: 14.2244, y_m: 21.7376}
+    end: {x_m: 13.692, y_m: 21.7247}
+    width_m: 0.0762
+  - name: "Line.001_0089"
+    start: {x_m: 14.2195, y_m: 21.9375}
+    end: {x_m: 13.687, y_m: 21.9246}
+    width_m: 0.0762
+  - name: "Line.001_0090"
+    start: {x_m: 13.692, y_m: 21.7247}
+    end: {x_m: 13.1798, y_m: 21.7114}
+    width_m: 0.0762
+  - name: "Line.001_0091"
+    start: {x_m: 13.687, y_m: 21.9246}
+    end: {x_m: 13.1742, y_m: 21.9113}
+    width_m: 0.0762
+  - name: "Line.001_0092"
+    start: {x_m: 13.1798, y_m: 21.7114}
+    end: {x_m: 12.7012, y_m: 21.6971}
+    width_m: 0.0762
+  - name: "Line.001_0093"
+    start: {x_m: 13.1742, y_m: 21.9113}
+    end: {x_m: 12.6945, y_m: 21.897}
+    width_m: 0.0762
+  - name: "Line.001_0094"
+    start: {x_m: 12.7012, y_m: 21.6971}
+    end: {x_m: 12.2703, y_m: 21.6809}
+    width_m: 0.0762
+  - name: "Line.001_0095"
+    start: {x_m: 12.6945, y_m: 21.897}
+    end: {x_m: 12.2615, y_m: 21.8808}
+    width_m: 0.0762
+  - name: "Line.001_0096"
+    start: {x_m: 12.2703, y_m: 21.6809}
+    end: {x_m: 11.9009, y_m: 21.6622}
+    width_m: 0.0762
+  - name: "Line.001_0097"
+    start: {x_m: 12.2615, y_m: 21.8808}
+    end: {x_m: 11.8883, y_m: 21.8618}
+    width_m: 0.0762
+  - name: "Line.001_0098"
+    start: {x_m: 11.9009, y_m: 21.6622}
+    end: {x_m: 11.7148, y_m: 21.6482}
+    width_m: 0.0762
+  - name: "Line.001_0099"
+    start: {x_m: 11.8883, y_m: 21.8618}
+    end: {x_m: 11.6986, y_m: 21.8476}
+    width_m: 0.0762
+  - name: "Line.001_0100"
+    start: {x_m: 11.7148, y_m: 21.6482}
+    end: {x_m: 11.409, y_m: 21.6214}
+    width_m: 0.0762
+  - name: "Line.001_0101"
+    start: {x_m: 11.6986, y_m: 21.8476}
+    end: {x_m: 11.3908, y_m: 21.8206}
+    width_m: 0.0762
+  - name: "Line.001_0102"
+    start: {x_m: 11.409, y_m: 21.6214}
+    end: {x_m: 10.9949, y_m: 21.5823}
+    width_m: 0.0762
+  - name: "Line.001_0103"
+    start: {x_m: 11.3908, y_m: 21.8206}
+    end: {x_m: 10.9756, y_m: 21.7814}
+    width_m: 0.0762
+  - name: "Line.001_0104"
+    start: {x_m: 10.9949, y_m: 21.5823}
+    end: {x_m: 10.484, y_m: 21.5316}
+    width_m: 0.0762
+  - name: "Line.001_0105"
+    start: {x_m: 10.9756, y_m: 21.7814}
+    end: {x_m: 10.4639, y_m: 21.7306}
+    width_m: 0.0762
+  - name: "Line.001_0106"
+    start: {x_m: 10.484, y_m: 21.5316}
+    end: {x_m: 9.8875, y_m: 21.4698}
+    width_m: 0.0762
+  - name: "Line.001_0107"
+    start: {x_m: 10.4639, y_m: 21.7306}
+    end: {x_m: 9.8665, y_m: 21.6687}
+    width_m: 0.0762
+  - name: "Line.001_0108"
+    start: {x_m: 9.8875, y_m: 21.4698}
+    end: {x_m: 9.2164, y_m: 21.3976}
+    width_m: 0.0762
+  - name: "Line.001_0109"
+    start: {x_m: 9.8665, y_m: 21.6687}
+    end: {x_m: 9.1946, y_m: 21.5964}
+    width_m: 0.0762
+  - name: "Line.001_0110"
+    start: {x_m: 9.2164, y_m: 21.3976}
+    end: {x_m: 8.4819, y_m: 21.3155}
+    width_m: 0.0762
+  - name: "Line.001_0111"
+    start: {x_m: 9.1946, y_m: 21.5964}
+    end: {x_m: 8.4593, y_m: 21.5143}
+    width_m: 0.0762
+  - name: "Line.001_0112"
+    start: {x_m: 8.4819, y_m: 21.3155}
+    end: {x_m: 7.6951, y_m: 21.2242}
+    width_m: 0.0762
+  - name: "Line.001_0113"
+    start: {x_m: 8.4593, y_m: 21.5143}
+    end: {x_m: 7.6716, y_m: 21.4228}
+    width_m: 0.0762
+  - name: "Line.001_0114"
+    start: {x_m: 7.6951, y_m: 21.2242}
+    end: {x_m: 6.8671, y_m: 21.1241}
+    width_m: 0.0762
+  - name: "Line.001_0115"
+    start: {x_m: 7.6716, y_m: 21.4228}
+    end: {x_m: 6.8426, y_m: 21.3226}
+    width_m: 0.0762
+  - name: "Line.001_0116"
+    start: {x_m: 6.8671, y_m: 21.1241}
+    end: {x_m: 6.009, y_m: 21.0158}
+    width_m: 0.0762
+  - name: "Line.001_0117"
+    start: {x_m: 6.8426, y_m: 21.3226}
+    end: {x_m: 5.9834, y_m: 21.2142}
+    width_m: 0.0762
+  - name: "Line.001_0118"
+    start: {x_m: 6.009, y_m: 21.0158}
+    end: {x_m: 5.1319, y_m: 20.9001}
+    width_m: 0.0762
+  - name: "Line.001_0119"
+    start: {x_m: 5.9834, y_m: 21.2142}
+    end: {x_m: 5.1051, y_m: 21.0983}
+    width_m: 0.0762
+  - name: "Line.001_0120"
+    start: {x_m: 5.1319, y_m: 20.9001}
+    end: {x_m: 4.2466, y_m: 20.7773}
+    width_m: 0.0762
+  - name: "Line.001_0121"
+    start: {x_m: 5.1051, y_m: 21.0983}
+    end: {x_m: 4.2189, y_m: 20.9754}
+    width_m: 0.0762
+  - name: "Line.001_0122"
+    start: {x_m: 4.2466, y_m: 20.7773}
+    end: {x_m: 3.4006, y_m: 20.658}
+    width_m: 0.0762
+  - name: "Line.001_0123"
+    start: {x_m: 4.2189, y_m: 20.9754}
+    end: {x_m: 3.3725, y_m: 20.8561}
+    width_m: 0.0762
+  - name: "Line.001_0124"
+    start: {x_m: 3.4006, y_m: 20.658}
+    end: {x_m: 2.6318, y_m: 20.5483}
+    width_m: 0.0762
+  - name: "Line.001_0125"
+    start: {x_m: 3.3725, y_m: 20.8561}
+    end: {x_m: 2.6026, y_m: 20.7462}
+    width_m: 0.0762
+  - name: "Line.001_0126"
+    start: {x_m: 2.6318, y_m: 20.5483}
+    end: {x_m: 1.9365, y_m: 20.4424}
+    width_m: 0.0762
+  - name: "Line.001_0127"
+    start: {x_m: 2.6026, y_m: 20.7462}
+    end: {x_m: 1.9045, y_m: 20.6398}
+    width_m: 0.0762
+  - name: "Line.001_0128"
+    start: {x_m: 1.9365, y_m: 20.4424}
+    end: {x_m: 1.3109, y_m: 20.3344}
+    width_m: 0.0762
+  - name: "Line.001_0129"
+    start: {x_m: 1.9045, y_m: 20.6398}
+    end: {x_m: 1.2736, y_m: 20.5309}
+    width_m: 0.0762
+  - name: "Line.001_0130"
+    start: {x_m: 1.3109, y_m: 20.3344}
+    end: {x_m: 0.7509, y_m: 20.2185}
+    width_m: 0.0762
+  - name: "Line.001_0131"
+    start: {x_m: 1.2736, y_m: 20.5309}
+    end: {x_m: 0.7055, y_m: 20.4133}
+    width_m: 0.0762
+  - name: "Line.001_0132"
+    start: {x_m: 0.7509, y_m: 20.2185}
+    end: {x_m: 0.2528, y_m: 20.0891}
+    width_m: 0.0762
+  - name: "Line.001_0133"
+    start: {x_m: 0.7055, y_m: 20.4133}
+    end: {x_m: 0.1956, y_m: 20.2808}
+    width_m: 0.0762
+  - name: "Line.001_0134"
+    start: {x_m: 0.2528, y_m: 20.0891}
+    end: {x_m: -0.1875, y_m: 19.9408}
+    width_m: 0.0762
+  - name: "Line.001_0135"
+    start: {x_m: 0.1956, y_m: 20.2808}
+    end: {x_m: -0.2603, y_m: 20.127}
+    width_m: 0.0762
+  - name: "Line.001_0136"
+    start: {x_m: -0.1875, y_m: 19.9408}
+    end: {x_m: -0.5742, y_m: 19.768}
+    width_m: 0.0762
+  - name: "Line.001_0137"
+    start: {x_m: -0.2603, y_m: 20.127}
+    end: {x_m: -0.6665, y_m: 19.9454}
+    width_m: 0.0762
+  - name: "Line.001_0138"
+    start: {x_m: -0.5742, y_m: 19.768}
+    end: {x_m: -0.912, y_m: 19.5656}
+    width_m: 0.0762
+  - name: "Line.001_0139"
+    start: {x_m: -0.6665, y_m: 19.9454}
+    end: {x_m: -1.0266, y_m: 19.7295}
+    width_m: 0.0762
+  - name: "Line.001_0140"
+    start: {x_m: -0.912, y_m: 19.5656}
+    end: {x_m: -1.2065, y_m: 19.3276}
+    width_m: 0.0762
+  - name: "Line.001_0141"
+    start: {x_m: -1.0266, y_m: 19.7295}
+    end: {x_m: -1.3435, y_m: 19.4733}
+    width_m: 0.0762
+  - name: "Line.001_0142"
+    start: {x_m: -1.2065, y_m: 19.3276}
+    end: {x_m: -1.4631, y_m: 19.0474}
+    width_m: 0.0762
+  - name: "Line.001_0143"
+    start: {x_m: -1.3435, y_m: 19.4733}
+    end: {x_m: -1.62, y_m: 19.1715}
+    width_m: 0.0762
+  - name: "Line.001_0144"
+    start: {x_m: -1.4631, y_m: 19.0474}
+    end: {x_m: -1.6895, y_m: 18.7138}
+    width_m: 0.0762
+  - name: "Line.001_0145"
+    start: {x_m: -1.62, y_m: 19.1715}
+    end: {x_m: -1.8569, y_m: 18.8234}
+    width_m: 0.0762
+  - name: "Line.001_0146"
+    start: {x_m: -1.6895, y_m: 18.7138}
+    end: {x_m: -1.971, y_m: 18.2669}
+    width_m: 0.0762
+  - name: "Line.001_0147"
+    start: {x_m: -1.8569, y_m: 18.8234}
+    end: {x_m: -2.1372, y_m: 18.3781}
+    width_m: 0.0762
+  - name: "Line.001_0148"
+    start: {x_m: -1.971, y_m: 18.2669}
+    end: {x_m: -2.2542, y_m: 17.868}
+    width_m: 0.0762
+  - name: "Line.001_0149"
+    start: {x_m: -2.1372, y_m: 18.3781}
+    end: {x_m: -2.4151, y_m: 17.9868}
+    width_m: 0.0762
+  - name: "Line.001_0150"
+    start: {x_m: -2.2542, y_m: 17.868}
+    end: {x_m: -2.5294, y_m: 17.5091}
+    width_m: 0.0762
+  - name: "Line.001_0151"
+    start: {x_m: -2.4151, y_m: 17.9868}
+    end: {x_m: -2.6874, y_m: 17.6318}
+    width_m: 0.0762
+  - name: "Line.001_0152"
+    start: {x_m: -2.5294, y_m: 17.5091}
+    end: {x_m: -2.79, y_m: 17.1776}
+    width_m: 0.0762
+  - name: "Line.001_0153"
+    start: {x_m: -2.6874, y_m: 17.6318}
+    end: {x_m: -2.9484, y_m: 17.2997}
+    width_m: 0.0762
+  - name: "Line.001_0154"
+    start: {x_m: -2.79, y_m: 17.1776}
+    end: {x_m: -3.0293, y_m: 16.8611}
+    width_m: 0.0762
+  - name: "Line.001_0155"
+    start: {x_m: -2.9484, y_m: 17.2997}
+    end: {x_m: -3.192, y_m: 16.9773}
+    width_m: 0.0762
+  - name: "Line.001_0156"
+    start: {x_m: -3.0293, y_m: 16.8611}
+    end: {x_m: -3.2412, y_m: 16.5469}
+    width_m: 0.0762
+  - name: "Line.001_0157"
+    start: {x_m: -3.192, y_m: 16.9773}
+    end: {x_m: -3.4118, y_m: 16.6512}
+    width_m: 0.0762
+  - name: "Line.001_0158"
+    start: {x_m: -3.2412, y_m: 16.5469}
+    end: {x_m: -3.4201, y_m: 16.2223}
+    width_m: 0.0762
+  - name: "Line.001_0159"
+    start: {x_m: -3.4118, y_m: 16.6512}
+    end: {x_m: -3.6008, y_m: 16.3082}
+    width_m: 0.0762
+  - name: "Line.001_0160"
+    start: {x_m: -3.4201, y_m: 16.2223}
+    end: {x_m: -3.5611, y_m: 15.8739}
+    width_m: 0.0762
+  - name: "Line.001_0161"
+    start: {x_m: -3.6008, y_m: 16.3082}
+    end: {x_m: -3.7512, y_m: 15.9361}
+    width_m: 0.0762
+  - name: "Line.001_0162"
+    start: {x_m: -3.5611, y_m: 15.8739}
+    end: {x_m: -3.659, y_m: 15.4874}
+    width_m: 0.0762
+  - name: "Line.001_0163"
+    start: {x_m: -3.7512, y_m: 15.9361}
+    end: {x_m: -3.8558, y_m: 15.5231}
+    width_m: 0.0762
+  - name: "Line.001_0164"
+    start: {x_m: -3.659, y_m: 15.4874}
+    end: {x_m: -3.708, y_m: 15.0483}
+    width_m: 0.0762
+  - name: "Line.001_0165"
+    start: {x_m: -3.8558, y_m: 15.5231}
+    end: {x_m: -3.9077, y_m: 15.0581}
+    width_m: 0.0762
+  - name: "Line.001_0166"
+    start: {x_m: -3.708, y_m: 15.0483}
+    end: {x_m: -3.7014, y_m: 14.5423}
+    width_m: 0.0762
+  - name: "Line.001_0167"
+    start: {x_m: -3.9077, y_m: 15.0581}
+    end: {x_m: -3.9009, y_m: 14.5293}
+    width_m: 0.0762
+  - name: "Line.001_0168"
+    start: {x_m: -3.7014, y_m: 14.5423}
+    end: {x_m: -3.632, y_m: 13.9542}
+    width_m: 0.0762
+  - name: "Line.001_0169"
+    start: {x_m: -3.9009, y_m: 14.5293}
+    end: {x_m: -3.8301, y_m: 13.9262}
+    width_m: 0.0762
+  - name: "Line.001_0170"
+    start: {x_m: -3.632, y_m: 13.9542}
+    end: {x_m: -3.5608, y_m: 13.5233}
+    width_m: 0.0762
+  - name: "Line.001_0171"
+    start: {x_m: -3.8301, y_m: 13.9262}
+    end: {x_m: -3.7581, y_m: 13.4905}
+    width_m: 0.0762
+  - name: "Line.001_0172"
+    start: {x_m: -3.5608, y_m: 13.5233}
+    end: {x_m: -3.4551, y_m: 12.8918}
+    width_m: 0.0762
+  - name: "Line.001_0173"
+    start: {x_m: -3.7581, y_m: 13.4905}
+    end: {x_m: -3.6523, y_m: 12.8587}
+    width_m: 0.0762
+  - name: "Line.001_0174"
+    start: {x_m: -3.4551, y_m: 12.8918}
+    end: {x_m: -3.3226, y_m: 12.1057}
+    width_m: 0.0762
+  - name: "Line.001_0175"
+    start: {x_m: -3.6523, y_m: 12.8587}
+    end: {x_m: -3.5199, y_m: 12.0724}
+    width_m: 0.0762
+  - name: "Line.001_0176"
+    start: {x_m: -3.3226, y_m: 12.1057}
+    end: {x_m: -3.1711, y_m: 11.2089}
+    width_m: 0.0762
+  - name: "Line.001_0177"
+    start: {x_m: -3.5199, y_m: 12.0724}
+    end: {x_m: -3.3683, y_m: 11.1756}
+    width_m: 0.0762
+  - name: "Line.001_0178"
+    start: {x_m: -3.1711, y_m: 11.2089}
+    end: {x_m: -3.008, y_m: 10.2454}
+    width_m: 0.0762
+  - name: "Line.001_0179"
+    start: {x_m: -3.3683, y_m: 11.1756}
+    end: {x_m: -3.2052, y_m: 10.212}
+    width_m: 0.0762
+  - name: "Line.001_0180"
+    start: {x_m: -3.008, y_m: 10.2454}
+    end: {x_m: -2.8409, y_m: 9.2589}
+    width_m: 0.0762
+  - name: "Line.001_0181"
+    start: {x_m: -3.2052, y_m: 10.212}
+    end: {x_m: -3.0381, y_m: 9.2255}
+    width_m: 0.0762
+  - name: "Line.001_0182"
+    start: {x_m: -2.8409, y_m: 9.2589}
+    end: {x_m: -2.6774, y_m: 8.2933}
+    width_m: 0.0762
+  - name: "Line.001_0183"
+    start: {x_m: -3.0381, y_m: 9.2255}
+    end: {x_m: -2.8745, y_m: 8.2599}
+    width_m: 0.0762
+  - name: "Line.001_0184"
+    start: {x_m: -2.6774, y_m: 8.2933}
+    end: {x_m: -2.5249, y_m: 7.3926}
+    width_m: 0.0762
+  - name: "Line.001_0185"
+    start: {x_m: -2.8745, y_m: 8.2599}
+    end: {x_m: -2.7221, y_m: 7.3592}
+    width_m: 0.0762
+  - name: "Line.001_0186"
+    start: {x_m: -2.5249, y_m: 7.3926}
+    end: {x_m: -2.3911, y_m: 6.6005}
+    width_m: 0.0762
+  - name: "Line.001_0187"
+    start: {x_m: -2.7221, y_m: 7.3592}
+    end: {x_m: -2.5884, y_m: 6.5672}
+    width_m: 0.0762
+  - name: "Line.001_0188"
+    start: {x_m: -2.3911, y_m: 6.6005}
+    end: {x_m: -2.2836, y_m: 5.9608}
+    width_m: 0.0762
+  - name: "Line.001_0189"
+    start: {x_m: -2.5884, y_m: 6.5672}
+    end: {x_m: -2.4808, y_m: 5.9278}
+    width_m: 0.0762
+  - name: "Line.001_0190"
+    start: {x_m: -2.2836, y_m: 5.9608}
+    end: {x_m: -2.2097, y_m: 5.5173}
+    width_m: 0.0762
+  - name: "Line.001_0191"
+    start: {x_m: -2.4808, y_m: 5.9278}
+    end: {x_m: -2.4071, y_m: 5.4851}
+    width_m: 0.0762
+  - name: "Line.001_0192"
+    start: {x_m: -2.2097, y_m: 5.5173}
+    end: {x_m: -2.1771, y_m: 5.3134}
+    width_m: 0.0762
+  - name: "Line.001_0193"
+    start: {x_m: -2.4071, y_m: 5.4851}
+    end: {x_m: -2.3749, y_m: 5.2834}
+    width_m: 0.0762
+  - name: "Line.001_0194"
+    start: {x_m: -2.1771, y_m: 5.3134}
+    end: {x_m: -2.1641, y_m: 5.2233}
+    width_m: 0.0762
+  - name: "Line.001_0195"
+    start: {x_m: -2.3749, y_m: 5.2834}
+    end: {x_m: -2.362, y_m: 5.194}
+    width_m: 0.0762
+  - name: "Line.001_0196"
+    start: {x_m: -2.1641, y_m: 5.2233}
+    end: {x_m: -2.1447, y_m: 5.0959}
+    width_m: 0.0762
+  - name: "Line.001_0197"
+    start: {x_m: -2.362, y_m: 5.194}
+    end: {x_m: -2.3424, y_m: 5.0655}
+    width_m: 0.0762
+  - name: "Line.001_0198"
+    start: {x_m: -2.1447, y_m: 5.0959}
+    end: {x_m: -2.12, y_m: 4.9376}
+    width_m: 0.0762
+  - name: "Line.001_0199"
+    start: {x_m: -2.3424, y_m: 5.0655}
+    end: {x_m: -2.3176, y_m: 4.9066}
+    width_m: 0.0762
+  - name: "Line.001_0200"
+    start: {x_m: -2.12, y_m: 4.9376}
+    end: {x_m: -2.0913, y_m: 4.7562}
+    width_m: 0.0762
+  - name: "Line.001_0201"
+    start: {x_m: -2.3176, y_m: 4.9066}
+    end: {x_m: -2.2888, y_m: 4.7248}
+    width_m: 0.0762
+  - name: "Line.001_0202"
+    start: {x_m: -2.0913, y_m: 4.7562}
+    end: {x_m: -2.0598, y_m: 4.5592}
+    width_m: 0.0762
+  - name: "Line.001_0203"
+    start: {x_m: -2.2888, y_m: 4.7248}
+    end: {x_m: -2.2573, y_m: 4.5276}
+    width_m: 0.0762
+  - name: "Line.001_0204"
+    start: {x_m: -2.0598, y_m: 4.5592}
+    end: {x_m: -2.0269, y_m: 4.3545}
+    width_m: 0.0762
+  - name: "Line.001_0205"
+    start: {x_m: -2.2573, y_m: 4.5276}
+    end: {x_m: -2.2244, y_m: 4.3227}
+    width_m: 0.0762
+  - name: "Line.001_0206"
+    start: {x_m: -2.0269, y_m: 4.3545}
+    end: {x_m: -1.9938, y_m: 4.1494}
+    width_m: 0.0762
+  - name: "Line.001_0207"
+    start: {x_m: -2.2244, y_m: 4.3227}
+    end: {x_m: -2.1913, y_m: 4.1176}
+    width_m: 0.0762
+  - name: "Line.001_0208"
+    start: {x_m: -1.9938, y_m: 4.1494}
+    end: {x_m: -1.9619, y_m: 3.9518}
+    width_m: 0.0762
+  - name: "Line.001_0209"
+    start: {x_m: -2.1913, y_m: 4.1176}
+    end: {x_m: -2.1593, y_m: 3.9199}
+    width_m: 0.0762
+  - name: "Line.001_0210"
+    start: {x_m: -1.9619, y_m: 3.9518}
+    end: {x_m: -1.9323, y_m: 3.7691}
+    width_m: 0.0762
+  - name: "Line.001_0211"
+    start: {x_m: -2.1593, y_m: 3.9199}
+    end: {x_m: -2.1297, y_m: 3.7372}
+    width_m: 0.0762
+  - name: "Line.001_0212"
+    start: {x_m: -1.9323, y_m: 3.7691}
+    end: {x_m: -1.9063, y_m: 3.6091}
+    width_m: 0.0762
+  - name: "Line.001_0213"
+    start: {x_m: -2.1297, y_m: 3.7372}
+    end: {x_m: -2.1038, y_m: 3.5771}
+    width_m: 0.0762
+  - name: "Line.001_0214"
+    start: {x_m: -1.9063, y_m: 3.6091}
+    end: {x_m: -1.8853, y_m: 3.4792}
+    width_m: 0.0762
+  - name: "Line.001_0215"
+    start: {x_m: -2.1038, y_m: 3.5771}
+    end: {x_m: -2.0828, y_m: 3.4473}
+    width_m: 0.0762
+  - name: "Line.001_0216"
+    start: {x_m: -1.8853, y_m: 3.4792}
+    end: {x_m: -1.8704, y_m: 3.3864}
+    width_m: 0.0762
+  - name: "Line.001_0217"
+    start: {x_m: -2.0828, y_m: 3.4473}
+    end: {x_m: -2.0681, y_m: 3.3561}
+    width_m: 0.0762
+  - name: "Line.001_0218"
+    start: {x_m: -1.8704, y_m: 3.3864}
+    end: {x_m: -1.857, y_m: 3.2945}
+    width_m: 0.0762
+  - name: "Line.001_0219"
+    start: {x_m: -2.0681, y_m: 3.3561}
+    end: {x_m: -2.0551, y_m: 3.2668}
+    width_m: 0.0762
+  - name: "Line.001_0220"
+    start: {x_m: -1.857, y_m: 3.2945}
+    end: {x_m: -1.8396, y_m: 3.1635}
+    width_m: 0.0762
+  - name: "Line.001_0221"
+    start: {x_m: -2.0551, y_m: 3.2668}
+    end: {x_m: -2.0379, y_m: 3.1376}
+    width_m: 0.0762
+  - name: "Line.001_0222"
+    start: {x_m: -1.8396, y_m: 3.1635}
+    end: {x_m: -1.819, y_m: 3.0016}
+    width_m: 0.0762
+  - name: "Line.001_0223"
+    start: {x_m: -2.0379, y_m: 3.1376}
+    end: {x_m: -2.0174, y_m: 2.9765}
+    width_m: 0.0762
+  - name: "Line.001_0224"
+    start: {x_m: -1.819, y_m: 3.0016}
+    end: {x_m: -1.7959, y_m: 2.8166}
+    width_m: 0.0762
+  - name: "Line.001_0225"
+    start: {x_m: -2.0174, y_m: 2.9765}
+    end: {x_m: -1.9944, y_m: 2.792}
+    width_m: 0.0762
+  - name: "Line.001_0226"
+    start: {x_m: -1.7959, y_m: 2.8166}
+    end: {x_m: -1.7713, y_m: 2.6166}
+    width_m: 0.0762
+  - name: "Line.001_0227"
+    start: {x_m: -1.9944, y_m: 2.792}
+    end: {x_m: -1.9698, y_m: 2.5921}
+    width_m: 0.0762
+  - name: "Line.001_0228"
+    start: {x_m: -1.7713, y_m: 2.6166}
+    end: {x_m: -1.746, y_m: 2.4095}
+    width_m: 0.0762
+  - name: "Line.001_0229"
+    start: {x_m: -1.9698, y_m: 2.5921}
+    end: {x_m: -1.9445, y_m: 2.3851}
+    width_m: 0.0762
+  - name: "Line.001_0230"
+    start: {x_m: -1.746, y_m: 2.4095}
+    end: {x_m: -1.7208, y_m: 2.2037}
+    width_m: 0.0762
+  - name: "Line.001_0231"
+    start: {x_m: -1.9445, y_m: 2.3851}
+    end: {x_m: -1.9193, y_m: 2.1792}
+    width_m: 0.0762
+  - name: "Line.001_0232"
+    start: {x_m: -1.7208, y_m: 2.2037}
+    end: {x_m: -1.6965, y_m: 2.0071}
+    width_m: 0.0762
+  - name: "Line.001_0233"
+    start: {x_m: -1.9193, y_m: 2.1792}
+    end: {x_m: -1.895, y_m: 1.9823}
+    width_m: 0.0762
+  - name: "Line.001_0234"
+    start: {x_m: -1.6965, y_m: 2.0071}
+    end: {x_m: -1.6741, y_m: 1.8279}
+    width_m: 0.0762
+  - name: "Line.001_0235"
+    start: {x_m: -1.895, y_m: 1.9823}
+    end: {x_m: -1.8725, y_m: 1.8026}
+    width_m: 0.0762
+  - name: "Line.001_0236"
+    start: {x_m: -1.6741, y_m: 1.8279}
+    end: {x_m: -1.6543, y_m: 1.6744}
+    width_m: 0.0762
+  - name: "Line.001_0237"
+    start: {x_m: -1.8725, y_m: 1.8026}
+    end: {x_m: -1.8525, y_m: 1.648}
+    width_m: 0.0762
+  - name: "Line.001_0238"
+    start: {x_m: -1.6543, y_m: 1.6744}
+    end: {x_m: -1.638, y_m: 1.5551}
+    width_m: 0.0762
+  - name: "Line.001_0239"
+    start: {x_m: -1.8525, y_m: 1.648}
+    end: {x_m: -1.836, y_m: 1.5264}
+    width_m: 0.0762
+  - name: "Line.001_0240"
+    start: {x_m: -1.638, y_m: 1.5551}
+    end: {x_m: -1.626, y_m: 1.4767}
+    width_m: 0.0762
+  - name: "Line.001_0241"
+    start: {x_m: -1.836, y_m: 1.5264}
+    end: {x_m: -1.8238, y_m: 1.4471}
+    width_m: 0.0762
+  - name: "Line.001_0242"
+    start: {x_m: -1.626, y_m: 1.4767}
+    end: {x_m: -1.6096, y_m: 1.3639}
+    width_m: 0.0762
+  - name: "Line.001_0243"
+    start: {x_m: -1.8238, y_m: 1.4471}
+    end: {x_m: -1.8077, y_m: 1.3366}
+    width_m: 0.0762
+  - name: "Line.001_0244"
+    start: {x_m: -1.6096, y_m: 1.3639}
+    end: {x_m: -1.5815, y_m: 1.1483}
+    width_m: 0.0762
+  - name: "Line.001_0245"
+    start: {x_m: -1.8077, y_m: 1.3366}
+    end: {x_m: -1.7799, y_m: 1.123}
+    width_m: 0.0762
+  - name: "Line.001_0246"
+    start: {x_m: -1.5815, y_m: 1.1483}
+    end: {x_m: -1.5437, y_m: 0.8445}
+    width_m: 0.0762
+  - name: "Line.001_0247"
+    start: {x_m: -1.7799, y_m: 1.123}
+    end: {x_m: -1.7422, y_m: 0.8202}
+    width_m: 0.0762
+  - name: "Line.001_0248"
+    start: {x_m: -1.5437, y_m: 0.8445}
+    end: {x_m: -1.4981, y_m: 0.4667}
+    width_m: 0.0762
+  - name: "Line.001_0249"
+    start: {x_m: -1.7422, y_m: 0.8202}
+    end: {x_m: -1.6967, y_m: 0.4431}
+    width_m: 0.0762
+  - name: "Line.001_0250"
+    start: {x_m: -1.4981, y_m: 0.4667}
+    end: {x_m: -1.447, y_m: 0.0292}
+    width_m: 0.0762
+  - name: "Line.001_0251"
+    start: {x_m: -1.6967, y_m: 0.4431}
+    end: {x_m: -1.6457, y_m: 0.0063}
+    width_m: 0.0762
+  - name: "Line.001_0252"
+    start: {x_m: -1.447, y_m: 0.0292}
+    end: {x_m: -1.3922, y_m: -0.4536}
+    width_m: 0.0762
+  - name: "Line.001_0253"
+    start: {x_m: -1.6457, y_m: 0.0063}
+    end: {x_m: -1.5909, y_m: -0.4758}
+    width_m: 0.0762
+  - name: "Line.001_0254"
+    start: {x_m: -1.3922, y_m: -0.4536}
+    end: {x_m: -1.3358, y_m: -0.9673}
+    width_m: 0.0762
+  - name: "Line.001_0255"
+    start: {x_m: -1.5909, y_m: -0.4758}
+    end: {x_m: -1.5346, y_m: -0.9887}
+    width_m: 0.0762
+  - name: "Line.001_0256"
+    start: {x_m: -1.3358, y_m: -0.9673}
+    end: {x_m: -1.2798, y_m: -1.4976}
+    width_m: 0.0762
+  - name: "Line.001_0257"
+    start: {x_m: -1.5346, y_m: -0.9887}
+    end: {x_m: -1.4788, y_m: -1.5181}
+    width_m: 0.0762
+  - name: "Line.001_0258"
+    start: {x_m: -1.2798, y_m: -1.4976}
+    end: {x_m: -1.2263, y_m: -2.0299}
+    width_m: 0.0762
+  - name: "Line.001_0259"
+    start: {x_m: -1.4788, y_m: -1.5181}
+    end: {x_m: -1.4254, y_m: -2.0493}
+    width_m: 0.0762
+  - name: "Line.001_0260"
+    start: {x_m: -1.2263, y_m: -2.0299}
+    end: {x_m: -1.1774, y_m: -2.5499}
+    width_m: 0.0762
+  - name: "Line.001_0261"
+    start: {x_m: -1.4254, y_m: -2.0493}
+    end: {x_m: -1.3766, y_m: -2.5679}
+    width_m: 0.0762
+  - name: "Line.001_0262"
+    start: {x_m: -1.1774, y_m: -2.5499}
+    end: {x_m: -1.1349, y_m: -3.0434}
+    width_m: 0.0762
+  - name: "Line.001_0263"
+    start: {x_m: -1.3766, y_m: -2.5679}
+    end: {x_m: -1.3343, y_m: -3.0594}
+    width_m: 0.0762
+  - name: "Line.001_0264"
+    start: {x_m: -1.1349, y_m: -3.0434}
+    end: {x_m: -1.1012, y_m: -3.4941}
+    width_m: 0.0762
+  - name: "Line.001_0265"
+    start: {x_m: -1.3343, y_m: -3.0594}
+    end: {x_m: -1.3005, y_m: -3.511}
+    width_m: 0.0762
+  - name: "Line.001_0266"
+    start: {x_m: -1.1012, y_m: -3.4941}
+    end: {x_m: -1.0124, y_m: -4.423}
+    width_m: 0.0762
+  - name: "Line.001_0267"
+    start: {x_m: -1.3005, y_m: -3.511}
+    end: {x_m: -1.2111, y_m: -4.446}
+    width_m: 0.0762
+  - name: "Line.001_0268"
+    start: {x_m: -1.0124, y_m: -4.423}
+    end: {x_m: -0.8669, y_m: -5.4877}
+    width_m: 0.0762
+  - name: "Line.001_0269"
+    start: {x_m: -1.2111, y_m: -4.446}
+    end: {x_m: -1.0646, y_m: -5.5176}
+    width_m: 0.0762
+  - name: "Line.001_0270"
+    start: {x_m: -0.8669, y_m: -5.4877}
+    end: {x_m: -0.6737, y_m: -6.652}
+    width_m: 0.0762
+  - name: "Line.001_0271"
+    start: {x_m: -1.0646, y_m: -5.5176}
+    end: {x_m: -0.8706, y_m: -6.6869}
+    width_m: 0.0762
+  - name: "Line.001_0272"
+    start: {x_m: -0.6737, y_m: -6.652}
+    end: {x_m: -0.4422, y_m: -7.8782}
+    width_m: 0.0762
+  - name: "Line.001_0273"
+    start: {x_m: -0.8706, y_m: -6.6869}
+    end: {x_m: -0.6383, y_m: -7.9172}
+    width_m: 0.0762
+  - name: "Line.001_0274"
+    start: {x_m: -0.4422, y_m: -7.8782}
+    end: {x_m: -0.1817, y_m: -9.1286}
+    width_m: 0.0762
+  - name: "Line.001_0275"
+    start: {x_m: -0.6383, y_m: -7.9172}
+    end: {x_m: -0.3771, y_m: -9.1711}
+    width_m: 0.0762
+  - name: "Line.001_0276"
+    start: {x_m: -0.1817, y_m: -9.1286}
+    end: {x_m: 0.0984, y_m: -10.3656}
+    width_m: 0.0762
+  - name: "Line.001_0277"
+    start: {x_m: -0.3771, y_m: -9.1711}
+    end: {x_m: -0.0962, y_m: -10.4115}
+    width_m: 0.0762
+  - name: "Line.001_0278"
+    start: {x_m: 0.0984, y_m: -10.3656}
+    end: {x_m: 0.3888, y_m: -11.5516}
+    width_m: 0.0762
+  - name: "Line.001_0279"
+    start: {x_m: -0.0962, y_m: -10.4115}
+    end: {x_m: 0.195, y_m: -11.6011}
+    width_m: 0.0762
+  - name: "Line.001_0280"
+    start: {x_m: 0.3888, y_m: -11.5516}
+    end: {x_m: 0.6801, y_m: -12.6491}
+    width_m: 0.0762
+  - name: "Line.001_0281"
+    start: {x_m: 0.195, y_m: -11.6011}
+    end: {x_m: 0.4874, y_m: -12.7027}
+    width_m: 0.0762
+  - name: "Line.001_0282"
+    start: {x_m: 0.6801, y_m: -12.6491}
+    end: {x_m: 0.9629, y_m: -13.6201}
+    width_m: 0.0762
+  - name: "Line.001_0283"
+    start: {x_m: 0.4874, y_m: -12.7027}
+    end: {x_m: 0.7718, y_m: -13.6792}
+    width_m: 0.0762
+  - name: "Line.001_0284"
+    start: {x_m: 0.9629, y_m: -13.6201}
+    end: {x_m: 1.2274, y_m: -14.4266}
+    width_m: 0.0762
+  - name: "Line.001_0285"
+    start: {x_m: 0.7718, y_m: -13.6792}
+    end: {x_m: 1.0392, y_m: -14.4942}
+    width_m: 0.0762
+  - name: "Line.001_0286"
+    start: {x_m: 1.2274, y_m: -14.4266}
+    end: {x_m: 1.4629, y_m: -15.0284}
+    width_m: 0.0762
+  - name: "Line.001_0287"
+    start: {x_m: 1.0392, y_m: -14.4942}
+    end: {x_m: 1.2817, y_m: -15.1128}
+    width_m: 0.0762
+  - name: "Line.001_0288"
+    start: {x_m: 1.4629, y_m: -15.0284}
+    end: {x_m: 1.6518, y_m: -15.3787}
+    width_m: 0.0762
+  - name: "Line.001_0289"
+    start: {x_m: 1.2817, y_m: -15.1128}
+    end: {x_m: 1.4984, y_m: -15.5071}
+    width_m: 0.0762
+  - name: "Line.001_0290"
+    start: {x_m: 1.6518, y_m: -15.3787}
+    end: {x_m: 2.1172, y_m: -15.7513}
+    width_m: 0.0762
+  - name: "Line.001_0291"
+    start: {x_m: 1.4984, y_m: -15.5071}
+    end: {x_m: 2.0216, y_m: -15.927}
+    width_m: 0.0762
+  - name: "Line.001_0292"
+    start: {x_m: 2.1172, y_m: -15.7513}
+    end: {x_m: 2.8153, y_m: -15.9821}
+    width_m: 0.0762
+  - name: "Line.001_0293"
+    start: {x_m: 2.0216, y_m: -15.927}
+    end: {x_m: 2.7718, y_m: -16.1773}
+    width_m: 0.0762
+  - name: "Line.001_0294"
+    start: {x_m: 2.8153, y_m: -15.9821}
+    end: {x_m: 3.7042, y_m: -16.0872}
+    width_m: 0.0762
+  - name: "Line.001_0295"
+    start: {x_m: 2.7718, y_m: -16.1773}
+    end: {x_m: 3.6927, y_m: -16.2869}
+    width_m: 0.0762
+  - name: "Line.001_0296"
+    start: {x_m: 3.7042, y_m: -16.0872}
+    end: {x_m: 4.7311, y_m: -16.084}
+    width_m: 0.0762
+  - name: "Line.001_0297"
+    start: {x_m: 3.6927, y_m: -16.2869}
+    end: {x_m: 4.7395, y_m: -16.2839}
+    width_m: 0.0762
+  - name: "Line.001_0298"
+    start: {x_m: 4.7311, y_m: -16.084}
+    end: {x_m: 5.8443, y_m: -15.9937}
+    width_m: 0.0762
+  - name: "Line.001_0299"
+    start: {x_m: 4.7395, y_m: -16.2839}
+    end: {x_m: 5.8658, y_m: -16.1925}
+    width_m: 0.0762
+  - name: "Line.001_0300"
+    start: {x_m: 5.8443, y_m: -15.9937}
+    end: {x_m: 6.9934, y_m: -15.8384}
+    width_m: 0.0762
+  - name: "Line.001_0301"
+    start: {x_m: 5.8658, y_m: -16.1925}
+    end: {x_m: 7.0239, y_m: -16.036}
+    width_m: 0.0762
+  - name: "Line.001_0302"
+    start: {x_m: 6.9934, y_m: -15.8384}
+    end: {x_m: 8.1287, y_m: -15.6405}
+    width_m: 0.0762
+  - name: "Line.001_0303"
+    start: {x_m: 7.0239, y_m: -16.036}
+    end: {x_m: 8.1657, y_m: -15.8371}
+    width_m: 0.0762
+  - name: "Line.001_0304"
+    start: {x_m: 8.1287, y_m: -15.6405}
+    end: {x_m: 9.2009, y_m: -15.4229}
+    width_m: 0.0762
+  - name: "Line.001_0305"
+    start: {x_m: 8.1657, y_m: -15.8371}
+    end: {x_m: 9.2426, y_m: -15.6185}
+    width_m: 0.0762
+  - name: "Line.001_0306"
+    start: {x_m: 9.2009, y_m: -15.4229}
+    end: {x_m: 10.1609, y_m: -15.208}
+    width_m: 0.0762
+  - name: "Line.001_0307"
+    start: {x_m: 9.2426, y_m: -15.6185}
+    end: {x_m: 10.2058, y_m: -15.4029}
+    width_m: 0.0762
+  - name: "Line.001_0308"
+    start: {x_m: 10.1609, y_m: -15.208}
+    end: {x_m: 10.9597, y_m: -15.0186}
+    width_m: 0.0762
+  - name: "Line.001_0309"
+    start: {x_m: 10.2058, y_m: -15.4029}
+    end: {x_m: 11.0061, y_m: -15.2131}
+    width_m: 0.0762
+  - name: "Line.001_0310"
+    start: {x_m: 10.9597, y_m: -15.0186}
+    end: {x_m: 11.5495, y_m: -14.877}
+    width_m: 0.0762
+  - name: "Line.001_0311"
+    start: {x_m: 11.0061, y_m: -15.2131}
+    end: {x_m: 11.5937, y_m: -15.072}
+    width_m: 0.0762
+  - name: "Line.001_0312"
+    start: {x_m: 11.5495, y_m: -14.877}
+    end: {x_m: 11.8819, y_m: -14.8058}
+    width_m: 0.0762
+  - name: "Line.001_0313"
+    start: {x_m: 11.5937, y_m: -15.072}
+    end: {x_m: 11.9188, y_m: -15.0024}
+    width_m: 0.0762
+  - name: "Line.001_0314"
+    start: {x_m: 11.8819, y_m: -14.8058}
+    end: {x_m: 12.2474, y_m: -14.747}
+    width_m: 0.0762
+  - name: "Line.001_0315"
+    start: {x_m: 11.9188, y_m: -15.0024}
+    end: {x_m: 12.28, y_m: -14.9443}
+    width_m: 0.0762
+  - name: "Line.001_0316"
+    start: {x_m: 12.2474, y_m: -14.747}
+    end: {x_m: 12.8145, y_m: -14.651}
+    width_m: 0.0762
+  - name: "Line.001_0317"
+    start: {x_m: 12.28, y_m: -14.9443}
+    end: {x_m: 12.8481, y_m: -14.8482}
+    width_m: 0.0762
+  - name: "Line.001_0318"
+    start: {x_m: 12.8145, y_m: -14.651}
+    end: {x_m: 13.5441, y_m: -14.5251}
+    width_m: 0.0762
+  - name: "Line.001_0319"
+    start: {x_m: 12.8481, y_m: -14.8482}
+    end: {x_m: 13.5783, y_m: -14.7222}
+    width_m: 0.0762
+  - name: "Line.001_0320"
+    start: {x_m: 13.5441, y_m: -14.5251}
+    end: {x_m: 14.3943, y_m: -14.377}
+    width_m: 0.0762
+  - name: "Line.001_0321"
+    start: {x_m: 13.5783, y_m: -14.7222}
+    end: {x_m: 14.4287, y_m: -14.574}
+    width_m: 0.0762
+  - name: "Line.001_0322"
+    start: {x_m: 14.3943, y_m: -14.377}
+    end: {x_m: 15.323, y_m: -14.2143}
+    width_m: 0.0762
+  - name: "Line.001_0323"
+    start: {x_m: 14.4287, y_m: -14.574}
+    end: {x_m: 15.3576, y_m: -14.4113}
+    width_m: 0.0762
+  - name: "Line.001_0324"
+    start: {x_m: 15.323, y_m: -14.2143}
+    end: {x_m: 16.2883, y_m: -14.0448}
+    width_m: 0.0762
+  - name: "Line.001_0325"
+    start: {x_m: 15.3576, y_m: -14.4113}
+    end: {x_m: 16.3229, y_m: -14.2418}
+    width_m: 0.0762
+  - name: "Line.001_0326"
+    start: {x_m: 16.2883, y_m: -14.0448}
+    end: {x_m: 17.2483, y_m: -13.876}
+    width_m: 0.0762
+  - name: "Line.001_0327"
+    start: {x_m: 16.3229, y_m: -14.2418}
+    end: {x_m: 17.2829, y_m: -14.073}
+    width_m: 0.0762
+  - name: "Line.001_0328"
+    start: {x_m: 17.2483, y_m: -13.876}
+    end: {x_m: 18.1609, y_m: -13.7158}
+    width_m: 0.0762
+  - name: "Line.001_0329"
+    start: {x_m: 17.2829, y_m: -14.073}
+    end: {x_m: 18.1954, y_m: -13.9128}
+    width_m: 0.0762
+  - name: "Line.001_0330"
+    start: {x_m: 18.1609, y_m: -13.7158}
+    end: {x_m: 18.9843, y_m: -13.5717}
+    width_m: 0.0762
+  - name: "Line.001_0331"
+    start: {x_m: 18.1954, y_m: -13.9128}
+    end: {x_m: 19.0187, y_m: -13.7687}
+    width_m: 0.0762
+  - name: "Line.001_0332"
+    start: {x_m: 18.9843, y_m: -13.5717}
+    end: {x_m: 19.6767, y_m: -13.4514}
+    width_m: 0.0762
+  - name: "Line.001_0333"
+    start: {x_m: 19.0187, y_m: -13.7687}
+    end: {x_m: 19.7107, y_m: -13.6485}
+    width_m: 0.0762
+  - name: "Line.001_0334"
+    start: {x_m: 19.6767, y_m: -13.4514}
+    end: {x_m: 20.1963, y_m: -13.3625}
+    width_m: 0.0762
+  - name: "Line.001_0335"
+    start: {x_m: 19.7107, y_m: -13.6485}
+    end: {x_m: 20.2292, y_m: -13.5598}
+    width_m: 0.0762
+  - name: "Line.001_0336"
+    start: {x_m: 20.1963, y_m: -13.3625}
+    end: {x_m: 20.5013, y_m: -13.3128}
+    width_m: 0.0762
+  - name: "Line.001_0337"
+    start: {x_m: 20.2292, y_m: -13.5598}
+    end: {x_m: 20.5321, y_m: -13.5104}
+    width_m: 0.0762
+  - name: "Line.001_0338"
+    start: {x_m: 20.5013, y_m: -13.3128}
+    end: {x_m: 20.8325, y_m: -13.2634}
+    width_m: 0.0762
+  - name: "Line.001_0339"
+    start: {x_m: 20.5321, y_m: -13.5104}
+    end: {x_m: 20.862, y_m: -13.4612}
+    width_m: 0.0762
+  - name: "Line.001_0340"
+    start: {x_m: 20.8325, y_m: -13.2634}
+    end: {x_m: 21.3095, y_m: -13.1927}
+    width_m: 0.0762
+  - name: "Line.001_0341"
+    start: {x_m: 20.862, y_m: -13.4612}
+    end: {x_m: 21.3388, y_m: -13.3905}
+    width_m: 0.0762
+  - name: "Line.001_0342"
+    start: {x_m: 21.3095, y_m: -13.1927}
+    end: {x_m: 21.9023, y_m: -13.105}
+    width_m: 0.0762
+  - name: "Line.001_0343"
+    start: {x_m: 21.3388, y_m: -13.3905}
+    end: {x_m: 21.9316, y_m: -13.3029}
+    width_m: 0.0762
+  - name: "Line.001_0344"
+    start: {x_m: 21.9023, y_m: -13.105}
+    end: {x_m: 22.5809, y_m: -13.0048}
+    width_m: 0.0762
+  - name: "Line.001_0345"
+    start: {x_m: 21.9316, y_m: -13.3029}
+    end: {x_m: 22.6101, y_m: -13.2027}
+    width_m: 0.0762
+  - name: "Line.001_0346"
+    start: {x_m: 22.5809, y_m: -13.0048}
+    end: {x_m: 23.3147, y_m: -12.8965}
+    width_m: 0.0762
+  - name: "Line.001_0347"
+    start: {x_m: 22.6101, y_m: -13.2027}
+    end: {x_m: 23.3439, y_m: -13.0944}
+    width_m: 0.0762
+  - name: "Line.001_0348"
+    start: {x_m: 23.3147, y_m: -12.8965}
+    end: {x_m: 24.0734, y_m: -12.7846}
+    width_m: 0.0762
+  - name: "Line.001_0349"
+    start: {x_m: 23.3439, y_m: -13.0944}
+    end: {x_m: 24.1026, y_m: -12.9825}
+    width_m: 0.0762
+  - name: "Line.001_0350"
+    start: {x_m: 24.0734, y_m: -12.7846}
+    end: {x_m: 24.8268, y_m: -12.6735}
+    width_m: 0.0762
+  - name: "Line.001_0351"
+    start: {x_m: 24.1026, y_m: -12.9825}
+    end: {x_m: 24.856, y_m: -12.8714}
+    width_m: 0.0762
+  - name: "Line.001_0352"
+    start: {x_m: 24.8268, y_m: -12.6735}
+    end: {x_m: 25.5444, y_m: -12.5677}
+    width_m: 0.0762
+  - name: "Line.001_0353"
+    start: {x_m: 24.856, y_m: -12.8714}
+    end: {x_m: 25.5736, y_m: -12.7655}
+    width_m: 0.0762
+  - name: "Line.001_0354"
+    start: {x_m: 25.5444, y_m: -12.5677}
+    end: {x_m: 26.1959, y_m: -12.4715}
+    width_m: 0.0762
+  - name: "Line.001_0355"
+    start: {x_m: 25.5736, y_m: -12.7655}
+    end: {x_m: 26.2251, y_m: -12.6694}
+    width_m: 0.0762
+  - name: "Line.001_0356"
+    start: {x_m: 26.1959, y_m: -12.4715}
+    end: {x_m: 26.751, y_m: -12.3895}
+    width_m: 0.0762
+  - name: "Line.001_0357"
+    start: {x_m: 26.2251, y_m: -12.6694}
+    end: {x_m: 26.7803, y_m: -12.5874}
+    width_m: 0.0762
+  - name: "Line.001_0358"
+    start: {x_m: 26.751, y_m: -12.3895}
+    end: {x_m: 27.1792, y_m: -12.3261}
+    width_m: 0.0762
+  - name: "Line.001_0359"
+    start: {x_m: 26.7803, y_m: -12.5874}
+    end: {x_m: 27.2086, y_m: -12.5239}
+    width_m: 0.0762
+  - name: "Line.001_0360"
+    start: {x_m: 27.1792, y_m: -12.3261}
+    end: {x_m: 27.452, y_m: -12.2855}
+    width_m: 0.0762
+  - name: "Line.001_0361"
+    start: {x_m: 27.2086, y_m: -12.5239}
+    end: {x_m: 27.4782, y_m: -12.4838}
+    width_m: 0.0762
+  - name: "Line.001_0362"
+    start: {x_m: 27.452, y_m: -12.2855}
+    end: {x_m: 27.7686, y_m: -12.249}
+    width_m: 0.0762
+  - name: "Line.001_0363"
+    start: {x_m: 27.4782, y_m: -12.4838}
+    end: {x_m: 27.7888, y_m: -12.4479}
+    width_m: 0.0762
+  - name: "Line.001_0364"
+    start: {x_m: 27.7686, y_m: -12.249}
+    end: {x_m: 28.2012, y_m: -12.211}
+    width_m: 0.0762
+  - name: "Line.001_0365"
+    start: {x_m: 27.7888, y_m: -12.4479}
+    end: {x_m: 28.2184, y_m: -12.4103}
+    width_m: 0.0762
+  - name: "Line.001_0366"
+    start: {x_m: 28.2012, y_m: -12.211}
+    end: {x_m: 28.7267, y_m: -12.1663}
+    width_m: 0.0762
+  - name: "Line.001_0367"
+    start: {x_m: 28.2184, y_m: -12.4103}
+    end: {x_m: 28.7447, y_m: -12.3655}
+    width_m: 0.0762
+  - name: "Line.001_0368"
+    start: {x_m: 28.7267, y_m: -12.1663}
+    end: {x_m: 29.3234, y_m: -12.1097}
+    width_m: 0.0762
+  - name: "Line.001_0369"
+    start: {x_m: 28.7447, y_m: -12.3655}
+    end: {x_m: 29.3442, y_m: -12.3086}
+    width_m: 0.0762
+  - name: "Line.001_0370"
+    start: {x_m: 29.3234, y_m: -12.1097}
+    end: {x_m: 29.9685, y_m: -12.0358}
+    width_m: 0.0762
+  - name: "Line.001_0371"
+    start: {x_m: 29.3442, y_m: -12.3086}
+    end: {x_m: 29.9941, y_m: -12.2341}
+    width_m: 0.0762
+  - name: "Line.001_0372"
+    start: {x_m: 29.9685, y_m: -12.0358}
+    end: {x_m: 30.6395, y_m: -11.9395}
+    width_m: 0.0762
+  - name: "Line.001_0373"
+    start: {x_m: 29.9941, y_m: -12.2341}
+    end: {x_m: 30.6717, y_m: -12.1369}
+    width_m: 0.0762
+  - name: "Line.001_0374"
+    start: {x_m: 30.6395, y_m: -11.9395}
+    end: {x_m: 31.3133, y_m: -11.8157}
+    width_m: 0.0762
+  - name: "Line.001_0375"
+    start: {x_m: 30.6717, y_m: -12.1369}
+    end: {x_m: 31.3546, y_m: -12.0114}
+    width_m: 0.0762
+  - name: "Line.001_0376"
+    start: {x_m: 31.3133, y_m: -11.8157}
+    end: {x_m: 31.967, y_m: -11.6595}
+    width_m: 0.0762
+  - name: "Line.001_0377"
+    start: {x_m: 31.3546, y_m: -12.0114}
+    end: {x_m: 32.0205, y_m: -11.8522}
+    width_m: 0.0762
+  - name: "Line.001_0378"
+    start: {x_m: 31.967, y_m: -11.6595}
+    end: {x_m: 32.5771, y_m: -11.4661}
+    width_m: 0.0762
+  - name: "Line.001_0379"
+    start: {x_m: 32.0205, y_m: -11.8522}
+    end: {x_m: 32.6471, y_m: -11.6535}
+    width_m: 0.0762
+  - name: "Line.001_0380"
+    start: {x_m: 32.5771, y_m: -11.4661}
+    end: {x_m: 33.1204, y_m: -11.2315}
+    width_m: 0.0762
+  - name: "Line.001_0381"
+    start: {x_m: 32.6471, y_m: -11.6535}
+    end: {x_m: 33.2128, y_m: -11.4088}
+    width_m: 0.0762
+  - name: "Line.001_0382"
+    start: {x_m: 33.1204, y_m: -11.2315}
+    end: {x_m: 33.5732, y_m: -10.9525}
+    width_m: 0.0762
+  - name: "Line.001_0383"
+    start: {x_m: 33.2128, y_m: -11.4088}
+    end: {x_m: 33.6954, y_m: -11.1108}
+    width_m: 0.0762
+  - name: "Line.001_0384"
+    start: {x_m: 33.5732, y_m: -10.9525}
+    end: {x_m: 33.9174, y_m: -10.6232}
+    width_m: 0.0762
+  - name: "Line.001_0385"
+    start: {x_m: 33.6954, y_m: -11.1108}
+    end: {x_m: 34.0678, y_m: -10.7551}
+    width_m: 0.0762
+  - name: "Line.001_0386"
+    start: {x_m: 33.9174, y_m: -10.6232}
+    end: {x_m: 34.2738, y_m: -10.1355}
+    width_m: 0.0762
+  - name: "Line.001_0387"
+    start: {x_m: 34.0678, y_m: -10.7551}
+    end: {x_m: 34.4402, y_m: -10.2464}
+    width_m: 0.0762
+  - name: "Line.001_0388"
+    start: {x_m: 34.2738, y_m: -10.1355}
+    end: {x_m: 34.5644, y_m: -9.6553}
+    width_m: 0.0762
+  - name: "Line.001_0389"
+    start: {x_m: 34.4402, y_m: -10.2464}
+    end: {x_m: 34.74, y_m: -9.751}
+    width_m: 0.0762
+  - name: "Line.001_0390"
+    start: {x_m: 34.5644, y_m: -9.6553}
+    end: {x_m: 34.7927, y_m: -9.1872}
+    width_m: 0.0762
+  - name: "Line.001_0391"
+    start: {x_m: 34.74, y_m: -9.751}
+    end: {x_m: 34.9763, y_m: -9.2666}
+    width_m: 0.0762
+  - name: "Line.001_0392"
+    start: {x_m: 34.7927, y_m: -9.1872}
+    end: {x_m: 34.9651, y_m: -8.7322}
+    width_m: 0.0762
+  - name: "Line.001_0393"
+    start: {x_m: 34.9763, y_m: -9.2666}
+    end: {x_m: 35.1552, y_m: -8.7945}
+    width_m: 0.0762
+  - name: "Line.001_0394"
+    start: {x_m: 34.9651, y_m: -8.7322}
+    end: {x_m: 35.0881, y_m: -8.291}
+    width_m: 0.0762
+  - name: "Line.001_0395"
+    start: {x_m: 35.1552, y_m: -8.7945}
+    end: {x_m: 35.2829, y_m: -8.3364}
+    width_m: 0.0762
+  - name: "Line.001_0396"
+    start: {x_m: 35.0881, y_m: -8.291}
+    end: {x_m: 35.168, y_m: -7.8647}
+    width_m: 0.0762
+  - name: "Line.001_0397"
+    start: {x_m: 35.2829, y_m: -8.3364}
+    end: {x_m: 35.3659, y_m: -7.8935}
+    width_m: 0.0762
+  - name: "Line.001_0398"
+    start: {x_m: 35.168, y_m: -7.8647}
+    end: {x_m: 35.2108, y_m: -7.454}
+    width_m: 0.0762
+  - name: "Line.001_0399"
+    start: {x_m: 35.3659, y_m: -7.8935}
+    end: {x_m: 35.4104, y_m: -7.4674}
+    width_m: 0.0762
+  - name: "Line.001_0400"
+    start: {x_m: 35.2108, y_m: -7.454}
+    end: {x_m: 35.2229, y_m: -7.0598}
+    width_m: 0.0762
+  - name: "Line.001_0401"
+    start: {x_m: 35.4104, y_m: -7.4674}
+    end: {x_m: 35.4229, y_m: -7.0596}
+    width_m: 0.0762
+  - name: "Line.001_0402"
+    start: {x_m: 35.2229, y_m: -7.0598}
+    end: {x_m: 35.2103, y_m: -6.6833}
+    width_m: 0.0762
+  - name: "Line.001_0403"
+    start: {x_m: 35.4229, y_m: -7.0596}
+    end: {x_m: 35.41, y_m: -6.6713}
+    width_m: 0.0762
+  - name: "Line.001_0404"
+    start: {x_m: 35.2103, y_m: -6.6833}
+    end: {x_m: 35.1792, y_m: -6.3253}
+    width_m: 0.0762
+  - name: "Line.001_0405"
+    start: {x_m: 35.41, y_m: -6.6713}
+    end: {x_m: 35.378, y_m: -6.3038}
+    width_m: 0.0762
+  - name: "Line.001_0406"
+    start: {x_m: 35.1792, y_m: -6.3253}
+    end: {x_m: 35.1356, y_m: -5.9869}
+    width_m: 0.0762
+  - name: "Line.001_0407"
+    start: {x_m: 35.378, y_m: -6.3038}
+    end: {x_m: 35.3336, y_m: -5.9586}
+    width_m: 0.0762
+  - name: "Line.001_0408"
+    start: {x_m: 35.1356, y_m: -5.9869}
+    end: {x_m: 35.0854, y_m: -5.6669}
+    width_m: 0.0762
+  - name: "Line.001_0409"
+    start: {x_m: 35.3336, y_m: -5.9586}
+    end: {x_m: 35.2834, y_m: -5.639}
+    width_m: 0.0762
+  - name: "Line.001_0410"
+    start: {x_m: 35.0854, y_m: -5.6669}
+    end: {x_m: 35.0265, y_m: -5.1943}
+    width_m: 0.0762
+  - name: "Line.001_0411"
+    start: {x_m: 35.2834, y_m: -5.639}
+    end: {x_m: 35.2256, y_m: -5.175}
+    width_m: 0.0762
+  - name: "Line.001_0412"
+    start: {x_m: 35.0265, y_m: -5.1943}
+    end: {x_m: 34.9873, y_m: -4.6336}
+    width_m: 0.0762
+  - name: "Line.001_0413"
+    start: {x_m: 35.2256, y_m: -5.175}
+    end: {x_m: 35.1871, y_m: -4.6229}
+    width_m: 0.0762
+  - name: "Line.001_0414"
+    start: {x_m: 34.9873, y_m: -4.6336}
+    end: {x_m: 34.9643, y_m: -4.0058}
+    width_m: 0.0762
+  - name: "Line.001_0415"
+    start: {x_m: 35.1871, y_m: -4.6229}
+    end: {x_m: 35.1642, y_m: -4.0006}
+    width_m: 0.0762
+  - name: "Line.001_0416"
+    start: {x_m: 34.9643, y_m: -4.0058}
+    end: {x_m: 34.9537, y_m: -3.3298}
+    width_m: 0.0762
+  - name: "Line.001_0417"
+    start: {x_m: 35.1642, y_m: -4.0006}
+    end: {x_m: 35.1537, y_m: -3.3279}
+    width_m: 0.0762
+  - name: "Line.001_0418"
+    start: {x_m: 34.9537, y_m: -3.3298}
+    end: {x_m: 34.9518, y_m: -2.6247}
+    width_m: 0.0762
+  - name: "Line.001_0419"
+    start: {x_m: 35.1537, y_m: -3.3279}
+    end: {x_m: 35.1518, y_m: -2.6249}
+    width_m: 0.0762
+  - name: "Line.001_0420"
+    start: {x_m: 34.9518, y_m: -2.6247}
+    end: {x_m: 34.955, y_m: -1.9098}
+    width_m: 0.0762
+  - name: "Line.001_0421"
+    start: {x_m: 35.1518, y_m: -2.6249}
+    end: {x_m: 35.155, y_m: -1.9109}
+    width_m: 0.0762
+  - name: "Line.001_0422"
+    start: {x_m: 34.955, y_m: -1.9098}
+    end: {x_m: 34.9597, y_m: -1.2045}
+    width_m: 0.0762
+  - name: "Line.001_0423"
+    start: {x_m: 35.155, y_m: -1.9109}
+    end: {x_m: 35.1597, y_m: -1.2056}
+    width_m: 0.0762
+  - name: "Line.001_0424"
+    start: {x_m: 34.9597, y_m: -1.2045}
+    end: {x_m: 34.9624, y_m: -0.5284}
+    width_m: 0.0762
+  - name: "Line.001_0425"
+    start: {x_m: 35.1597, y_m: -1.2056}
+    end: {x_m: 35.1624, y_m: -0.5283}
+    width_m: 0.0762
+  - name: "Line.001_0426"
+    start: {x_m: 34.9624, y_m: -0.5284}
+    end: {x_m: 34.9593, y_m: 0.0991}
+    width_m: 0.0762
+  - name: "Line.001_0427"
+    start: {x_m: 35.1624, y_m: -0.5283}
+    end: {x_m: 35.1593, y_m: 0.1018}
+    width_m: 0.0762
+  - name: "Line.001_0428"
+    start: {x_m: 34.9593, y_m: 0.0991}
+    end: {x_m: 34.9471, y_m: 0.6579}
+    width_m: 0.0762
+  - name: "Line.001_0429"
+    start: {x_m: 35.1593, y_m: 0.1018}
+    end: {x_m: 35.1469, y_m: 0.6654}
+    width_m: 0.0762
+  - name: "Line.001_0430"
+    start: {x_m: 34.9471, y_m: 0.6579}
+    end: {x_m: 34.9221, y_m: 1.1278}
+    width_m: 0.0762
+  - name: "Line.001_0431"
+    start: {x_m: 35.1469, y_m: 0.6654}
+    end: {x_m: 35.1214, y_m: 1.1444}
+    width_m: 0.0762
+  - name: "Line.001_0432"
+    start: {x_m: 34.8807, y_m: 1.4928}
+    end: {x_m: 34.98, y_m: 1.5041}
+    width_m: 0.0762
+  - name: "Line.001_0433"
+    start: {x_m: 34.9221, y_m: 1.1278}
+    end: {x_m: 34.8807, y_m: 1.4928}
+    width_m: 0.0762
+  - name: "Line.001_0434"
+    start: {x_m: 35.1214, y_m: 1.1444}
+    end: {x_m: 35.0794, y_m: 1.5154}
+    width_m: 0.0762
+  - name: "Line.001_0435"
+    start: {x_m: 35.0794, y_m: 1.5154}
+    end: {x_m: 34.98, y_m: 1.5041}
+    width_m: 0.0762
+  - name: "Line.002_0000"
+    start: {x_m: 26.3916, y_m: 15.4849}
+    end: {x_m: 26.4715, y_m: 15.5018}
+    width_m: 0.0762
+  - name: "Line.002_0001"
+    start: {x_m: 26.3916, y_m: 15.4849}
+    end: {x_m: 26.3561, y_m: 15.6496}
+    width_m: 0.0762
+  - name: "Line.002_0002"
+    start: {x_m: 26.5514, y_m: 15.5188}
+    end: {x_m: 26.4715, y_m: 15.5018}
+    width_m: 0.0762
+  - name: "Line.002_0003"
+    start: {x_m: 26.5514, y_m: 15.5188}
+    end: {x_m: 26.5156, y_m: 15.6849}
+    width_m: 0.0762
+  - name: "Line.002_0004"
+    start: {x_m: 26.3561, y_m: 15.6496}
+    end: {x_m: 26.3085, y_m: 15.8521}
+    width_m: 0.0762
+  - name: "Line.002_0005"
+    start: {x_m: 26.5156, y_m: 15.6849}
+    end: {x_m: 26.4674, y_m: 15.89}
+    width_m: 0.0762
+  - name: "Line.002_0006"
+    start: {x_m: 26.3085, y_m: 15.8521}
+    end: {x_m: 26.249, y_m: 16.0874}
+    width_m: 0.0762
+  - name: "Line.002_0007"
+    start: {x_m: 26.4674, y_m: 15.89}
+    end: {x_m: 26.4072, y_m: 16.128}
+    width_m: 0.0762
+  - name: "Line.002_0008"
+    start: {x_m: 26.249, y_m: 16.0874}
+    end: {x_m: 26.1774, y_m: 16.35}
+    width_m: 0.0762
+  - name: "Line.002_0009"
+    start: {x_m: 26.4072, y_m: 16.128}
+    end: {x_m: 26.3349, y_m: 16.3933}
+    width_m: 0.0762
+  - name: "Line.002_0010"
+    start: {x_m: 26.1774, y_m: 16.35}
+    end: {x_m: 26.0941, y_m: 16.6342}
+    width_m: 0.0762
+  - name: "Line.002_0011"
+    start: {x_m: 26.3349, y_m: 16.3933}
+    end: {x_m: 26.2506, y_m: 16.6805}
+    width_m: 0.0762
+  - name: "Line.002_0012"
+    start: {x_m: 26.0941, y_m: 16.6342}
+    end: {x_m: 25.999, y_m: 16.9345}
+    width_m: 0.0762
+  - name: "Line.002_0013"
+    start: {x_m: 26.2506, y_m: 16.6805}
+    end: {x_m: 26.1545, y_m: 16.9841}
+    width_m: 0.0762
+  - name: "Line.002_0014"
+    start: {x_m: 25.999, y_m: 16.9345}
+    end: {x_m: 25.8924, y_m: 17.2452}
+    width_m: 0.0762
+  - name: "Line.002_0015"
+    start: {x_m: 26.1545, y_m: 16.9841}
+    end: {x_m: 26.0466, y_m: 17.2986}
+    width_m: 0.0762
+  - name: "Line.002_0016"
+    start: {x_m: 25.8924, y_m: 17.2452}
+    end: {x_m: 25.7743, y_m: 17.5609}
+    width_m: 0.0762
+  - name: "Line.002_0017"
+    start: {x_m: 26.0466, y_m: 17.2986}
+    end: {x_m: 25.9269, y_m: 17.6185}
+    width_m: 0.0762
+  - name: "Line.002_0018"
+    start: {x_m: 25.7743, y_m: 17.5609}
+    end: {x_m: 25.6448, y_m: 17.8759}
+    width_m: 0.0762
+  - name: "Line.002_0019"
+    start: {x_m: 25.9269, y_m: 17.6185}
+    end: {x_m: 25.7955, y_m: 17.9384}
+    width_m: 0.0762
+  - name: "Line.002_0020"
+    start: {x_m: 25.6448, y_m: 17.8759}
+    end: {x_m: 25.5043, y_m: 18.1845}
+    width_m: 0.0762
+  - name: "Line.002_0021"
+    start: {x_m: 25.7955, y_m: 17.9384}
+    end: {x_m: 25.6523, y_m: 18.2528}
+    width_m: 0.0762
+  - name: "Line.002_0022"
+    start: {x_m: 25.5043, y_m: 18.1845}
+    end: {x_m: 25.3529, y_m: 18.4812}
+    width_m: 0.0762
+  - name: "Line.002_0023"
+    start: {x_m: 25.6523, y_m: 18.2528}
+    end: {x_m: 25.4974, y_m: 18.5562}
+    width_m: 0.0762
+  - name: "Line.002_0024"
+    start: {x_m: 25.3529, y_m: 18.4812}
+    end: {x_m: 25.1923, y_m: 18.758}
+    width_m: 0.0762
+  - name: "Line.002_0025"
+    start: {x_m: 25.4974, y_m: 18.5562}
+    end: {x_m: 25.3292, y_m: 18.8455}
+    width_m: 0.0762
+  - name: "Line.002_0026"
+    start: {x_m: 25.1923, y_m: 18.758}
+    end: {x_m: 25.0387, y_m: 18.9562}
+    width_m: 0.0762
+  - name: "Line.002_0027"
+    start: {x_m: 25.3292, y_m: 18.8455}
+    end: {x_m: 25.1604, y_m: 19.0628}
+    width_m: 0.0762
+  - name: "Line.002_0028"
+    start: {x_m: 25.0387, y_m: 18.9562}
+    end: {x_m: 24.8419, y_m: 19.133}
+    width_m: 0.0762
+  - name: "Line.002_0029"
+    start: {x_m: 25.1604, y_m: 19.0628}
+    end: {x_m: 24.9448, y_m: 19.2569}
+    width_m: 0.0762
+  - name: "Line.002_0030"
+    start: {x_m: 24.8419, y_m: 19.133}
+    end: {x_m: 24.6061, y_m: 19.2902}
+    width_m: 0.0762
+  - name: "Line.002_0031"
+    start: {x_m: 24.9448, y_m: 19.2569}
+    end: {x_m: 24.6916, y_m: 19.4258}
+    width_m: 0.0762
+  - name: "Line.002_0032"
+    start: {x_m: 24.6061, y_m: 19.2902}
+    end: {x_m: 24.338, y_m: 19.4266}
+    width_m: 0.0762
+  - name: "Line.002_0033"
+    start: {x_m: 24.6916, y_m: 19.4258}
+    end: {x_m: 24.4079, y_m: 19.5703}
+    width_m: 0.0762
+  - name: "Line.002_0034"
+    start: {x_m: 24.338, y_m: 19.4266}
+    end: {x_m: 24.0443, y_m: 19.5417}
+    width_m: 0.0762
+  - name: "Line.002_0035"
+    start: {x_m: 24.4079, y_m: 19.5703}
+    end: {x_m: 24.1004, y_m: 19.6908}
+    width_m: 0.0762
+  - name: "Line.002_0036"
+    start: {x_m: 24.0443, y_m: 19.5417}
+    end: {x_m: 23.7321, y_m: 19.6347}
+    width_m: 0.0762
+  - name: "Line.002_0037"
+    start: {x_m: 24.1004, y_m: 19.6908}
+    end: {x_m: 23.7757, y_m: 19.7876}
+    width_m: 0.0762
+  - name: "Line.002_0038"
+    start: {x_m: 23.7321, y_m: 19.6347}
+    end: {x_m: 23.4084, y_m: 19.7055}
+    width_m: 0.0762
+  - name: "Line.002_0039"
+    start: {x_m: 23.7757, y_m: 19.7876}
+    end: {x_m: 23.4403, y_m: 19.8609}
+    width_m: 0.0762
+  - name: "Line.002_0040"
+    start: {x_m: 23.4084, y_m: 19.7055}
+    end: {x_m: 23.0803, y_m: 19.7536}
+    width_m: 0.0762
+  - name: "Line.002_0041"
+    start: {x_m: 23.4403, y_m: 19.8609}
+    end: {x_m: 23.1008, y_m: 19.9107}
+    width_m: 0.0762
+  - name: "Line.002_0042"
+    start: {x_m: 23.0803, y_m: 19.7536}
+    end: {x_m: 22.7548, y_m: 19.7788}
+    width_m: 0.0762
+  - name: "Line.002_0043"
+    start: {x_m: 23.1008, y_m: 19.9107}
+    end: {x_m: 22.7637, y_m: 19.9369}
+    width_m: 0.0762
+  - name: "Line.002_0044"
+    start: {x_m: 22.7548, y_m: 19.7788}
+    end: {x_m: 22.4389, y_m: 19.7812}
+    width_m: 0.0762
+  - name: "Line.002_0045"
+    start: {x_m: 22.7637, y_m: 19.9369}
+    end: {x_m: 22.4355, y_m: 19.9393}
+    width_m: 0.0762
+  - name: "Line.002_0046"
+    start: {x_m: 22.4389, y_m: 19.7812}
+    end: {x_m: 22.1399, y_m: 19.7606}
+    width_m: 0.0762
+  - name: "Line.002_0047"
+    start: {x_m: 22.4355, y_m: 19.9393}
+    end: {x_m: 22.1226, y_m: 19.9177}
+    width_m: 0.0762
+  - name: "Line.002_0048"
+    start: {x_m: 22.1399, y_m: 19.7606}
+    end: {x_m: 21.8581, y_m: 19.7161}
+    width_m: 0.0762
+  - name: "Line.002_0049"
+    start: {x_m: 22.1226, y_m: 19.9177}
+    end: {x_m: 21.8382, y_m: 19.8729}
+    width_m: 0.0762
+  - name: "Line.002_0050"
+    start: {x_m: 21.8581, y_m: 19.7161}
+    end: {x_m: 21.6149, y_m: 19.6916}
+    width_m: 0.0762
+  - name: "Line.002_0051"
+    start: {x_m: 21.8382, y_m: 19.8729}
+    end: {x_m: 21.6103, y_m: 19.8496}
+    width_m: 0.0762
+  - name: "Line.002_0052"
+    start: {x_m: 21.6149, y_m: 19.6916}
+    end: {x_m: 21.3074, y_m: 19.6993}
+    width_m: 0.0762
+  - name: "Line.002_0053"
+    start: {x_m: 21.6103, y_m: 19.8496}
+    end: {x_m: 21.319, y_m: 19.8571}
+    width_m: 0.0762
+  - name: "Line.002_0054"
+    start: {x_m: 21.3074, y_m: 19.6993}
+    end: {x_m: 20.9517, y_m: 19.7319}
+    width_m: 0.0762
+  - name: "Line.002_0055"
+    start: {x_m: 21.319, y_m: 19.8571}
+    end: {x_m: 20.9718, y_m: 19.8891}
+    width_m: 0.0762
+  - name: "Line.002_0056"
+    start: {x_m: 20.9517, y_m: 19.7319}
+    end: {x_m: 20.5577, y_m: 19.7823}
+    width_m: 0.0762
+  - name: "Line.002_0057"
+    start: {x_m: 20.9718, y_m: 19.8891}
+    end: {x_m: 20.5822, y_m: 19.9389}
+    width_m: 0.0762
+  - name: "Line.002_0058"
+    start: {x_m: 20.5577, y_m: 19.7823}
+    end: {x_m: 20.1362, y_m: 19.8435}
+    width_m: 0.0762
+  - name: "Line.002_0059"
+    start: {x_m: 20.5822, y_m: 19.9389}
+    end: {x_m: 20.1624, y_m: 19.9999}
+    width_m: 0.0762
+  - name: "Line.002_0060"
+    start: {x_m: 20.1362, y_m: 19.8435}
+    end: {x_m: 19.6987, y_m: 19.9087}
+    width_m: 0.0762
+  - name: "Line.002_0061"
+    start: {x_m: 20.1624, y_m: 19.9999}
+    end: {x_m: 19.7246, y_m: 20.0651}
+    width_m: 0.0762
+  - name: "Line.002_0062"
+    start: {x_m: 19.6987, y_m: 19.9087}
+    end: {x_m: 19.2567, y_m: 19.9711}
+    width_m: 0.0762
+  - name: "Line.002_0063"
+    start: {x_m: 19.7246, y_m: 20.0651}
+    end: {x_m: 19.2803, y_m: 20.1279}
+    width_m: 0.0762
+  - name: "Line.002_0064"
+    start: {x_m: 19.2567, y_m: 19.9711}
+    end: {x_m: 18.822, y_m: 20.0239}
+    width_m: 0.0762
+  - name: "Line.002_0065"
+    start: {x_m: 19.2803, y_m: 20.1279}
+    end: {x_m: 18.8412, y_m: 20.1812}
+    width_m: 0.0762
+  - name: "Line.002_0066"
+    start: {x_m: 18.822, y_m: 20.0239}
+    end: {x_m: 18.4067, y_m: 20.0603}
+    width_m: 0.0762
+  - name: "Line.002_0067"
+    start: {x_m: 18.8412, y_m: 20.1812}
+    end: {x_m: 18.4187, y_m: 20.2181}
+    width_m: 0.0762
+  - name: "Line.002_0068"
+    start: {x_m: 18.4067, y_m: 20.0603}
+    end: {x_m: 18.023, y_m: 20.0736}
+    width_m: 0.0762
+  - name: "Line.002_0069"
+    start: {x_m: 18.4187, y_m: 20.2181}
+    end: {x_m: 18.0236, y_m: 20.2318}
+    width_m: 0.0762
+  - name: "Line.002_0070"
+    start: {x_m: 18.023, y_m: 20.0736}
+    end: {x_m: 17.6838, y_m: 20.0576}
+    width_m: 0.0762
+  - name: "Line.002_0071"
+    start: {x_m: 18.0236, y_m: 20.2318}
+    end: {x_m: 17.6665, y_m: 20.2147}
+    width_m: 0.0762
+  - name: "Line.002_0072"
+    start: {x_m: 17.6838, y_m: 20.0576}
+    end: {x_m: 17.399, y_m: 20.006}
+    width_m: 0.0762
+  - name: "Line.002_0073"
+    start: {x_m: 17.6665, y_m: 20.2147}
+    end: {x_m: 17.3609, y_m: 20.1594}
+    width_m: 0.0762
+  - name: "Line.002_0074"
+    start: {x_m: 17.399, y_m: 20.006}
+    end: {x_m: 17.1701, y_m: 19.9356}
+    width_m: 0.0762
+  - name: "Line.002_0075"
+    start: {x_m: 17.3609, y_m: 20.1594}
+    end: {x_m: 17.1203, y_m: 20.0857}
+    width_m: 0.0762
+  - name: "Line.002_0076"
+    start: {x_m: 17.1701, y_m: 19.9356}
+    end: {x_m: 16.8686, y_m: 19.8343}
+    width_m: 0.0762
+  - name: "Line.002_0077"
+    start: {x_m: 17.1203, y_m: 20.0857}
+    end: {x_m: 16.8158, y_m: 19.9834}
+    width_m: 0.0762
+  - name: "Line.002_0078"
+    start: {x_m: 16.8686, y_m: 19.8343}
+    end: {x_m: 16.5103, y_m: 19.7096}
+    width_m: 0.0762
+  - name: "Line.002_0079"
+    start: {x_m: 16.8158, y_m: 19.9834}
+    end: {x_m: 16.4564, y_m: 19.8583}
+    width_m: 0.0762
+  - name: "Line.002_0080"
+    start: {x_m: 16.5103, y_m: 19.7096}
+    end: {x_m: 16.108, y_m: 19.5682}
+    width_m: 0.0762
+  - name: "Line.002_0081"
+    start: {x_m: 16.4564, y_m: 19.8583}
+    end: {x_m: 16.0539, y_m: 19.7169}
+    width_m: 0.0762
+  - name: "Line.002_0082"
+    start: {x_m: 16.108, y_m: 19.5682}
+    end: {x_m: 15.674, y_m: 19.4166}
+    width_m: 0.0762
+  - name: "Line.002_0083"
+    start: {x_m: 16.0539, y_m: 19.7169}
+    end: {x_m: 15.6206, y_m: 19.5655}
+    width_m: 0.0762
+  - name: "Line.002_0084"
+    start: {x_m: 15.674, y_m: 19.4166}
+    end: {x_m: 15.2209, y_m: 19.2615}
+    width_m: 0.0762
+  - name: "Line.002_0085"
+    start: {x_m: 15.6206, y_m: 19.5655}
+    end: {x_m: 15.1688, y_m: 19.4108}
+    width_m: 0.0762
+  - name: "Line.002_0086"
+    start: {x_m: 15.2209, y_m: 19.2615}
+    end: {x_m: 14.7609, y_m: 19.1093}
+    width_m: 0.0762
+  - name: "Line.002_0087"
+    start: {x_m: 15.1688, y_m: 19.4108}
+    end: {x_m: 14.7109, y_m: 19.2594}
+    width_m: 0.0762
+  - name: "Line.002_0088"
+    start: {x_m: 14.7609, y_m: 19.1093}
+    end: {x_m: 14.3063, y_m: 18.9667}
+    width_m: 0.0762
+  - name: "Line.002_0089"
+    start: {x_m: 14.7109, y_m: 19.2594}
+    end: {x_m: 14.2593, y_m: 19.1177}
+    width_m: 0.0762
+  - name: "Line.002_0090"
+    start: {x_m: 14.3063, y_m: 18.9667}
+    end: {x_m: 13.8691, y_m: 18.8403}
+    width_m: 0.0762
+  - name: "Line.002_0091"
+    start: {x_m: 14.2593, y_m: 19.1177}
+    end: {x_m: 13.8266, y_m: 18.9925}
+    width_m: 0.0762
+  - name: "Line.002_0092"
+    start: {x_m: 13.8691, y_m: 18.8403}
+    end: {x_m: 13.4614, y_m: 18.7364}
+    width_m: 0.0762
+  - name: "Line.002_0093"
+    start: {x_m: 13.8266, y_m: 18.9925}
+    end: {x_m: 13.4255, y_m: 18.8903}
+    width_m: 0.0762
+  - name: "Line.002_0094"
+    start: {x_m: 13.4614, y_m: 18.7364}
+    end: {x_m: 13.0946, y_m: 18.6617}
+    width_m: 0.0762
+  - name: "Line.002_0095"
+    start: {x_m: 13.4255, y_m: 18.8903}
+    end: {x_m: 13.0692, y_m: 18.8177}
+    width_m: 0.0762
+  - name: "Line.002_0096"
+    start: {x_m: 13.0946, y_m: 18.6617}
+    end: {x_m: 12.7832, y_m: 18.6233}
+    width_m: 0.0762
+  - name: "Line.002_0097"
+    start: {x_m: 13.0692, y_m: 18.8177}
+    end: {x_m: 12.768, y_m: 18.7806}
+    width_m: 0.0762
+  - name: "Line.002_0098"
+    start: {x_m: 12.7832, y_m: 18.6233}
+    end: {x_m: 12.6284, y_m: 18.6112}
+    width_m: 0.0762
+  - name: "Line.002_0099"
+    start: {x_m: 12.768, y_m: 18.7806}
+    end: {x_m: 12.616, y_m: 18.7688}
+    width_m: 0.0762
+  - name: "Line.002_0100"
+    start: {x_m: 12.6284, y_m: 18.6112}
+    end: {x_m: 12.3787, y_m: 18.5886}
+    width_m: 0.0762
+  - name: "Line.002_0101"
+    start: {x_m: 12.616, y_m: 18.7688}
+    end: {x_m: 12.3647, y_m: 18.7461}
+    width_m: 0.0762
+  - name: "Line.002_0102"
+    start: {x_m: 12.3787, y_m: 18.5886}
+    end: {x_m: 12.0406, y_m: 18.5559}
+    width_m: 0.0762
+  - name: "Line.002_0103"
+    start: {x_m: 12.3647, y_m: 18.7461}
+    end: {x_m: 12.0257, y_m: 18.7133}
+    width_m: 0.0762
+  - name: "Line.002_0104"
+    start: {x_m: 12.0406, y_m: 18.5559}
+    end: {x_m: 11.6235, y_m: 18.5136}
+    width_m: 0.0762
+  - name: "Line.002_0105"
+    start: {x_m: 12.0257, y_m: 18.7133}
+    end: {x_m: 11.6079, y_m: 18.6709}
+    width_m: 0.0762
+  - name: "Line.002_0106"
+    start: {x_m: 11.6235, y_m: 18.5136}
+    end: {x_m: 11.1364, y_m: 18.4622}
+    width_m: 0.0762
+  - name: "Line.002_0107"
+    start: {x_m: 11.6079, y_m: 18.6709}
+    end: {x_m: 11.1201, y_m: 18.6194}
+    width_m: 0.0762
+  - name: "Line.002_0108"
+    start: {x_m: 11.1364, y_m: 18.4622}
+    end: {x_m: 10.5884, y_m: 18.4022}
+    width_m: 0.0762
+  - name: "Line.002_0109"
+    start: {x_m: 11.1201, y_m: 18.6194}
+    end: {x_m: 10.5715, y_m: 18.5593}
+    width_m: 0.0762
+  - name: "Line.002_0110"
+    start: {x_m: 10.5884, y_m: 18.4022}
+    end: {x_m: 9.9886, y_m: 18.3341}
+    width_m: 0.0762
+  - name: "Line.002_0111"
+    start: {x_m: 10.5715, y_m: 18.5593}
+    end: {x_m: 9.971, y_m: 18.4911}
+    width_m: 0.0762
+  - name: "Line.002_0112"
+    start: {x_m: 9.9886, y_m: 18.3341}
+    end: {x_m: 9.3461, y_m: 18.2584}
+    width_m: 0.0762
+  - name: "Line.002_0113"
+    start: {x_m: 9.971, y_m: 18.4911}
+    end: {x_m: 9.3278, y_m: 18.4154}
+    width_m: 0.0762
+  - name: "Line.002_0114"
+    start: {x_m: 9.3461, y_m: 18.2584}
+    end: {x_m: 8.67, y_m: 18.1757}
+    width_m: 0.0762
+  - name: "Line.002_0115"
+    start: {x_m: 9.3278, y_m: 18.4154}
+    end: {x_m: 8.6508, y_m: 18.3326}
+    width_m: 0.0762
+  - name: "Line.002_0116"
+    start: {x_m: 8.67, y_m: 18.1757}
+    end: {x_m: 7.9692, y_m: 18.0864}
+    width_m: 0.0762
+  - name: "Line.002_0117"
+    start: {x_m: 8.6508, y_m: 18.3326}
+    end: {x_m: 7.9492, y_m: 18.2432}
+    width_m: 0.0762
+  - name: "Line.002_0118"
+    start: {x_m: 7.9692, y_m: 18.0864}
+    end: {x_m: 7.2529, y_m: 17.9911}
+    width_m: 0.0762
+  - name: "Line.002_0119"
+    start: {x_m: 7.9492, y_m: 18.2432}
+    end: {x_m: 7.2319, y_m: 18.1477}
+    width_m: 0.0762
+  - name: "Line.002_0120"
+    start: {x_m: 7.2529, y_m: 17.9911}
+    end: {x_m: 6.5303, y_m: 17.8902}
+    width_m: 0.0762
+  - name: "Line.002_0121"
+    start: {x_m: 7.2319, y_m: 18.1477}
+    end: {x_m: 6.5079, y_m: 18.0466}
+    width_m: 0.0762
+  - name: "Line.002_0122"
+    start: {x_m: 6.5303, y_m: 17.8902}
+    end: {x_m: 5.8459, y_m: 17.7876}
+    width_m: 0.0762
+  - name: "Line.002_0123"
+    start: {x_m: 6.5079, y_m: 18.0466}
+    end: {x_m: 5.8211, y_m: 17.9437}
+    width_m: 0.0762
+  - name: "Line.002_0124"
+    start: {x_m: 5.8459, y_m: 17.7876}
+    end: {x_m: 5.2343, y_m: 17.685}
+    width_m: 0.0762
+  - name: "Line.002_0125"
+    start: {x_m: 5.8211, y_m: 17.9437}
+    end: {x_m: 5.206, y_m: 17.8404}
+    width_m: 0.0762
+  - name: "Line.002_0126"
+    start: {x_m: 5.2343, y_m: 17.685}
+    end: {x_m: 4.6898, y_m: 17.5794}
+    width_m: 0.0762
+  - name: "Line.002_0127"
+    start: {x_m: 5.206, y_m: 17.8404}
+    end: {x_m: 4.6566, y_m: 17.734}
+    width_m: 0.0762
+  - name: "Line.002_0128"
+    start: {x_m: 4.6898, y_m: 17.5794}
+    end: {x_m: 4.2069, y_m: 17.4684}
+    width_m: 0.0762
+  - name: "Line.002_0129"
+    start: {x_m: 4.6566, y_m: 17.734}
+    end: {x_m: 4.167, y_m: 17.6213}
+    width_m: 0.0762
+  - name: "Line.002_0130"
+    start: {x_m: 4.2069, y_m: 17.4684}
+    end: {x_m: 3.7798, y_m: 17.3491}
+    width_m: 0.0762
+  - name: "Line.002_0131"
+    start: {x_m: 4.167, y_m: 17.6213}
+    end: {x_m: 3.7313, y_m: 17.4996}
+    width_m: 0.0762
+  - name: "Line.002_0132"
+    start: {x_m: 3.7798, y_m: 17.3491}
+    end: {x_m: 3.4029, y_m: 17.2191}
+    width_m: 0.0762
+  - name: "Line.002_0133"
+    start: {x_m: 3.7313, y_m: 17.4996}
+    end: {x_m: 3.3437, y_m: 17.3659}
+    width_m: 0.0762
+  - name: "Line.002_0134"
+    start: {x_m: 3.4029, y_m: 17.2191}
+    end: {x_m: 3.0703, y_m: 17.0757}
+    width_m: 0.0762
+  - name: "Line.002_0135"
+    start: {x_m: 3.3437, y_m: 17.3659}
+    end: {x_m: 2.9985, y_m: 17.217}
+    width_m: 0.0762
+  - name: "Line.002_0136"
+    start: {x_m: 3.0703, y_m: 17.0757}
+    end: {x_m: 2.7759, y_m: 16.9163}
+    width_m: 0.0762
+  - name: "Line.002_0137"
+    start: {x_m: 2.9985, y_m: 17.217}
+    end: {x_m: 2.6902, y_m: 17.05}
+    width_m: 0.0762
+  - name: "Line.002_0138"
+    start: {x_m: 2.7759, y_m: 16.9163}
+    end: {x_m: 2.5134, y_m: 16.7381}
+    width_m: 0.0762
+  - name: "Line.002_0139"
+    start: {x_m: 2.6902, y_m: 17.05}
+    end: {x_m: 2.4136, y_m: 16.8623}
+    width_m: 0.0762
+  - name: "Line.002_0140"
+    start: {x_m: 2.5134, y_m: 16.7381}
+    end: {x_m: 2.2763, y_m: 16.5379}
+    width_m: 0.0762
+  - name: "Line.002_0141"
+    start: {x_m: 2.4136, y_m: 16.8623}
+    end: {x_m: 2.1636, y_m: 16.6512}
+    width_m: 0.0762
+  - name: "Line.002_0142"
+    start: {x_m: 2.2763, y_m: 16.5379}
+    end: {x_m: 2.0585, y_m: 16.3125}
+    width_m: 0.0762
+  - name: "Line.002_0143"
+    start: {x_m: 2.1636, y_m: 16.6512}
+    end: {x_m: 1.9349, y_m: 16.4146}
+    width_m: 0.0762
+  - name: "Line.002_0144"
+    start: {x_m: 2.0585, y_m: 16.3125}
+    end: {x_m: 1.8522, y_m: 16.0563}
+    width_m: 0.0762
+  - name: "Line.002_0145"
+    start: {x_m: 1.9349, y_m: 16.4146}
+    end: {x_m: 1.7236, y_m: 16.1523}
+    width_m: 0.0762
+  - name: "Line.002_0146"
+    start: {x_m: 1.8522, y_m: 16.0563}
+    end: {x_m: 1.5881, y_m: 15.7231}
+    width_m: 0.0762
+  - name: "Line.002_0147"
+    start: {x_m: 1.7236, y_m: 16.1523}
+    end: {x_m: 1.4619, y_m: 15.8221}
+    width_m: 0.0762
+  - name: "Line.002_0148"
+    start: {x_m: 1.5881, y_m: 15.7231}
+    end: {x_m: 1.3269, y_m: 15.4285}
+    width_m: 0.0762
+  - name: "Line.002_0149"
+    start: {x_m: 1.4619, y_m: 15.8221}
+    end: {x_m: 1.2055, y_m: 15.5329}
+    width_m: 0.0762
+  - name: "Line.002_0150"
+    start: {x_m: 1.3269, y_m: 15.4285}
+    end: {x_m: 1.076, y_m: 15.1645}
+    width_m: 0.0762
+  - name: "Line.002_0151"
+    start: {x_m: 1.2055, y_m: 15.5329}
+    end: {x_m: 0.957, y_m: 15.2715}
+    width_m: 0.0762
+  - name: "Line.002_0152"
+    start: {x_m: 1.076, y_m: 15.1645}
+    end: {x_m: 0.8407, y_m: 14.9212}
+    width_m: 0.0762
+  - name: "Line.002_0153"
+    start: {x_m: 0.957, y_m: 15.2715}
+    end: {x_m: 0.7208, y_m: 15.0272}
+    width_m: 0.0762
+  - name: "Line.002_0154"
+    start: {x_m: 0.8407, y_m: 14.9212}
+    end: {x_m: 0.6262, y_m: 14.6884}
+    width_m: 0.0762
+  - name: "Line.002_0155"
+    start: {x_m: 0.7208, y_m: 15.0272}
+    end: {x_m: 0.5016, y_m: 14.7892}
+    width_m: 0.0762
+  - name: "Line.002_0156"
+    start: {x_m: 0.6262, y_m: 14.6884}
+    end: {x_m: 0.4373, y_m: 14.456}
+    width_m: 0.0762
+  - name: "Line.002_0157"
+    start: {x_m: 0.5016, y_m: 14.7892}
+    end: {x_m: 0.3045, y_m: 14.5466}
+    width_m: 0.0762
+  - name: "Line.002_0158"
+    start: {x_m: 0.4373, y_m: 14.456}
+    end: {x_m: 0.2782, y_m: 14.214}
+    width_m: 0.0762
+  - name: "Line.002_0159"
+    start: {x_m: 0.3045, y_m: 14.5466}
+    end: {x_m: 0.1352, y_m: 14.2887}
+    width_m: 0.0762
+  - name: "Line.002_0160"
+    start: {x_m: 0.2782, y_m: 14.214}
+    end: {x_m: 0.1526, y_m: 13.9514}
+    width_m: 0.0762
+  - name: "Line.002_0161"
+    start: {x_m: 0.1352, y_m: 14.2887}
+    end: {x_m: -0.0002, y_m: 14.0055}
+    width_m: 0.0762
+  - name: "Line.002_0162"
+    start: {x_m: 0.1526, y_m: 13.9514}
+    end: {x_m: 0.0642, y_m: 13.6567}
+    width_m: 0.0762
+  - name: "Line.002_0163"
+    start: {x_m: -0.0002, y_m: 14.0055}
+    end: {x_m: -0.0955, y_m: 13.6877}
+    width_m: 0.0762
+  - name: "Line.002_0164"
+    start: {x_m: 0.0642, y_m: 13.6567}
+    end: {x_m: 0.0175, y_m: 13.3177}
+    width_m: 0.0762
+  - name: "Line.002_0165"
+    start: {x_m: -0.0955, y_m: 13.6877}
+    end: {x_m: -0.1454, y_m: 13.3265}
+    width_m: 0.0762
+  - name: "Line.002_0166"
+    start: {x_m: 0.0175, y_m: 13.3177}
+    end: {x_m: 0.0177, y_m: 12.923}
+    width_m: 0.0762
+  - name: "Line.002_0167"
+    start: {x_m: -0.1454, y_m: 13.3265}
+    end: {x_m: -0.1452, y_m: 12.9125}
+    width_m: 0.0762
+  - name: "Line.002_0168"
+    start: {x_m: 0.0177, y_m: 12.923}
+    end: {x_m: 0.0709, y_m: 12.4588}
+    width_m: 0.0762
+  - name: "Line.002_0169"
+    start: {x_m: -0.1452, y_m: 12.9125}
+    end: {x_m: -0.0912, y_m: 12.4386}
+    width_m: 0.0762
+  - name: "Line.002_0170"
+    start: {x_m: 0.0709, y_m: 12.4588}
+    end: {x_m: 0.1147, y_m: 12.1196}
+    width_m: 0.0762
+  - name: "Line.002_0171"
+    start: {x_m: -0.0912, y_m: 12.4386}
+    end: {x_m: -0.0476, y_m: 12.1007}
+    width_m: 0.0762
+  - name: "Line.002_0172"
+    start: {x_m: 0.1147, y_m: 12.1196}
+    end: {x_m: 0.1629, y_m: 11.6293}
+    width_m: 0.0762
+  - name: "Line.002_0173"
+    start: {x_m: -0.0476, y_m: 12.1007}
+    end: {x_m: 0.0003, y_m: 11.6136}
+    width_m: 0.0762
+  - name: "Line.002_0174"
+    start: {x_m: 0.1629, y_m: 11.6293}
+    end: {x_m: 0.214, y_m: 11.0226}
+    width_m: 0.0762
+  - name: "Line.002_0175"
+    start: {x_m: 0.0003, y_m: 11.6136}
+    end: {x_m: 0.0513, y_m: 11.0086}
+    width_m: 0.0762
+  - name: "Line.002_0176"
+    start: {x_m: 0.214, y_m: 11.0226}
+    end: {x_m: 0.2668, y_m: 10.3321}
+    width_m: 0.0762
+  - name: "Line.002_0177"
+    start: {x_m: 0.0513, y_m: 11.0086}
+    end: {x_m: 0.104, y_m: 10.3191}
+    width_m: 0.0762
+  - name: "Line.002_0178"
+    start: {x_m: 0.2668, y_m: 10.3321}
+    end: {x_m: 0.3198, y_m: 9.5907}
+    width_m: 0.0762
+  - name: "Line.002_0179"
+    start: {x_m: 0.104, y_m: 10.3191}
+    end: {x_m: 0.157, y_m: 9.5783}
+    width_m: 0.0762
+  - name: "Line.002_0180"
+    start: {x_m: 0.3198, y_m: 9.5907}
+    end: {x_m: 0.3717, y_m: 8.8313}
+    width_m: 0.0762
+  - name: "Line.002_0181"
+    start: {x_m: 0.157, y_m: 9.5783}
+    end: {x_m: 0.2089, y_m: 8.8193}
+    width_m: 0.0762
+  - name: "Line.002_0182"
+    start: {x_m: 0.3717, y_m: 8.8313}
+    end: {x_m: 0.4212, y_m: 8.0869}
+    width_m: 0.0762
+  - name: "Line.002_0183"
+    start: {x_m: 0.2089, y_m: 8.8193}
+    end: {x_m: 0.2583, y_m: 8.0752}
+    width_m: 0.0762
+  - name: "Line.002_0184"
+    start: {x_m: 0.4212, y_m: 8.0869}
+    end: {x_m: 0.4668, y_m: 7.3905}
+    width_m: 0.0762
+  - name: "Line.002_0185"
+    start: {x_m: 0.2583, y_m: 8.0752}
+    end: {x_m: 0.3039, y_m: 7.3788}
+    width_m: 0.0762
+  - name: "Line.002_0186"
+    start: {x_m: 0.4668, y_m: 7.3905}
+    end: {x_m: 0.5071, y_m: 6.7752}
+    width_m: 0.0762
+  - name: "Line.002_0187"
+    start: {x_m: 0.3039, y_m: 7.3788}
+    end: {x_m: 0.3443, y_m: 6.7633}
+    width_m: 0.0762
+  - name: "Line.002_0188"
+    start: {x_m: 0.5071, y_m: 6.7752}
+    end: {x_m: 0.5409, y_m: 6.274}
+    width_m: 0.0762
+  - name: "Line.002_0189"
+    start: {x_m: 0.3443, y_m: 6.7633}
+    end: {x_m: 0.3781, y_m: 6.2616}
+    width_m: 0.0762
+  - name: "Line.002_0190"
+    start: {x_m: 0.5409, y_m: 6.274}
+    end: {x_m: 0.5667, y_m: 5.9205}
+    width_m: 0.0762
+  - name: "Line.002_0191"
+    start: {x_m: 0.3781, y_m: 6.2616}
+    end: {x_m: 0.404, y_m: 5.9061}
+    width_m: 0.0762
+  - name: "Line.002_0192"
+    start: {x_m: 0.5667, y_m: 5.9205}
+    end: {x_m: 0.5829, y_m: 5.749}
+    width_m: 0.0762
+  - name: "Line.002_0193"
+    start: {x_m: 0.404, y_m: 5.9061}
+    end: {x_m: 0.4209, y_m: 5.7285}
+    width_m: 0.0762
+  - name: "Line.002_0194"
+    start: {x_m: 0.5829, y_m: 5.749}
+    end: {x_m: 0.5976, y_m: 5.6536}
+    width_m: 0.0762
+  - name: "Line.002_0195"
+    start: {x_m: 0.4209, y_m: 5.7285}
+    end: {x_m: 0.4361, y_m: 5.6289}
+    width_m: 0.0762
+  - name: "Line.002_0196"
+    start: {x_m: 0.5976, y_m: 5.6536}
+    end: {x_m: 0.6186, y_m: 5.5142}
+    width_m: 0.0762
+  - name: "Line.002_0197"
+    start: {x_m: 0.4361, y_m: 5.6289}
+    end: {x_m: 0.4571, y_m: 5.4898}
+    width_m: 0.0762
+  - name: "Line.002_0198"
+    start: {x_m: 0.6186, y_m: 5.5142}
+    end: {x_m: 0.6444, y_m: 5.3425}
+    width_m: 0.0762
+  - name: "Line.002_0199"
+    start: {x_m: 0.4571, y_m: 5.4898}
+    end: {x_m: 0.4829, y_m: 5.3182}
+    width_m: 0.0762
+  - name: "Line.002_0200"
+    start: {x_m: 0.6444, y_m: 5.3425}
+    end: {x_m: 0.6735, y_m: 5.1477}
+    width_m: 0.0762
+  - name: "Line.002_0201"
+    start: {x_m: 0.4829, y_m: 5.3182}
+    end: {x_m: 0.512, y_m: 5.1234}
+    width_m: 0.0762
+  - name: "Line.002_0202"
+    start: {x_m: 0.6735, y_m: 5.1477}
+    end: {x_m: 0.7047, y_m: 4.9391}
+    width_m: 0.0762
+  - name: "Line.002_0203"
+    start: {x_m: 0.512, y_m: 5.1234}
+    end: {x_m: 0.5431, y_m: 4.9148}
+    width_m: 0.0762
+  - name: "Line.002_0204"
+    start: {x_m: 0.7047, y_m: 4.9391}
+    end: {x_m: 0.7364, y_m: 4.726}
+    width_m: 0.0762
+  - name: "Line.002_0205"
+    start: {x_m: 0.5431, y_m: 4.9148}
+    end: {x_m: 0.5748, y_m: 4.7018}
+    width_m: 0.0762
+  - name: "Line.002_0206"
+    start: {x_m: 0.7364, y_m: 4.726}
+    end: {x_m: 0.7674, y_m: 4.5178}
+    width_m: 0.0762
+  - name: "Line.002_0207"
+    start: {x_m: 0.5748, y_m: 4.7018}
+    end: {x_m: 0.6058, y_m: 4.4936}
+    width_m: 0.0762
+  - name: "Line.002_0208"
+    start: {x_m: 0.7674, y_m: 4.5178}
+    end: {x_m: 0.7962, y_m: 4.3237}
+    width_m: 0.0762
+  - name: "Line.002_0209"
+    start: {x_m: 0.6058, y_m: 4.4936}
+    end: {x_m: 0.6346, y_m: 4.2996}
+    width_m: 0.0762
+  - name: "Line.002_0210"
+    start: {x_m: 0.7962, y_m: 4.3237}
+    end: {x_m: 0.8215, y_m: 4.1532}
+    width_m: 0.0762
+  - name: "Line.002_0211"
+    start: {x_m: 0.6346, y_m: 4.2996}
+    end: {x_m: 0.6599, y_m: 4.1291}
+    width_m: 0.0762
+  - name: "Line.002_0212"
+    start: {x_m: 0.8215, y_m: 4.1532}
+    end: {x_m: 0.8419, y_m: 4.0155}
+    width_m: 0.0762
+  - name: "Line.002_0213"
+    start: {x_m: 0.6599, y_m: 4.1291}
+    end: {x_m: 0.6803, y_m: 3.9914}
+    width_m: 0.0762
+  - name: "Line.002_0214"
+    start: {x_m: 0.8419, y_m: 4.0155}
+    end: {x_m: 0.856, y_m: 3.9199}
+    width_m: 0.0762
+  - name: "Line.002_0215"
+    start: {x_m: 0.6803, y_m: 3.9914}
+    end: {x_m: 0.6945, y_m: 3.8959}
+    width_m: 0.0762
+  - name: "Line.002_0216"
+    start: {x_m: 0.856, y_m: 3.9199}
+    end: {x_m: 0.8624, y_m: 3.8766}
+    width_m: 0.0762
+  - name: "Line.002_0217"
+    start: {x_m: 0.6945, y_m: 3.8959}
+    end: {x_m: 0.7011, y_m: 3.851}
+    width_m: 0.0762
+  - name: "Line.002_0218"
+    start: {x_m: 0.8624, y_m: 3.8766}
+    end: {x_m: 0.8703, y_m: 3.83}
+    width_m: 0.0762
+  - name: "Line.002_0219"
+    start: {x_m: 0.7011, y_m: 3.851}
+    end: {x_m: 0.7093, y_m: 3.8022}
+    width_m: 0.0762
+  - name: "Line.002_0220"
+    start: {x_m: 0.8703, y_m: 3.83}
+    end: {x_m: 0.8889, y_m: 3.7243}
+    width_m: 0.0762
+  - name: "Line.002_0221"
+    start: {x_m: 0.7093, y_m: 3.8022}
+    end: {x_m: 0.7281, y_m: 3.6959}
+    width_m: 0.0762
+  - name: "Line.002_0222"
+    start: {x_m: 0.8889, y_m: 3.7243}
+    end: {x_m: 0.9161, y_m: 3.5714}
+    width_m: 0.0762
+  - name: "Line.002_0223"
+    start: {x_m: 0.7281, y_m: 3.6959}
+    end: {x_m: 0.7553, y_m: 3.5428}
+    width_m: 0.0762
+  - name: "Line.002_0224"
+    start: {x_m: 0.9161, y_m: 3.5714}
+    end: {x_m: 0.9498, y_m: 3.3826}
+    width_m: 0.0762
+  - name: "Line.002_0225"
+    start: {x_m: 0.7553, y_m: 3.5428}
+    end: {x_m: 0.789, y_m: 3.354}
+    width_m: 0.0762
+  - name: "Line.002_0226"
+    start: {x_m: 0.9498, y_m: 3.3826}
+    end: {x_m: 0.988, y_m: 3.1693}
+    width_m: 0.0762
+  - name: "Line.002_0227"
+    start: {x_m: 0.789, y_m: 3.354}
+    end: {x_m: 0.8272, y_m: 3.1407}
+    width_m: 0.0762
+  - name: "Line.002_0228"
+    start: {x_m: 0.988, y_m: 3.1693}
+    end: {x_m: 1.0286, y_m: 2.9428}
+    width_m: 0.0762
+  - name: "Line.002_0229"
+    start: {x_m: 0.8272, y_m: 3.1407}
+    end: {x_m: 0.8678, y_m: 2.9141}
+    width_m: 0.0762
+  - name: "Line.002_0230"
+    start: {x_m: 1.0286, y_m: 2.9428}
+    end: {x_m: 1.0696, y_m: 2.7144}
+    width_m: 0.0762
+  - name: "Line.002_0231"
+    start: {x_m: 0.8678, y_m: 2.9141}
+    end: {x_m: 0.9088, y_m: 2.6856}
+    width_m: 0.0762
+  - name: "Line.002_0232"
+    start: {x_m: 1.0696, y_m: 2.7144}
+    end: {x_m: 1.109, y_m: 2.4952}
+    width_m: 0.0762
+  - name: "Line.002_0233"
+    start: {x_m: 0.9088, y_m: 2.6856}
+    end: {x_m: 0.9482, y_m: 2.4664}
+    width_m: 0.0762
+  - name: "Line.002_0234"
+    start: {x_m: 1.109, y_m: 2.4952}
+    end: {x_m: 1.1448, y_m: 2.2966}
+    width_m: 0.0762
+  - name: "Line.002_0235"
+    start: {x_m: 0.9482, y_m: 2.4664}
+    end: {x_m: 0.984, y_m: 2.2677}
+    width_m: 0.0762
+  - name: "Line.002_0236"
+    start: {x_m: 1.1448, y_m: 2.2966}
+    end: {x_m: 1.1749, y_m: 2.1298}
+    width_m: 0.0762
+  - name: "Line.002_0237"
+    start: {x_m: 0.984, y_m: 2.2677}
+    end: {x_m: 1.0141, y_m: 2.1009}
+    width_m: 0.0762
+  - name: "Line.002_0238"
+    start: {x_m: 1.1749, y_m: 2.1298}
+    end: {x_m: 1.1973, y_m: 2.0062}
+    width_m: 0.0762
+  - name: "Line.002_0239"
+    start: {x_m: 1.0141, y_m: 2.1009}
+    end: {x_m: 1.0365, y_m: 1.9771}
+    width_m: 0.0762
+  - name: "Line.002_0240"
+    start: {x_m: 1.1973, y_m: 2.0062}
+    end: {x_m: 1.2091, y_m: 1.941}
+    width_m: 0.0762
+  - name: "Line.002_0241"
+    start: {x_m: 1.0365, y_m: 1.9771}
+    end: {x_m: 1.0501, y_m: 1.9037}
+    width_m: 0.0762
+  - name: "Line.002_0242"
+    start: {x_m: 1.2091, y_m: 1.941}
+    end: {x_m: 1.2285, y_m: 1.8761}
+    width_m: 0.0762
+  - name: "Line.002_0243"
+    start: {x_m: 1.0501, y_m: 1.9037}
+    end: {x_m: 1.0728, y_m: 1.8273}
+    width_m: 0.0762
+  - name: "Line.002_0244"
+    start: {x_m: 1.2285, y_m: 1.8761}
+    end: {x_m: 1.2736, y_m: 1.7477}
+    width_m: 0.0762
+  - name: "Line.002_0245"
+    start: {x_m: 1.0728, y_m: 1.8273}
+    end: {x_m: 1.1192, y_m: 1.6948}
+    width_m: 0.0762
+  - name: "Line.002_0246"
+    start: {x_m: 1.2736, y_m: 1.7477}
+    end: {x_m: 1.3394, y_m: 1.5645}
+    width_m: 0.0762
+  - name: "Line.002_0247"
+    start: {x_m: 1.1192, y_m: 1.6948}
+    end: {x_m: 1.185, y_m: 1.5114}
+    width_m: 0.0762
+  - name: "Line.002_0248"
+    start: {x_m: 1.3394, y_m: 1.5645}
+    end: {x_m: 1.4207, y_m: 1.3348}
+    width_m: 0.0762
+  - name: "Line.002_0249"
+    start: {x_m: 1.185, y_m: 1.5114}
+    end: {x_m: 1.2659, y_m: 1.2828}
+    width_m: 0.0762
+  - name: "Line.002_0250"
+    start: {x_m: 1.4207, y_m: 1.3348}
+    end: {x_m: 1.5127, y_m: 1.0659}
+    width_m: 0.0762
+  - name: "Line.002_0251"
+    start: {x_m: 1.2659, y_m: 1.2828}
+    end: {x_m: 1.3574, y_m: 1.0158}
+    width_m: 0.0762
+  - name: "Line.002_0252"
+    start: {x_m: 1.5127, y_m: 1.0659}
+    end: {x_m: 1.6107, y_m: 0.7649}
+    width_m: 0.0762
+  - name: "Line.002_0253"
+    start: {x_m: 1.3574, y_m: 1.0158}
+    end: {x_m: 1.4546, y_m: 0.7172}
+    width_m: 0.0762
+  - name: "Line.002_0254"
+    start: {x_m: 1.6107, y_m: 0.7649}
+    end: {x_m: 1.7101, y_m: 0.4387}
+    width_m: 0.0762
+  - name: "Line.002_0255"
+    start: {x_m: 1.4546, y_m: 0.7172}
+    end: {x_m: 1.553, y_m: 0.3942}
+    width_m: 0.0762
+  - name: "Line.002_0256"
+    start: {x_m: 1.7101, y_m: 0.4387}
+    end: {x_m: 1.806, y_m: 0.0942}
+    width_m: 0.0762
+  - name: "Line.002_0257"
+    start: {x_m: 1.553, y_m: 0.3942}
+    end: {x_m: 1.6478, y_m: 0.0537}
+    width_m: 0.0762
+  - name: "Line.002_0258"
+    start: {x_m: 1.806, y_m: 0.0942}
+    end: {x_m: 1.8937, y_m: -0.2616}
+    width_m: 0.0762
+  - name: "Line.002_0259"
+    start: {x_m: 1.6478, y_m: 0.0537}
+    end: {x_m: 1.7343, y_m: -0.2972}
+    width_m: 0.0762
+  - name: "Line.002_0260"
+    start: {x_m: 1.8937, y_m: -0.2616}
+    end: {x_m: 1.9686, y_m: -0.622}
+    width_m: 0.0762
+  - name: "Line.002_0261"
+    start: {x_m: 1.7343, y_m: -0.2972}
+    end: {x_m: 1.8079, y_m: -0.6513}
+    width_m: 0.0762
+  - name: "Line.002_0262"
+    start: {x_m: 1.9686, y_m: -0.622}
+    end: {x_m: 2.0259, y_m: -0.98}
+    width_m: 0.0762
+  - name: "Line.002_0263"
+    start: {x_m: 1.8079, y_m: -0.6513}
+    end: {x_m: 1.864, y_m: -1.0014}
+    width_m: 0.0762
+  - name: "Line.002_0264"
+    start: {x_m: 2.0259, y_m: -0.98}
+    end: {x_m: 2.0606, y_m: -1.3264}
+    width_m: 0.0762
+  - name: "Line.002_0265"
+    start: {x_m: 1.864, y_m: -1.0014}
+    end: {x_m: 1.8981, y_m: -1.3428}
+    width_m: 0.0762
+  - name: "Line.002_0266"
+    start: {x_m: 2.0606, y_m: -1.3264}
+    end: {x_m: 2.1289, y_m: -2.0591}
+    width_m: 0.0762
+  - name: "Line.002_0267"
+    start: {x_m: 1.8981, y_m: -1.3428}
+    end: {x_m: 1.9667, y_m: -2.0783}
+    width_m: 0.0762
+  - name: "Line.002_0268"
+    start: {x_m: 2.1289, y_m: -2.0591}
+    end: {x_m: 2.243, y_m: -2.8925}
+    width_m: 0.0762
+  - name: "Line.002_0269"
+    start: {x_m: 1.9667, y_m: -2.0783}
+    end: {x_m: 2.0815, y_m: -2.9173}
+    width_m: 0.0762
+  - name: "Line.002_0270"
+    start: {x_m: 2.243, y_m: -2.8925}
+    end: {x_m: 2.3967, y_m: -3.7989}
+    width_m: 0.0762
+  - name: "Line.002_0271"
+    start: {x_m: 2.0815, y_m: -2.9173}
+    end: {x_m: 2.236, y_m: -3.8282}
+    width_m: 0.0762
+  - name: "Line.002_0272"
+    start: {x_m: 2.3967, y_m: -3.7989}
+    end: {x_m: 2.5836, y_m: -4.7484}
+    width_m: 0.0762
+  - name: "Line.002_0273"
+    start: {x_m: 2.236, y_m: -3.8282}
+    end: {x_m: 2.4237, y_m: -4.7815}
+    width_m: 0.0762
+  - name: "Line.002_0274"
+    start: {x_m: 2.5836, y_m: -4.7484}
+    end: {x_m: 2.7973, y_m: -5.711}
+    width_m: 0.0762
+  - name: "Line.002_0275"
+    start: {x_m: 2.4237, y_m: -4.7815}
+    end: {x_m: 2.6381, y_m: -5.7477}
+    width_m: 0.0762
+  - name: "Line.002_0276"
+    start: {x_m: 2.7973, y_m: -5.711}
+    end: {x_m: 3.0312, y_m: -6.6569}
+    width_m: 0.0762
+  - name: "Line.002_0277"
+    start: {x_m: 2.6381, y_m: -5.7477}
+    end: {x_m: 2.8729, y_m: -6.6972}
+    width_m: 0.0762
+  - name: "Line.002_0278"
+    start: {x_m: 3.0312, y_m: -6.6569}
+    end: {x_m: 3.2789, y_m: -7.556}
+    width_m: 0.0762
+  - name: "Line.002_0279"
+    start: {x_m: 2.8729, y_m: -6.6972}
+    end: {x_m: 3.1218, y_m: -7.6007}
+    width_m: 0.0762
+  - name: "Line.002_0280"
+    start: {x_m: 3.2789, y_m: -7.556}
+    end: {x_m: 3.5338, y_m: -8.3784}
+    width_m: 0.0762
+  - name: "Line.002_0281"
+    start: {x_m: 3.1218, y_m: -7.6007}
+    end: {x_m: 3.3784, y_m: -8.4285}
+    width_m: 0.0762
+  - name: "Line.002_0282"
+    start: {x_m: 3.5338, y_m: -8.3784}
+    end: {x_m: 3.7892, y_m: -9.0939}
+    width_m: 0.0762
+  - name: "Line.002_0283"
+    start: {x_m: 3.3784, y_m: -8.4285}
+    end: {x_m: 3.6366, y_m: -9.1517}
+    width_m: 0.0762
+  - name: "Line.002_0284"
+    start: {x_m: 3.7892, y_m: -9.0939}
+    end: {x_m: 4.0379, y_m: -9.6714}
+    width_m: 0.0762
+  - name: "Line.002_0285"
+    start: {x_m: 3.6366, y_m: -9.1517}
+    end: {x_m: 3.8908, y_m: -9.7416}
+    width_m: 0.0762
+  - name: "Line.002_0286"
+    start: {x_m: 4.0379, y_m: -9.6714}
+    end: {x_m: 4.2698, y_m: -10.0776}
+    width_m: 0.0762
+  - name: "Line.002_0287"
+    start: {x_m: 3.8908, y_m: -9.7416}
+    end: {x_m: 4.1382, y_m: -10.1724}
+    width_m: 0.0762
+  - name: "Line.002_0288"
+    start: {x_m: 4.2698, y_m: -10.0776}
+    end: {x_m: 4.471, y_m: -10.2824}
+    width_m: 0.0762
+  - name: "Line.002_0289"
+    start: {x_m: 4.1382, y_m: -10.1724}
+    end: {x_m: 4.3798, y_m: -10.4145}
+    width_m: 0.0762
+  - name: "Line.002_0290"
+    start: {x_m: 4.471, y_m: -10.2824}
+    end: {x_m: 4.9484, y_m: -10.4582}
+    width_m: 0.0762
+  - name: "Line.002_0291"
+    start: {x_m: 4.3798, y_m: -10.4145}
+    end: {x_m: 4.9041, y_m: -10.6109}
+    width_m: 0.0762
+  - name: "Line.002_0292"
+    start: {x_m: 4.9484, y_m: -10.4582}
+    end: {x_m: 5.576, y_m: -10.5585}
+    width_m: 0.0762
+  - name: "Line.002_0293"
+    start: {x_m: 4.9041, y_m: -10.6109}
+    end: {x_m: 5.5574, y_m: -10.7158}
+    width_m: 0.0762
+  - name: "Line.002_0294"
+    start: {x_m: 5.576, y_m: -10.5585}
+    end: {x_m: 6.3155, y_m: -10.5894}
+    width_m: 0.0762
+  - name: "Line.002_0295"
+    start: {x_m: 5.5574, y_m: -10.7158}
+    end: {x_m: 6.313, y_m: -10.7476}
+    width_m: 0.0762
+  - name: "Line.002_0296"
+    start: {x_m: 6.3155, y_m: -10.5894}
+    end: {x_m: 7.1325, y_m: -10.5623}
+    width_m: 0.0762
+  - name: "Line.002_0297"
+    start: {x_m: 6.313, y_m: -10.7476}
+    end: {x_m: 7.1406, y_m: -10.7202}
+    width_m: 0.0762
+  - name: "Line.002_0298"
+    start: {x_m: 7.1325, y_m: -10.5623}
+    end: {x_m: 7.9933, y_m: -10.4892}
+    width_m: 0.0762
+  - name: "Line.002_0299"
+    start: {x_m: 7.1406, y_m: -10.7202}
+    end: {x_m: 8.0089, y_m: -10.6465}
+    width_m: 0.0762
+  - name: "Line.002_0300"
+    start: {x_m: 7.9933, y_m: -10.4892}
+    end: {x_m: 8.8649, y_m: -10.3824}
+    width_m: 0.0762
+  - name: "Line.002_0301"
+    start: {x_m: 8.0089, y_m: -10.6465}
+    end: {x_m: 8.886, y_m: -10.539}
+    width_m: 0.0762
+  - name: "Line.002_0302"
+    start: {x_m: 8.8649, y_m: -10.3824}
+    end: {x_m: 9.7146, y_m: -10.2544}
+    width_m: 0.0762
+  - name: "Line.002_0303"
+    start: {x_m: 8.886, y_m: -10.539}
+    end: {x_m: 9.7397, y_m: -10.4104}
+    width_m: 0.0762
+  - name: "Line.002_0304"
+    start: {x_m: 9.7146, y_m: -10.2544}
+    end: {x_m: 10.5098, y_m: -10.1176}
+    width_m: 0.0762
+  - name: "Line.002_0305"
+    start: {x_m: 9.7397, y_m: -10.4104}
+    end: {x_m: 10.538, y_m: -10.2731}
+    width_m: 0.0762
+  - name: "Line.002_0306"
+    start: {x_m: 10.5098, y_m: -10.1176}
+    end: {x_m: 11.218, y_m: -9.9845}
+    width_m: 0.0762
+  - name: "Line.002_0307"
+    start: {x_m: 10.538, y_m: -10.2731}
+    end: {x_m: 11.2483, y_m: -10.1396}
+    width_m: 0.0762
+  - name: "Line.002_0308"
+    start: {x_m: 11.218, y_m: -9.9845}
+    end: {x_m: 11.8068, y_m: -9.8675}
+    width_m: 0.0762
+  - name: "Line.002_0309"
+    start: {x_m: 11.2483, y_m: -10.1396}
+    end: {x_m: 11.8382, y_m: -10.0223}
+    width_m: 0.0762
+  - name: "Line.002_0310"
+    start: {x_m: 11.8068, y_m: -9.8675}
+    end: {x_m: 12.2443, y_m: -9.779}
+    width_m: 0.0762
+  - name: "Line.002_0311"
+    start: {x_m: 11.8382, y_m: -10.0223}
+    end: {x_m: 12.2748, y_m: -9.934}
+    width_m: 0.0762
+  - name: "Line.002_0312"
+    start: {x_m: 12.2443, y_m: -9.779}
+    end: {x_m: 12.4968, y_m: -9.7317}
+    width_m: 0.0762
+  - name: "Line.002_0313"
+    start: {x_m: 12.2748, y_m: -9.934}
+    end: {x_m: 12.5267, y_m: -9.8869}
+    width_m: 0.0762
+  - name: "Line.002_0314"
+    start: {x_m: 12.4968, y_m: -9.7317}
+    end: {x_m: 12.7908, y_m: -9.6743}
+    width_m: 0.0762
+  - name: "Line.002_0315"
+    start: {x_m: 12.5267, y_m: -9.8869}
+    end: {x_m: 12.8241, y_m: -9.8288}
+    width_m: 0.0762
+  - name: "Line.002_0316"
+    start: {x_m: 12.7908, y_m: -9.6743}
+    end: {x_m: 13.2495, y_m: -9.5688}
+    width_m: 0.0762
+  - name: "Line.002_0317"
+    start: {x_m: 12.8241, y_m: -9.8288}
+    end: {x_m: 13.2867, y_m: -9.7224}
+    width_m: 0.0762
+  - name: "Line.002_0318"
+    start: {x_m: 13.2495, y_m: -9.5688}
+    end: {x_m: 13.8404, y_m: -9.4247}
+    width_m: 0.0762
+  - name: "Line.002_0319"
+    start: {x_m: 13.2867, y_m: -9.7224}
+    end: {x_m: 13.8792, y_m: -9.5779}
+    width_m: 0.0762
+  - name: "Line.002_0320"
+    start: {x_m: 13.8404, y_m: -9.4247}
+    end: {x_m: 14.5289, y_m: -9.2518}
+    width_m: 0.0762
+  - name: "Line.002_0321"
+    start: {x_m: 13.8792, y_m: -9.5779}
+    end: {x_m: 14.5685, y_m: -9.4048}
+    width_m: 0.0762
+  - name: "Line.002_0322"
+    start: {x_m: 14.5289, y_m: -9.2518}
+    end: {x_m: 15.2809, y_m: -9.06}
+    width_m: 0.0762
+  - name: "Line.002_0323"
+    start: {x_m: 14.5685, y_m: -9.4048}
+    end: {x_m: 15.321, y_m: -9.2129}
+    width_m: 0.0762
+  - name: "Line.002_0324"
+    start: {x_m: 15.2809, y_m: -9.06}
+    end: {x_m: 16.0625, y_m: -8.8591}
+    width_m: 0.0762
+  - name: "Line.002_0325"
+    start: {x_m: 15.321, y_m: -9.2129}
+    end: {x_m: 16.1028, y_m: -9.012}
+    width_m: 0.0762
+  - name: "Line.002_0326"
+    start: {x_m: 16.0625, y_m: -8.8591}
+    end: {x_m: 16.8398, y_m: -8.6588}
+    width_m: 0.0762
+  - name: "Line.002_0327"
+    start: {x_m: 16.1028, y_m: -9.012}
+    end: {x_m: 16.8801, y_m: -8.8117}
+    width_m: 0.0762
+  - name: "Line.002_0328"
+    start: {x_m: 16.8398, y_m: -8.6588}
+    end: {x_m: 17.5789, y_m: -8.469}
+    width_m: 0.0762
+  - name: "Line.002_0329"
+    start: {x_m: 16.8801, y_m: -8.8117}
+    end: {x_m: 17.619, y_m: -8.6219}
+    width_m: 0.0762
+  - name: "Line.002_0330"
+    start: {x_m: 17.5789, y_m: -8.469}
+    end: {x_m: 18.2461, y_m: -8.2992}
+    width_m: 0.0762
+  - name: "Line.002_0331"
+    start: {x_m: 17.619, y_m: -8.6219}
+    end: {x_m: 18.2855, y_m: -8.4523}
+    width_m: 0.0762
+  - name: "Line.002_0332"
+    start: {x_m: 18.2461, y_m: -8.2992}
+    end: {x_m: 18.8076, y_m: -8.1594}
+    width_m: 0.0762
+  - name: "Line.002_0333"
+    start: {x_m: 18.2855, y_m: -8.4523}
+    end: {x_m: 18.8457, y_m: -8.3128}
+    width_m: 0.0762
+  - name: "Line.002_0334"
+    start: {x_m: 18.8076, y_m: -8.1594}
+    end: {x_m: 19.2303, y_m: -8.059}
+    width_m: 0.0762
+  - name: "Line.002_0335"
+    start: {x_m: 18.8457, y_m: -8.3128}
+    end: {x_m: 19.2649, y_m: -8.2132}
+    width_m: 0.0762
+  - name: "Line.002_0336"
+    start: {x_m: 19.2303, y_m: -8.059}
+    end: {x_m: 19.4824, y_m: -8.0077}
+    width_m: 0.0762
+  - name: "Line.002_0337"
+    start: {x_m: 19.2649, y_m: -8.2132}
+    end: {x_m: 19.5073, y_m: -8.1637}
+    width_m: 0.0762
+  - name: "Line.002_0338"
+    start: {x_m: 19.4824, y_m: -8.0077}
+    end: {x_m: 19.7597, y_m: -7.9752}
+    width_m: 0.0762
+  - name: "Line.002_0339"
+    start: {x_m: 19.5073, y_m: -8.1637}
+    end: {x_m: 19.775, y_m: -8.1325}
+    width_m: 0.0762
+  - name: "Line.002_0340"
+    start: {x_m: 19.7597, y_m: -7.9752}
+    end: {x_m: 20.1582, y_m: -7.9408}
+    width_m: 0.0762
+  - name: "Line.002_0341"
+    start: {x_m: 19.775, y_m: -8.1325}
+    end: {x_m: 20.1698, y_m: -8.0985}
+    width_m: 0.0762
+  - name: "Line.002_0342"
+    start: {x_m: 20.1582, y_m: -7.9408}
+    end: {x_m: 20.654, y_m: -7.9048}
+    width_m: 0.0762
+  - name: "Line.002_0343"
+    start: {x_m: 20.1698, y_m: -8.0985}
+    end: {x_m: 20.6639, y_m: -8.0625}
+    width_m: 0.0762
+  - name: "Line.002_0344"
+    start: {x_m: 20.654, y_m: -7.9048}
+    end: {x_m: 21.2222, y_m: -7.8676}
+    width_m: 0.0762
+  - name: "Line.002_0345"
+    start: {x_m: 20.6639, y_m: -8.0625}
+    end: {x_m: 21.2311, y_m: -8.0254}
+    width_m: 0.0762
+  - name: "Line.002_0346"
+    start: {x_m: 21.2222, y_m: -7.8676}
+    end: {x_m: 21.8371, y_m: -7.8298}
+    width_m: 0.0762
+  - name: "Line.002_0347"
+    start: {x_m: 21.2311, y_m: -8.0254}
+    end: {x_m: 21.8455, y_m: -7.9877}
+    width_m: 0.0762
+  - name: "Line.002_0348"
+    start: {x_m: 21.8371, y_m: -7.8298}
+    end: {x_m: 22.4731, y_m: -7.7921}
+    width_m: 0.0762
+  - name: "Line.002_0349"
+    start: {x_m: 21.8455, y_m: -7.9877}
+    end: {x_m: 22.4813, y_m: -7.95}
+    width_m: 0.0762
+  - name: "Line.002_0350"
+    start: {x_m: 22.4731, y_m: -7.7921}
+    end: {x_m: 23.1046, y_m: -7.7551}
+    width_m: 0.0762
+  - name: "Line.002_0351"
+    start: {x_m: 22.4813, y_m: -7.95}
+    end: {x_m: 23.1128, y_m: -7.913}
+    width_m: 0.0762
+  - name: "Line.002_0352"
+    start: {x_m: 23.1046, y_m: -7.7551}
+    end: {x_m: 23.7059, y_m: -7.7194}
+    width_m: 0.0762
+  - name: "Line.002_0353"
+    start: {x_m: 23.1128, y_m: -7.913}
+    end: {x_m: 23.7144, y_m: -7.8773}
+    width_m: 0.0762
+  - name: "Line.002_0354"
+    start: {x_m: 23.7059, y_m: -7.7194}
+    end: {x_m: 24.2512, y_m: -7.6856}
+    width_m: 0.0762
+  - name: "Line.002_0355"
+    start: {x_m: 23.7144, y_m: -7.8773}
+    end: {x_m: 24.2603, y_m: -7.8434}
+    width_m: 0.0762
+  - name: "Line.002_0356"
+    start: {x_m: 24.2512, y_m: -7.6856}
+    end: {x_m: 24.7146, y_m: -7.6543}
+    width_m: 0.0762
+  - name: "Line.002_0357"
+    start: {x_m: 24.2603, y_m: -7.8434}
+    end: {x_m: 24.7252, y_m: -7.812}
+    width_m: 0.0762
+  - name: "Line.002_0358"
+    start: {x_m: 24.7146, y_m: -7.6543}
+    end: {x_m: 25.0698, y_m: -7.6262}
+    width_m: 0.0762
+  - name: "Line.002_0359"
+    start: {x_m: 24.7252, y_m: -7.812}
+    end: {x_m: 25.0839, y_m: -7.7836}
+    width_m: 0.0762
+  - name: "Line.002_0360"
+    start: {x_m: 25.0698, y_m: -7.6262}
+    end: {x_m: 25.2917, y_m: -7.6019}
+    width_m: 0.0762
+  - name: "Line.002_0361"
+    start: {x_m: 25.0839, y_m: -7.7836}
+    end: {x_m: 25.3101, y_m: -7.7589}
+    width_m: 0.0762
+  - name: "Line.002_0362"
+    start: {x_m: 25.2917, y_m: -7.6019}
+    end: {x_m: 25.5099, y_m: -7.5732}
+    width_m: 0.0762
+  - name: "Line.002_0363"
+    start: {x_m: 25.3101, y_m: -7.7589}
+    end: {x_m: 25.5285, y_m: -7.7301}
+    width_m: 0.0762
+  - name: "Line.002_0364"
+    start: {x_m: 25.5099, y_m: -7.5732}
+    end: {x_m: 25.7576, y_m: -7.5457}
+    width_m: 0.0762
+  - name: "Line.002_0365"
+    start: {x_m: 25.5285, y_m: -7.7301}
+    end: {x_m: 25.7742, y_m: -7.7029}
+    width_m: 0.0762
+  - name: "Line.002_0366"
+    start: {x_m: 25.7576, y_m: -7.5457}
+    end: {x_m: 26.0261, y_m: -7.5168}
+    width_m: 0.0762
+  - name: "Line.002_0367"
+    start: {x_m: 25.7742, y_m: -7.7029}
+    end: {x_m: 26.0432, y_m: -7.6739}
+    width_m: 0.0762
+  - name: "Line.002_0368"
+    start: {x_m: 26.0261, y_m: -7.5168}
+    end: {x_m: 26.3092, y_m: -7.4834}
+    width_m: 0.0762
+  - name: "Line.002_0369"
+    start: {x_m: 26.0432, y_m: -7.6739}
+    end: {x_m: 26.329, y_m: -7.6402}
+    width_m: 0.0762
+  - name: "Line.002_0370"
+    start: {x_m: 26.3092, y_m: -7.4834}
+    end: {x_m: 26.6006, y_m: -7.4425}
+    width_m: 0.0762
+  - name: "Line.002_0371"
+    start: {x_m: 26.329, y_m: -7.6402}
+    end: {x_m: 26.6251, y_m: -7.5986}
+    width_m: 0.0762
+  - name: "Line.002_0372"
+    start: {x_m: 26.6006, y_m: -7.4425}
+    end: {x_m: 26.8939, y_m: -7.3913}
+    width_m: 0.0762
+  - name: "Line.002_0373"
+    start: {x_m: 26.6251, y_m: -7.5986}
+    end: {x_m: 26.925, y_m: -7.5462}
+    width_m: 0.0762
+  - name: "Line.002_0374"
+    start: {x_m: 26.8939, y_m: -7.3913}
+    end: {x_m: 27.1825, y_m: -7.3268}
+    width_m: 0.0762
+  - name: "Line.002_0375"
+    start: {x_m: 26.925, y_m: -7.5462}
+    end: {x_m: 27.2227, y_m: -7.4797}
+    width_m: 0.0762
+  - name: "Line.002_0376"
+    start: {x_m: 27.1825, y_m: -7.3268}
+    end: {x_m: 27.4599, y_m: -7.2464}
+    width_m: 0.0762
+  - name: "Line.002_0377"
+    start: {x_m: 27.2227, y_m: -7.4797}
+    end: {x_m: 27.5118, y_m: -7.3958}
+    width_m: 0.0762
+  - name: "Line.002_0378"
+    start: {x_m: 27.4599, y_m: -7.2464}
+    end: {x_m: 27.7196, y_m: -7.1474}
+    width_m: 0.0762
+  - name: "Line.002_0379"
+    start: {x_m: 27.5118, y_m: -7.3958}
+    end: {x_m: 27.7862, y_m: -7.2911}
+    width_m: 0.0762
+  - name: "Line.002_0380"
+    start: {x_m: 27.7196, y_m: -7.1474}
+    end: {x_m: 27.9549, y_m: -7.0277}
+    width_m: 0.0762
+  - name: "Line.002_0381"
+    start: {x_m: 27.7862, y_m: -7.2911}
+    end: {x_m: 28.0396, y_m: -7.162}
+    width_m: 0.0762
+  - name: "Line.002_0382"
+    start: {x_m: 27.9549, y_m: -7.0277}
+    end: {x_m: 28.1597, y_m: -6.885}
+    width_m: 0.0762
+  - name: "Line.002_0383"
+    start: {x_m: 28.0396, y_m: -7.162}
+    end: {x_m: 28.2654, y_m: -7.0044}
+    width_m: 0.0762
+  - name: "Line.002_0384"
+    start: {x_m: 28.1597, y_m: -6.885}
+    end: {x_m: 28.332, y_m: -6.7135}
+    width_m: 0.0762
+  - name: "Line.002_0385"
+    start: {x_m: 28.2654, y_m: -7.0044}
+    end: {x_m: 28.453, y_m: -6.8184}
+    width_m: 0.0762
+  - name: "Line.002_0386"
+    start: {x_m: 28.332, y_m: -6.7135}
+    end: {x_m: 28.551, y_m: -6.4562}
+    width_m: 0.0762
+  - name: "Line.002_0387"
+    start: {x_m: 28.453, y_m: -6.8184}
+    end: {x_m: 28.6752, y_m: -6.5574}
+    width_m: 0.0762
+  - name: "Line.002_0388"
+    start: {x_m: 28.551, y_m: -6.4562}
+    end: {x_m: 28.7764, y_m: -6.203}
+    width_m: 0.0762
+  - name: "Line.002_0389"
+    start: {x_m: 28.6752, y_m: -6.5574}
+    end: {x_m: 28.899, y_m: -6.3062}
+    width_m: 0.0762
+  - name: "Line.002_0390"
+    start: {x_m: 28.7764, y_m: -6.203}
+    end: {x_m: 29.0001, y_m: -5.9565}
+    width_m: 0.0762
+  - name: "Line.002_0391"
+    start: {x_m: 28.899, y_m: -6.3062}
+    end: {x_m: 29.1224, y_m: -6.06}
+    width_m: 0.0762
+  - name: "Line.002_0392"
+    start: {x_m: 29.0001, y_m: -5.9565}
+    end: {x_m: 29.2168, y_m: -5.7156}
+    width_m: 0.0762
+  - name: "Line.002_0393"
+    start: {x_m: 29.1224, y_m: -6.06}
+    end: {x_m: 29.3404, y_m: -5.8177}
+    width_m: 0.0762
+  - name: "Line.002_0394"
+    start: {x_m: 29.2168, y_m: -5.7156}
+    end: {x_m: 29.4215, y_m: -5.4795}
+    width_m: 0.0762
+  - name: "Line.002_0395"
+    start: {x_m: 29.3404, y_m: -5.8177}
+    end: {x_m: 29.5479, y_m: -5.5783}
+    width_m: 0.0762
+  - name: "Line.002_0396"
+    start: {x_m: 29.4215, y_m: -5.4795}
+    end: {x_m: 29.609, y_m: -5.2472}
+    width_m: 0.0762
+  - name: "Line.002_0397"
+    start: {x_m: 29.5479, y_m: -5.5783}
+    end: {x_m: 29.7399, y_m: -5.3403}
+    width_m: 0.0762
+  - name: "Line.002_0398"
+    start: {x_m: 29.609, y_m: -5.2472}
+    end: {x_m: 29.7743, y_m: -5.018}
+    width_m: 0.0762
+  - name: "Line.002_0399"
+    start: {x_m: 29.7399, y_m: -5.3403}
+    end: {x_m: 29.9113, y_m: -5.1025}
+    width_m: 0.0762
+  - name: "Line.002_0400"
+    start: {x_m: 29.7743, y_m: -5.018}
+    end: {x_m: 29.9123, y_m: -4.7913}
+    width_m: 0.0762
+  - name: "Line.002_0401"
+    start: {x_m: 29.9113, y_m: -5.1025}
+    end: {x_m: 30.0568, y_m: -4.8633}
+    width_m: 0.0762
+  - name: "Line.002_0402"
+    start: {x_m: 29.9123, y_m: -4.7913}
+    end: {x_m: 30.0184, y_m: -4.5665}
+    width_m: 0.0762
+  - name: "Line.002_0403"
+    start: {x_m: 30.0568, y_m: -4.8633}
+    end: {x_m: 30.171, y_m: -4.621}
+    width_m: 0.0762
+  - name: "Line.002_0404"
+    start: {x_m: 30.0184, y_m: -4.5665}
+    end: {x_m: 30.0884, y_m: -4.3429}
+    width_m: 0.0762
+  - name: "Line.002_0405"
+    start: {x_m: 30.171, y_m: -4.621}
+    end: {x_m: 30.2479, y_m: -4.3745}
+    width_m: 0.0762
+  - name: "Line.002_0406"
+    start: {x_m: 30.0884, y_m: -4.3429}
+    end: {x_m: 30.1182, y_m: -4.1192}
+    width_m: 0.0762
+  - name: "Line.002_0407"
+    start: {x_m: 30.2479, y_m: -4.3745}
+    end: {x_m: 30.2813, y_m: -4.1228}
+    width_m: 0.0762
+  - name: "Line.002_0408"
+    start: {x_m: 30.1182, y_m: -4.1192}
+    end: {x_m: 30.1034, y_m: -3.889}
+    width_m: 0.0762
+  - name: "Line.002_0409"
+    start: {x_m: 30.2813, y_m: -4.1228}
+    end: {x_m: 30.2656, y_m: -3.8701}
+    width_m: 0.0762
+  - name: "Line.002_0410"
+    start: {x_m: 30.1034, y_m: -3.889}
+    end: {x_m: 30.0472, y_m: -3.5461}
+    width_m: 0.0762
+  - name: "Line.002_0411"
+    start: {x_m: 30.2656, y_m: -3.8701}
+    end: {x_m: 30.2084, y_m: -3.52}
+    width_m: 0.0762
+  - name: "Line.002_0412"
+    start: {x_m: 30.0472, y_m: -3.5461}
+    end: {x_m: 29.9871, y_m: -3.1713}
+    width_m: 0.0762
+  - name: "Line.002_0413"
+    start: {x_m: 30.2084, y_m: -3.52}
+    end: {x_m: 30.1484, y_m: -3.1456}
+    width_m: 0.0762
+  - name: "Line.002_0414"
+    start: {x_m: 29.9871, y_m: -3.1713}
+    end: {x_m: 29.9246, y_m: -2.7755}
+    width_m: 0.0762
+  - name: "Line.002_0415"
+    start: {x_m: 30.1484, y_m: -3.1456}
+    end: {x_m: 30.0859, y_m: -2.75}
+    width_m: 0.0762
+  - name: "Line.002_0416"
+    start: {x_m: 29.9246, y_m: -2.7755}
+    end: {x_m: 29.8606, y_m: -2.3657}
+    width_m: 0.0762
+  - name: "Line.002_0417"
+    start: {x_m: 30.0859, y_m: -2.75}
+    end: {x_m: 30.022, y_m: -2.3405}
+    width_m: 0.0762
+  - name: "Line.002_0418"
+    start: {x_m: 29.8606, y_m: -2.3657}
+    end: {x_m: 29.7959, y_m: -1.949}
+    width_m: 0.0762
+  - name: "Line.002_0419"
+    start: {x_m: 30.022, y_m: -2.3405}
+    end: {x_m: 29.9574, y_m: -1.9239}
+    width_m: 0.0762
+  - name: "Line.002_0420"
+    start: {x_m: 29.7959, y_m: -1.949}
+    end: {x_m: 29.7316, y_m: -1.5325}
+    width_m: 0.0762
+  - name: "Line.002_0421"
+    start: {x_m: 29.9574, y_m: -1.9239}
+    end: {x_m: 29.8931, y_m: -1.5075}
+    width_m: 0.0762
+  - name: "Line.002_0422"
+    start: {x_m: 29.7316, y_m: -1.5325}
+    end: {x_m: 29.6685, y_m: -1.1232}
+    width_m: 0.0762
+  - name: "Line.002_0423"
+    start: {x_m: 29.8931, y_m: -1.5075}
+    end: {x_m: 29.8299, y_m: -1.0982}
+    width_m: 0.0762
+  - name: "Line.002_0424"
+    start: {x_m: 29.6685, y_m: -1.1232}
+    end: {x_m: 29.6075, y_m: -0.7283}
+    width_m: 0.0762
+  - name: "Line.002_0425"
+    start: {x_m: 29.8299, y_m: -1.0982}
+    end: {x_m: 29.7689, y_m: -0.7032}
+    width_m: 0.0762
+  - name: "Line.002_0426"
+    start: {x_m: 29.6075, y_m: -0.7283}
+    end: {x_m: 29.5495, y_m: -0.3547}
+    width_m: 0.0762
+  - name: "Line.002_0427"
+    start: {x_m: 29.7689, y_m: -0.7032}
+    end: {x_m: 29.7109, y_m: -0.3294}
+    width_m: 0.0762
+  - name: "Line.002_0428"
+    start: {x_m: 29.5495, y_m: -0.3547}
+    end: {x_m: 29.4954, y_m: -0.0095}
+    width_m: 0.0762
+  - name: "Line.002_0429"
+    start: {x_m: 29.7109, y_m: -0.3294}
+    end: {x_m: 29.6567, y_m: 0.016}
+    width_m: 0.0762
+  - name: "Line.002_0430"
+    start: {x_m: 29.4954, y_m: -0.0095}
+    end: {x_m: 29.4461, y_m: 0.3}
+    width_m: 0.0762
+  - name: "Line.002_0431"
+    start: {x_m: 29.6567, y_m: 0.016}
+    end: {x_m: 29.6074, y_m: 0.3261}
+    width_m: 0.0762
+  - name: "Line.002_0432"
+    start: {x_m: 29.4026, y_m: 0.5671}
+    end: {x_m: 29.4836, y_m: 0.5804}
+    width_m: 0.0762
+  - name: "Line.002_0433"
+    start: {x_m: 29.4461, y_m: 0.3}
+    end: {x_m: 29.4026, y_m: 0.5671}
+    width_m: 0.0762
+  - name: "Line.002_0434"
+    start: {x_m: 29.6074, y_m: 0.3261}
+    end: {x_m: 29.5638, y_m: 0.5935}
+    width_m: 0.0762
+  - name: "Line.002_0435"
+    start: {x_m: 29.5638, y_m: 0.5935}
+    end: {x_m: 29.4836, y_m: 0.5804}
+    width_m: 0.0762
+
+obstacles:
+  - {name: "Cones.001", type: "cone", x_m: 30.2149, y_m: 22.0732, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.002", type: "cone", x_m: 26.5469, y_m: 13.6793, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.003", type: "cone", x_m: 0.7848, y_m: -7.5134, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.004", type: "cone", x_m: -0.1652, y_m: -7.3129, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.005", type: "cone", x_m: 26.8753, y_m: 11.7065, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.006", type: "cone", x_m: 27.2038, y_m: 9.7336, radius_m: 0.3793, height_m: 1.1969}
+  - {name: "Cones.007", type: "cone", x_m: 27.5322, y_m: 7.7608, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.008", type: "cone", x_m: 27.8606, y_m: 5.7879, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.009", type: "cone", x_m: 28.189, y_m: 3.8151, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.010", type: "cone", x_m: 28.5174, y_m: 1.8422, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.011", type: "cone", x_m: 33.335, y_m: 14.8093, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.012", type: "cone", x_m: 33.6634, y_m: 12.8365, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.013", type: "cone", x_m: 33.9918, y_m: 10.8636, radius_m: 0.3689, height_m: 1.1969}
+  - {name: "Cones.014", type: "cone", x_m: 34.3202, y_m: 8.8908, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.015", type: "cone", x_m: 34.6487, y_m: 6.9179, radius_m: 0.3689, height_m: 1.1969}
+  - {name: "Cones.016", type: "cone", x_m: 34.9771, y_m: 4.9451, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.017", type: "cone", x_m: 35.3055, y_m: 2.9722, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.018", type: "cone", x_m: 30.8034, y_m: 11.6197, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.019", type: "cone", x_m: 31.4602, y_m: 7.674, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.020", type: "cone", x_m: 32.117, y_m: 3.7282, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.021", type: "cone", x_m: 2.1071, y_m: -4.6098, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.022", type: "cone", x_m: 1.2056, y_m: -4.7598, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.023", type: "cone", x_m: 7.3769, y_m: -11.1045, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.024", type: "cone", x_m: 7.4462, y_m: -11.9508, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.025", type: "cone", x_m: 29.5518, y_m: 11.4113, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.026", type: "cone", x_m: 30.2086, y_m: 7.4656, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.027", type: "cone", x_m: 30.8654, y_m: 3.5199, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.028", type: "cone", x_m: 10.0183, y_m: -14.0643, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.029", type: "cone", x_m: 10.1214, y_m: -14.8634, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.030", type: "cone", x_m: 11.8921, y_m: -10.4716, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.031", type: "cone", x_m: 12.0653, y_m: -11.2924, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.032", type: "cone", x_m: 14.3741, y_m: -13.1159, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.033", type: "cone", x_m: 14.4826, y_m: -13.9474, radius_m: 0.3689, height_m: 1.1969}
+  - {name: "Cones.034", type: "cone", x_m: 9.8998, y_m: -13.2527, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.035", type: "cone", x_m: 9.807, y_m: -12.4451, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.036", type: "cone", x_m: 12.2282, y_m: -12.1215, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.037", type: "cone", x_m: 15.5636, y_m: -11.1721, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.038", type: "cone", x_m: 17.9859, y_m: -12.1904, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.039", type: "cone", x_m: 18.3059, y_m: -9.9176, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.040", type: "cone", x_m: 20.3317, y_m: -11.8498, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.041", type: "cone", x_m: 22.0039, y_m: -9.46, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.042", type: "cone", x_m: 23.4071, y_m: -10.3985, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.043", type: "cone", x_m: 26.5436, y_m: -8.1221, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.044", type: "cone", x_m: 26.7168, y_m: -8.9428, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.045", type: "cone", x_m: 26.8798, y_m: -9.7719, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.046", type: "cone", x_m: 30.6713, y_m: -11.2002, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.047", type: "cone", x_m: 30.1208, y_m: -10.5673, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.048", type: "cone", x_m: 29.5751, y_m: -9.9221, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.049", type: "cone", x_m: 30.6414, y_m: -7.5595, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.050", type: "cone", x_m: 30.0909, y_m: -6.9266, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.051", type: "cone", x_m: 29.5452, y_m: -6.2814, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.052", type: "cone", x_m: 32.2895, y_m: -9.4392, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.053", type: "cone", x_m: 31.739, y_m: -8.8063, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.054", type: "cone", x_m: 31.1934, y_m: -8.1611, radius_m: 0.3939, height_m: 1.1969}
+  - {name: "Cones.055", type: "cone", x_m: 24.0328, y_m: 21.9482, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.056", type: "cone", x_m: 12.3518, y_m: 19.6728, radius_m: 0.3689, height_m: 1.1969}
+  - {name: "Cones.057", type: "cone", x_m: 9.3731, y_m: 20.6663, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.058", type: "cone", x_m: 3.0598, y_m: 20.3187, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.059", type: "cone", x_m: 2.6839, y_m: 19.5942, radius_m: 0.3793, height_m: 1.1969}
+  - {name: "Cones.060", type: "cone", x_m: 2.0397, y_m: 18.9905, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.061", type: "cone", x_m: 1.0602, y_m: 19.0343, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.062", type: "cone", x_m: 0.2149, y_m: 19.39, radius_m: 0.3689, height_m: 1.1969}
+  - {name: "Cones.063", type: "cone", x_m: -0.7042, y_m: 19.3198, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.064", type: "cone", x_m: -2.4319, y_m: 15.2375, radius_m: 0.3726, height_m: 1.1969}
+  - {name: "Cones.065", type: "cone", x_m: -3.166, y_m: 15.5943, radius_m: 0.3849, height_m: 1.1969}
+  - {name: "Cones.066", type: "cone", x_m: 0.2458, y_m: 16.4799, radius_m: 0.3945, height_m: 1.1969}
+  - {name: "Cones.067", type: "cone", x_m: -1.3386, y_m: 18.4906, radius_m: 0.3821, height_m: 1.1969}
+  - {name: "Cones.068", type: "cone", x_m: -2.8116, y_m: 12.0508, radius_m: 0.3849, height_m: 1.1969}
+  - {name: "Cones.069", type: "cone", x_m: -0.2961, y_m: 10.1113, radius_m: 0.3849, height_m: 1.1969}
+  - {name: "Cones.070", type: "cone", x_m: 3.8029, y_m: -13.5501, radius_m: 0.3974, height_m: 1.1969}
+  - {name: "Cones.071", type: "cone", x_m: 33.1383, y_m: -3.7341, radius_m: 0.3831, height_m: 1.1969}
+  - {name: "Cones.072", type: "cone", x_m: 26.75, y_m: 17.636, radius_m: 0.3689, height_m: 1.1969}
+  - {name: "Cones.073", type: "cone", x_m: 29.4775, y_m: 21.6073, radius_m: 0.3974, height_m: 1.1969}
+
+ramps:
+  - name: "Ramp"
+    start_x_m: -2.5008
+    end_x_m: 1.3213
+    center_y_m: 3.6169
+    width_m: 4.4334
+    rise_m: 0.297
+
+speed_check:
+  start_x_m: 0.0
+  end_distance_m: 13.4112
+  minimum_average_mps: 0.44704
+  maximum_speed_mps: 2.2352
+  blocking_stop_s: 60.0
+
+mission_waypoints:
+  - {label: "1", type: "gps", x_m: 32.2813, y_m: 0, radius_m: 1, order: 1}
+  - {label: "2", type: "gps", x_m: 30.5614, y_m: 9.5442, radius_m: 1, order: 2}
+  - {label: "3", type: "gps", x_m: 29.744, y_m: 13.6074, radius_m: 1, order: 3}
+  - {label: "4", type: "gps", x_m: 27.6885, y_m: 19.9499, radius_m: 1, order: 4}
+  - {label: "5", type: "gps", x_m: 0.0638, y_m: 0.0106, radius_m: 1, order: 5}
+
+analysis_stations:
+  []

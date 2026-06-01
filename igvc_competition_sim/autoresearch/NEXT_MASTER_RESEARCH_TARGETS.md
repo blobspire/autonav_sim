@@ -1,6 +1,6 @@
 # Next Research Targets
 
-Date: 2026-05-31
+Date: 2026-06-01
 
 Purpose: active future-work queue for autoresearch agents. This file should
 answer "what should the next agent work on next?"
@@ -16,6 +16,11 @@ Authoritative history lives elsewhere:
 
 This file is the short list of open targets and high-level guardrails that
 should shape the next session.
+
+Current `auto_main` nightly override: use only
+`blender_competition_course`. The older generated course suite and
+`official_full_loop` are retained as historical evidence, not as active
+nightly gates, unless the user explicitly re-enables them.
 
 Branch-specific work belongs under `branches/<branch-scope>/`. Before running
 autoresearch on a branch derived from Hailmary, run
@@ -243,21 +248,22 @@ ramp, and then the full five-course regression.
 
 ## Minimum Keep Gates
 
-For a planning/control candidate:
+For a planning/control candidate on `auto_main`:
 
-1. Run the targeted course Tier2 if the change targets a known failure mode.
-2. Always run `ramp_turns` Tier2 if the change touches BT path handling,
-   GoalBender, controller speed, MPPI, or velocity smoothing.
-3. Run full five-course Tier1 regression:
+1. Run `blender_competition_course`; it is the authoritative course for the
+   current nightly.
+2. Do not run the older generated course suite unless the user explicitly
+   re-enables it.
+3. Run the Blender loop Tier1 regression:
 
 ```bash
 python3 run_timebox.py \
   --duration 45m \
-  --courses compact_baseline tight_gaps dense_obstacles sparse_lines ramp_turns \
+  --courses blender_competition_course \
   --runs 1 \
   --tier 1 \
   --timeout 300 \
-  --description "<candidate>-full-tier1-regression"
+  --description "<candidate>-blender-loop-tier1"
 ```
 
 4. Keep only if all gates are clean: no line crossing, obstacle contact,

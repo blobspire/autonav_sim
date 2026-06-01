@@ -307,21 +307,203 @@ def _point(raw: dict[str, Any]) -> tuple[float, float]:
     return float(raw["x_m"]), float(raw["y_m"])
 
 
-def _station_normal(points: list[tuple[float, float, float]],
-                    idx: int) -> tuple[float, float]:
-    if idx == 0:
-        dx = points[1][0] - points[0][0]
-        dy = points[1][1] - points[0][1]
-    elif idx == len(points) - 1:
-        dx = points[-1][0] - points[-2][0]
-        dy = points[-1][1] - points[-2][1]
-    else:
-        dx = points[idx + 1][0] - points[idx - 1][0]
-        dy = points[idx + 1][1] - points[idx - 1][1]
+def _segment_normal(start: tuple[float, float, float],
+                    end: tuple[float, float, float]) -> tuple[float, float]:
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
     length = math.hypot(dx, dy)
     if length <= 1e-9:
         return 0.0, 1.0
     return -dy / length, dx / length
+
+
+def _corner_cross(points: list[tuple[float, float, float]], idx: int) -> float:
+    prev = points[idx - 1]
+    current = points[idx]
+    next_point = points[idx + 1]
+    prev_dx = current[0] - prev[0]
+    prev_dy = current[1] - prev[1]
+    next_dx = next_point[0] - current[0]
+    next_dy = next_point[1] - current[1]
+    return prev_dx * next_dy - prev_dy * next_dx
+
+
+def _is_corner(points: list[tuple[float, float, float]], idx: int) -> bool:
+    if idx <= 0 or idx >= len(points) - 1:
+        return False
+    prev = points[idx - 1]
+    current = points[idx]
+    next_point = points[idx + 1]
+    prev_dx = current[0] - prev[0]
+    prev_dy = current[1] - prev[1]
+    next_dx = next_point[0] - current[0]
+    next_dy = next_point[1] - current[1]
+    prev_len = math.hypot(prev_dx, prev_dy)
+    next_len = math.hypot(next_dx, next_dy)
+    if prev_len <= 1e-9 or next_len <= 1e-9:
+        return False
+    cross = prev_dx * next_dy - prev_dy * next_dx
+    return abs(cross / (prev_len * next_len)) > 1e-3
+
+
+def _hairpin_inside_side(points: list[tuple[float, float, float]],
+                         idx: int) -> str | None:
+    if idx <= 0 or idx >= len(points) - 2:
+        return None
+    previous = points[idx - 1]
+    start = points[idx]
+    end = points[idx + 1]
+    next_point = points[idx + 2]
+
+    prev_vec = (start[0] - previous[0], start[1] - previous[1])
+    connector_vec = (end[0] - start[0], end[1] - start[1])
+    next_vec = (next_point[0] - end[0], next_point[1] - end[1])
+    prev_len = math.hypot(*prev_vec)
+    connector_len = math.hypot(*connector_vec)
+    next_len = math.hypot(*next_vec)
+    if min(prev_len, connector_len, next_len) <= 1e-9:
+        return None
+
+    prev_u = (prev_vec[0] / prev_len, prev_vec[1] / prev_len)
+    connector_u = (
+        connector_vec[0] / connector_len,
+        connector_vec[1] / connector_len,
+    )
+    next_u = (next_vec[0] / next_len, next_vec[1] / next_len)
+    if prev_u[0] * next_u[0] + prev_u[1] * next_u[1] > -0.75:
+        return None
+    if abs(prev_u[0] * connector_u[0] + prev_u[1] * connector_u[1]) > 0.35:
+        return None
+    if abs(next_u[0] * connector_u[0] + next_u[1] * connector_u[1]) > 0.35:
+        return None
+
+    left_normal = (-connector_u[1], connector_u[0])
+    connector_mid = ((start[0] + end[0]) * 0.5, (start[1] + end[1]) * 0.5)
+    adjacent_mid = (
+        (previous[0] + start[0] + end[0] + next_point[0]) * 0.25,
+        (previous[1] + start[1] + end[1] + next_point[1]) * 0.25,
+    )
+    inward = (adjacent_mid[0] - connector_mid[0],
+              adjacent_mid[1] - connector_mid[1])
+    return "left" if inward[0] * left_normal[0] + (
+        inward[1] * left_normal[1]) >= 0.0 else "right"
+
+
+def _line_breaks_for(data: dict[str, Any],
+                     idx: int,
+                     side: str) -> list[tuple[float, float]]:
+    breaks: list[tuple[float, float]] = []
+    for raw in data.get("line_breaks", []):
+        if int(raw.get("segment_index", -1)) != idx:
+            continue
+        boundary = str(raw.get("boundary", raw.get("side", "both"))).lower()
+        if boundary not in ("both", side):
+            continue
+        start_fraction = max(0.0, min(1.0, float(
+            raw.get("start_fraction", 0.0))))
+        end_fraction = max(0.0, min(1.0, float(raw.get("end_fraction", 1.0))))
+        if end_fraction > start_fraction + 1e-9:
+            breaks.append((start_fraction, end_fraction))
+    if not breaks:
+        return []
+    breaks.sort()
+    merged: list[tuple[float, float]] = []
+    for start, end in breaks:
+        if not merged or start > merged[-1][1]:
+            merged.append((start, end))
+        else:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+    return merged
+
+
+def _append_tape_with_breaks(tapes: list[TapeSegment],
+                             *,
+                             name: str,
+                             side: str,
+                             idx: int,
+                             start: tuple[float, float],
+                             end: tuple[float, float],
+                             width_m: float,
+                             data: dict[str, Any]) -> bool:
+    breaks = _line_breaks_for(data, idx, side)
+    if not breaks:
+        tapes.append(TapeSegment(
+            name=name,
+            start=start,
+            end=end,
+            width_m=width_m,
+        ))
+        return True
+
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    cursor = 0.0
+    emitted = False
+    emitted_count = 0
+    for break_start, break_end in breaks:
+        if break_start > cursor + 1e-9:
+            seg_start = (start[0] + dx * cursor, start[1] + dy * cursor)
+            seg_end = (start[0] + dx * break_start,
+                       start[1] + dy * break_start)
+            tapes.append(TapeSegment(
+                name=name if emitted_count == 0 else f"{name}_{emitted_count}",
+                start=seg_start,
+                end=seg_end,
+                width_m=width_m,
+            ))
+            emitted = True
+            emitted_count += 1
+        cursor = max(cursor, break_end)
+    if cursor < 1.0 - 1e-9:
+        seg_start = (start[0] + dx * cursor, start[1] + dy * cursor)
+        tapes.append(TapeSegment(
+            name=name if emitted_count == 0 else f"{name}_{emitted_count}",
+            start=seg_start,
+            end=end,
+            width_m=width_m,
+        ))
+        emitted = True
+    return emitted
+
+
+def _shortest_angle_delta(start: float, end: float) -> float:
+    delta = (end - start + math.pi) % (2.0 * math.pi) - math.pi
+    if abs(delta + math.pi) <= 1e-9:
+        return math.pi
+    return delta
+
+
+def _directed_angle_delta(start: float, end: float, direction: int) -> float:
+    if direction >= 0:
+        delta = (end - start) % (2.0 * math.pi)
+        return 0.0 if delta <= 1e-9 else delta
+    delta = (start - end) % (2.0 * math.pi)
+    return 0.0 if delta <= 1e-9 else -delta
+
+
+def _arc_points(center: tuple[float, float],
+                start: tuple[float, float],
+                end: tuple[float, float],
+                count: int,
+                direction: int | None = None) -> list[tuple[float, float]]:
+    cx, cy = center
+    radius = math.hypot(start[0] - cx, start[1] - cy)
+    start_angle = math.atan2(start[1] - cy, start[0] - cx)
+    end_angle = math.atan2(end[1] - cy, end[0] - cx)
+    delta = (
+        _shortest_angle_delta(start_angle, end_angle)
+        if direction is None
+        else _directed_angle_delta(start_angle, end_angle, direction)
+    )
+    if radius <= 1e-9 or abs(delta) <= 1e-9:
+        return [start, end]
+    return [
+        (
+            cx + radius * math.cos(start_angle + delta * idx / count),
+            cy + radius * math.sin(start_angle + delta * idx / count),
+        )
+        for idx in range(count + 1)
+    ]
 
 
 def _boundary_tapes(data: dict[str, Any],
@@ -334,28 +516,133 @@ def _boundary_tapes(data: dict[str, Any],
     if len(points) < 2:
         raise ValueError("centerline must contain at least two stations")
 
-    left: list[tuple[float, float]] = []
-    right: list[tuple[float, float]] = []
-    for idx, (x, y, width) in enumerate(points):
-        nx, ny = _station_normal(points, idx)
-        half = 0.5 * width
-        left.append((x + nx * half, y + ny * half))
-        right.append((x - nx * half, y - ny * half))
+    left_segments: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    right_segments: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    for idx in range(len(points) - 1):
+        start = points[idx]
+        end = points[idx + 1]
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        length = math.hypot(dx, dy)
+        if length <= 1e-9:
+            continue
+        ux = dx / length
+        uy = dy / length
+        nx, ny = -uy, ux
+        start_trim = 0.5 * start[2] if _is_corner(points, idx) else 0.0
+        end_trim = 0.5 * end[2] if _is_corner(points, idx + 1) else 0.0
+        if start_trim + end_trim > length * 0.80:
+            scale = length * 0.80 / (start_trim + end_trim)
+            start_trim *= scale
+            end_trim *= scale
+        start_center = (start[0] + ux * start_trim,
+                        start[1] + uy * start_trim)
+        end_center = (end[0] - ux * end_trim,
+                      end[1] - uy * end_trim)
+        start_half = 0.5 * start[2]
+        end_half = 0.5 * end[2]
+        left_start = (start_center[0] + nx * start_half,
+                      start_center[1] + ny * start_half)
+        left_end = (end_center[0] + nx * end_half,
+                    end_center[1] + ny * end_half)
+        right_start = (start_center[0] - nx * start_half,
+                       start_center[1] - ny * start_half)
+        right_end = (end_center[0] - nx * end_half,
+                     end_center[1] - ny * end_half)
+        left_segments.append((left_start, left_end))
+        right_segments.append((right_start, right_end))
+
+    draw_left_segments: list[bool] = [True] * (len(points) - 1)
+    draw_right_segments: list[bool] = [True] * (len(points) - 1)
 
     tapes: list[TapeSegment] = []
     for idx in range(len(points) - 1):
-        tapes.append(TapeSegment(
-            name=f"left_boundary_{idx}",
-            start=left[idx],
-            end=left[idx + 1],
-            width_m=tape_width_m,
-        ))
-        tapes.append(TapeSegment(
-            name=f"right_boundary_{idx}",
-            start=right[idx],
-            end=right[idx + 1],
-            width_m=tape_width_m,
-        ))
+        if draw_left_segments[idx]:
+            draw_left_segments[idx] = _append_tape_with_breaks(
+                tapes,
+                name=f"left_boundary_{idx}",
+                side="left",
+                idx=idx,
+                start=left_segments[idx][0],
+                end=left_segments[idx][1],
+                width_m=tape_width_m,
+                data=data,
+            )
+        if draw_right_segments[idx]:
+            draw_right_segments[idx] = _append_tape_with_breaks(
+                tapes,
+                name=f"right_boundary_{idx}",
+                side="right",
+                idx=idx,
+                start=right_segments[idx][0],
+                end=right_segments[idx][1],
+                width_m=tape_width_m,
+                data=data,
+            )
+    for idx in range(1, len(points) - 1):
+        center = points[idx][0], points[idx][1]
+        turn_cross = _corner_cross(points, idx)
+        left_start = left_segments[idx - 1][1]
+        left_end = left_segments[idx][0]
+        right_start = right_segments[idx - 1][1]
+        right_end = right_segments[idx][0]
+        left_start_angle = math.atan2(left_start[1] - center[1],
+                                      left_start[0] - center[0])
+        left_end_angle = math.atan2(left_end[1] - center[1],
+                                    left_end[0] - center[0])
+        right_start_angle = math.atan2(right_start[1] - center[1],
+                                       right_start[0] - center[0])
+        right_end_angle = math.atan2(right_end[1] - center[1],
+                                     right_end[0] - center[0])
+        left_direction = -1 if turn_cross < -1e-9 else None
+        right_direction = 1 if turn_cross > 1e-9 else None
+        left_delta = abs(
+            _directed_angle_delta(left_start_angle, left_end_angle,
+                                  left_direction)
+            if left_direction is not None else
+            _shortest_angle_delta(left_start_angle, left_end_angle))
+        right_delta = abs(
+            _directed_angle_delta(right_start_angle, right_end_angle,
+                                  right_direction)
+            if right_direction is not None else
+            _shortest_angle_delta(right_start_angle, right_end_angle))
+        delta = max(left_delta, right_delta)
+        if delta <= 1e-6:
+            continue
+        segment_count = max(2, int(math.ceil(delta / (math.pi / 36.0))))
+        left_arc = _arc_points(center, left_start, left_end, segment_count,
+                               left_direction)
+        right_arc = _arc_points(center, right_start, right_end, segment_count,
+                                right_direction)
+        # At a sharp centerline corner, the inside offset arc becomes a cross
+        # tape through the drivable lane. Real IGVC courses have finite-radius
+        # turns; for this polyline generator, keep only the outside join so
+        # the generated tape never narrows the legal passage at switchbacks.
+        draw_left_join = (
+            turn_cross < -1e-9
+            and draw_left_segments[idx - 1]
+            and draw_left_segments[idx]
+        )
+        draw_right_join = (
+            turn_cross > 1e-9
+            and draw_right_segments[idx - 1]
+            and draw_right_segments[idx]
+        )
+        for arc_idx in range(segment_count):
+            if draw_left_join:
+                tapes.append(TapeSegment(
+                    name=f"left_boundary_join_{idx}_{arc_idx}",
+                    start=left_arc[arc_idx],
+                    end=left_arc[arc_idx + 1],
+                    width_m=tape_width_m,
+                ))
+            if draw_right_join:
+                tapes.append(TapeSegment(
+                    name=f"right_boundary_join_{idx}_{arc_idx}",
+                    start=right_arc[arc_idx],
+                    end=right_arc[arc_idx + 1],
+                    width_m=tape_width_m,
+                ))
     return tapes
 
 

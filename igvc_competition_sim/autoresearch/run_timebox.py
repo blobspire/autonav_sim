@@ -144,7 +144,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--duration", default="8h",
                     help="wall-clock budget, e.g. 45m, 2h, 1h30m")
-    ap.add_argument("--courses", nargs="+", default=["compact_baseline"])
+    ap.add_argument("--courses", nargs="+", default=["blender_competition_course"])
     ap.add_argument("--runs", type=int, default=1)
     ap.add_argument("--tier", type=int, default=1)
     ap.add_argument("--timeout", type=int, default=300)

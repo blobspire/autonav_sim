@@ -380,3 +380,8 @@ RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning o
   fast-suite evidence (`compact_baseline`, `tight_gaps`, `dense_obstacles`, `sparse_lines`,
   `ramp_turns`). They remain useful, but they are not full official-course validation unless an
   `official_full_loop` gate is explicitly recorded.
+- 2026-06-01 AUTO_MAIN COURSE OVERRIDE: the current overnight `auto_main` run should use only
+  `blender_competition_course`, exported from `/Users/cole/Downloads/Course.blend`. It is a loop course
+  that ends back at the start, and its YAML/SDF pass padded-robot connectivity validation. Older generated
+  courses and `official_full_loop` are historical context only for this nightly unless explicitly
+  re-enabled by the user.

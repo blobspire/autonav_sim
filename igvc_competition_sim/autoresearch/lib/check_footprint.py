@@ -7,7 +7,7 @@ never silently shrink it:
 
   1. Course YAML `robot:` block  -> RobotSpec used by the FROZEN scorer
      (course_monitor.py builds the padded violation box from these).
-  2. nav2_params_camera.yaml     -> footprint polygon + padding in BOTH
+  2. Nav2 params YAML            -> footprint polygon + padding in BOTH
      local_costmap and global_costmap (what the planner/controller use).
   3. shogi.urdf nav_center_joint -> base_link -> nav_center offset.
   4. bt_nav.xml PathFootprintSafe -> the runtime global footprint gate.
@@ -29,6 +29,21 @@ SIM_PACKAGE_DIR = Path(__file__).resolve().parents[2]
 SIM_REPO_DIR = SIM_PACKAGE_DIR.parent
 ROS_WS = Path(os.environ.get("ROS_WS", Path(__file__).resolve().parents[5]))
 WORKSPACE_SRC = ROS_WS / "src"
+NAV2_PARAM_NAMES = (
+    "nav2_params_camera.yaml",
+    "nav2_paramsv2.yaml",
+    "nav2_params.yaml",
+)
+
+
+def find_nav2_params(autonav_src: Path) -> Path:
+    if os.environ.get("NAV2_PARAMS_SRC"):
+        return Path(os.environ["NAV2_PARAMS_SRC"])
+    for name in NAV2_PARAM_NAMES:
+        candidate = autonav_src / "slam" / "config" / name
+        if candidate.is_file():
+            return candidate
+    return autonav_src / "slam" / "config" / NAV2_PARAM_NAMES[0]
 
 
 def default_autonav_src() -> Path:
@@ -42,20 +57,21 @@ def default_autonav_src() -> Path:
     for root in search_roots:
         if not root.is_dir():
             continue
-        matches = sorted(
-            root.glob("*/isaac_ros-dev/src/slam/config/nav2_params_camera.yaml")
-        )
-        if matches:
-            return matches[0].parents[2]
-        direct = root / "isaac_ros-dev" / "src" / "slam" / "config" / "nav2_params_camera.yaml"
-        if direct.is_file():
-            return direct.parents[2]
+        for name in NAV2_PARAM_NAMES:
+            matches = sorted(
+                root.glob(f"*/isaac_ros-dev/src/slam/config/{name}")
+            )
+            if matches:
+                return matches[0].parents[2]
+            direct = root / "isaac_ros-dev" / "src" / "slam" / "config" / name
+            if direct.is_file():
+                return direct.parents[2]
     return WORKSPACE_SRC / "AutoNav_25-26" / "isaac_ros-dev" / "src"
 
 
 AUTONAV_SRC = default_autonav_src()
 DEF_COURSE = SIM_PACKAGE_DIR / "config" / "igvc_competition_compact.yaml"
-DEF_NAV2 = AUTONAV_SRC / "slam" / "config" / "nav2_params_camera.yaml"
+DEF_NAV2 = find_nav2_params(AUTONAV_SRC)
 DEF_URDF = AUTONAV_SRC / "bringup" / "description" / "shogi.urdf"
 DEF_BT = AUTONAV_SRC / "slam" / "behavior_trees" / "bt_nav.xml"
 

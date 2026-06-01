@@ -57,6 +57,7 @@ OFFICIAL_SPEED_DISTANCE_M = 44.0 * FT_TO_M
 OFFICIAL_MIN_SPEED_MPS = 0.44704  # 1 mph
 OFFICIAL_MAX_SPEED_MPS = 2.2352  # 5 mph
 OFFICIAL_MAX_RAMP_GRADE = 0.15
+GENERATED_BOUNDARY_WIDTH_TOL_M = 0.02
 
 
 def _disk(radius_cells: int) -> np.ndarray:
@@ -106,6 +107,11 @@ def _centerline(data: dict) -> list[tuple[float, float, float]]:
     ]
 
 
+def _uses_explicit_geometry(data: dict) -> bool:
+    profile = str(data.get("course_geometry", "")).lower()
+    return profile in ("explicit", "explicit_blender")
+
+
 def _centerline_length(centerline: list[tuple[float, float, float]]) -> float:
     return sum(
         math.hypot(centerline[idx + 1][0] - centerline[idx][0],
@@ -137,6 +143,9 @@ def _exact_bounds(course) -> tuple[float, float, float, float]:
 
 
 def ramp_geometry_problems(course_path: Path) -> list[str]:
+    data = load_yaml(course_path)
+    if _uses_explicit_geometry(data):
+        return []
     course = load_course(course_path)
     problems: list[str] = []
     for ramp in course.ramps:
@@ -153,8 +162,279 @@ def ramp_geometry_problems(course_path: Path) -> list[str]:
     return problems
 
 
+def _hairpin_inside_side(
+        centerline: list[tuple[float, float, float]],
+        idx: int) -> str | None:
+    if idx <= 0 or idx >= len(centerline) - 2:
+        return None
+    previous = centerline[idx - 1]
+    start = centerline[idx]
+    end = centerline[idx + 1]
+    next_point = centerline[idx + 2]
+    prev_vec = (start[0] - previous[0], start[1] - previous[1])
+    connector_vec = (end[0] - start[0], end[1] - start[1])
+    next_vec = (next_point[0] - end[0], next_point[1] - end[1])
+    prev_len = math.hypot(*prev_vec)
+    connector_len = math.hypot(*connector_vec)
+    next_len = math.hypot(*next_vec)
+    if min(prev_len, connector_len, next_len) <= 1e-9:
+        return None
+    prev_u = (prev_vec[0] / prev_len, prev_vec[1] / prev_len)
+    connector_u = (
+        connector_vec[0] / connector_len,
+        connector_vec[1] / connector_len,
+    )
+    next_u = (next_vec[0] / next_len, next_vec[1] / next_len)
+    if prev_u[0] * next_u[0] + prev_u[1] * next_u[1] > -0.75:
+        return None
+    if abs(prev_u[0] * connector_u[0] + prev_u[1] * connector_u[1]) > 0.35:
+        return None
+    if abs(next_u[0] * connector_u[0] + next_u[1] * connector_u[1]) > 0.35:
+        return None
+    left_normal = (-connector_u[1], connector_u[0])
+    connector_mid = ((start[0] + end[0]) * 0.5, (start[1] + end[1]) * 0.5)
+    adjacent_mid = (
+        (previous[0] + start[0] + end[0] + next_point[0]) * 0.25,
+        (previous[1] + start[1] + end[1] + next_point[1]) * 0.25,
+    )
+    inward = (adjacent_mid[0] - connector_mid[0],
+              adjacent_mid[1] - connector_mid[1])
+    return "left" if inward[0] * left_normal[0] + (
+        inward[1] * left_normal[1]) >= 0.0 else "right"
+
+
+def _break_coverage(data: dict,
+                    segment_index: int,
+                    boundary: str) -> float:
+    intervals: list[tuple[float, float]] = []
+    for raw in data.get("line_breaks", []):
+        if int(raw.get("segment_index", -1)) != segment_index:
+            continue
+        raw_boundary = str(raw.get("boundary", raw.get("side",
+                                                       "both"))).lower()
+        if raw_boundary not in ("both", boundary):
+            continue
+        start = max(0.0, min(1.0, float(raw.get("start_fraction", 0.0))))
+        end = max(0.0, min(1.0, float(raw.get("end_fraction", 1.0))))
+        if end > start + 1e-9:
+            intervals.append((start, end))
+    if not intervals:
+        return 0.0
+    intervals.sort()
+    merged: list[tuple[float, float]] = []
+    for start, end in intervals:
+        if not merged or start > merged[-1][1]:
+            merged.append((start, end))
+        else:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+    return sum(end - start for start, end in merged)
+
+
+def _boundary_intentionally_open(data: dict,
+                                 centerline: list[tuple[float, float, float]],
+                                 segment_index: int,
+                                 boundary: str) -> bool:
+    if _break_coverage(data, segment_index, boundary) >= 0.99:
+        return True
+    if not bool(data.get("open_inside_hairpin_boundaries", False)):
+        return False
+    return _hairpin_inside_side(centerline, segment_index) == boundary
+
+
+def generated_boundary_width_problems(course_path: Path) -> list[str]:
+    data = load_yaml(course_path)
+    if _uses_explicit_geometry(data):
+        return []
+    centerline = _centerline(data)
+    if len(centerline) < 2:
+        return []
+    course = load_course(course_path)
+    tapes = {tape.name: tape for tape in course.tapes}
+    official = str(data.get("rules_profile", "")) == OFFICIAL_RULES_PROFILE
+    minimum_required = OFFICIAL_TRACK_MIN_M if official else MIN_LEGAL_PASSAGE_M
+    problems: list[str] = []
+
+    for idx in range(len(centerline) - 1):
+        left = tapes.get(f"left_boundary_{idx}")
+        right = tapes.get(f"right_boundary_{idx}")
+        if left is None or right is None:
+            missing = []
+            if left is None:
+                missing.append("left")
+            if right is None:
+                missing.append("right")
+            unexpected = [
+                side for side in missing
+                if not _boundary_intentionally_open(data, centerline, idx, side)
+            ]
+            if unexpected:
+                problems.append(
+                    f"missing generated boundary pair {idx} side(s) "
+                    f"{','.join(unexpected)}")
+            continue
+        min_width = math.inf
+        for sample in range(101):
+            t = sample / 100.0
+            lx = left.start[0] + (left.end[0] - left.start[0]) * t
+            ly = left.start[1] + (left.end[1] - left.start[1]) * t
+            rx = right.start[0] + (right.end[0] - right.start[0]) * t
+            ry = right.start[1] + (right.end[1] - right.start[1]) * t
+            min_width = min(min_width, math.hypot(lx - rx, ly - ry))
+        if min_width + GENERATED_BOUNDARY_WIDTH_TOL_M < minimum_required:
+            problems.append(
+                f"generated boundary segment {idx} pinches to "
+                f"{min_width / FT_TO_M:.2f}ft; required at least "
+                f"{minimum_required / FT_TO_M:.2f}ft")
+    if not official:
+        return problems
+    for idx in range(1, len(centerline) - 1):
+        prev_x, prev_y, _ = centerline[idx - 1]
+        cur_x, cur_y, cur_width = centerline[idx]
+        next_x, next_y, _ = centerline[idx + 1]
+        prev_len = math.hypot(cur_x - prev_x, cur_y - prev_y)
+        next_len = math.hypot(next_x - cur_x, next_y - cur_y)
+        if prev_len <= 1e-9 or next_len <= 1e-9:
+            continue
+        cross = ((cur_x - prev_x) * (next_y - cur_y)
+                 - (cur_y - prev_y) * (next_x - cur_x))
+        if abs(cross / (prev_len * next_len)) <= 1e-3:
+            continue
+        prev_left = tapes.get(f"left_boundary_{idx - 1}")
+        prev_right = tapes.get(f"right_boundary_{idx - 1}")
+        next_left = tapes.get(f"left_boundary_{idx}")
+        next_right = tapes.get(f"right_boundary_{idx}")
+        if (prev_left is None or prev_right is None or next_left is None
+                or next_right is None):
+            continue
+        prev_ux = (cur_x - prev_x) / prev_len
+        prev_uy = (cur_y - prev_y) / prev_len
+        next_ux = (next_x - cur_x) / next_len
+        next_uy = (next_y - cur_y) / next_len
+        expected_trim = 0.5 * cur_width
+        prev_left_trim = -((prev_left.end[0] - cur_x) * prev_ux
+                           + (prev_left.end[1] - cur_y) * prev_uy)
+        prev_right_trim = -((prev_right.end[0] - cur_x) * prev_ux
+                            + (prev_right.end[1] - cur_y) * prev_uy)
+        next_left_trim = ((next_left.start[0] - cur_x) * next_ux
+                          + (next_left.start[1] - cur_y) * next_uy)
+        next_right_trim = ((next_right.start[0] - cur_x) * next_ux
+                           + (next_right.start[1] - cur_y) * next_uy)
+        nearest_trim = min(prev_left_trim, prev_right_trim, next_left_trim,
+                           next_right_trim)
+        if nearest_trim + GENERATED_BOUNDARY_WIDTH_TOL_M < expected_trim:
+            problems.append(
+                f"generated boundary corner {idx} is not trimmed away from "
+                f"the adjacent long lane mouth; nearest endpoint is "
+                f"{nearest_trim:.2f}m along the segment, expected about "
+                f"{expected_trim:.2f}m")
+    return problems
+
+
+def hairpin_connector_problems(course_path: Path) -> list[str]:
+    data = load_yaml(course_path)
+    if not bool(data.get("open_inside_hairpin_boundaries", False)):
+        return []
+    centerline = _centerline(data)
+    course = load_course(course_path)
+    tape_names = {tape.name for tape in course.tapes}
+    problems: list[str] = []
+    for idx in range(len(centerline) - 1):
+        inside_side = _hairpin_inside_side(centerline, idx)
+        if inside_side is None:
+            continue
+        inside_name = f"{inside_side}_boundary_{idx}"
+        if inside_name not in tape_names:
+            problems.append(
+                f"hairpin connector segment {idx} is missing internal tape "
+                f"{inside_name}; end-cap lines are not contiguous")
+    return problems
+
+
+def line_less_gps_section_problems(course_path: Path) -> list[str]:
+    data = load_yaml(course_path)
+    sections = data.get("line_less_gps_sections", [])
+    if not sections:
+        return []
+    waypoints = {
+        str(raw.get("label", "")): raw
+        for raw in data.get("mission_waypoints", [])
+    }
+    problems: list[str] = []
+    for raw_section in sections:
+        name = str(raw_section.get("name", "line_less_gps_section"))
+        entry_label = str(raw_section.get("entry_waypoint", ""))
+        exit_label = str(raw_section.get("exit_waypoint", ""))
+        entry = waypoints.get(entry_label)
+        exit_wp = waypoints.get(exit_label)
+        if entry is None or exit_wp is None:
+            problems.append(
+                f"{name} references missing waypoint(s) "
+                f"{entry_label}/{exit_label}")
+            continue
+        separation = math.hypot(
+            float(exit_wp["x_m"]) - float(entry["x_m"]),
+            float(exit_wp["y_m"]) - float(entry["y_m"]),
+        )
+        minimum = float(raw_section.get("minimum_waypoint_separation_m",
+                                        5.0))
+        if separation + 1e-6 < minimum:
+            problems.append(
+                f"{name} waypoint separation {separation:.2f}m below "
+                f"required {minimum:.2f}m")
+        for segment_index in raw_section.get("required_broken_segments", []):
+            idx = int(segment_index)
+            for boundary in ("left", "right"):
+                coverage = _break_coverage(data, idx, boundary)
+                if coverage < 0.60:
+                    problems.append(
+                        f"{name} {boundary} boundary segment {idx} has only "
+                        f"{coverage * 100:.0f}% tape removed; expected a "
+                        "line-less GPS field")
+    return problems
+
+
+def slalom_gate_problems(course_path: Path) -> list[str]:
+    data = load_yaml(course_path)
+    gates = data.get("slalom_gates", [])
+    if not gates:
+        return []
+    obstacles = {
+        str(raw.get("name", "")): raw
+        for raw in data.get("obstacles", [])
+    }
+    problems: list[str] = []
+    for raw_gate in gates:
+        gate_name = str(raw_gate.get("name", "slalom_gate"))
+        lower_name = str(raw_gate.get("lower", ""))
+        upper_name = str(raw_gate.get("upper", ""))
+        lower = obstacles.get(lower_name)
+        upper = obstacles.get(upper_name)
+        if lower is None or upper is None:
+            problems.append(
+                f"{gate_name} references missing cone pair "
+                f"{lower_name}/{upper_name}")
+            continue
+        lower_kind = str(lower.get("type", lower.get("kind", "")))
+        upper_kind = str(upper.get("type", upper.get("kind", "")))
+        if lower_kind != "cone" or upper_kind != "cone":
+            problems.append(f"{gate_name} must reference cone obstacles")
+        dx = float(upper["x_m"]) - float(lower["x_m"])
+        dy = float(upper["y_m"]) - float(lower["y_m"])
+        center_distance = math.hypot(dx, dy)
+        clear = center_distance - float(lower["radius_m"]) - float(
+            upper["radius_m"])
+        required = float(raw_gate.get("minimum_clear_m", 6.0 * FT_TO_M))
+        if clear + 1e-6 < required:
+            problems.append(
+                f"{gate_name} clear opening {clear / FT_TO_M:.2f}ft below "
+                f"required {required / FT_TO_M:.2f}ft")
+    return problems
+
+
 def legal_passage_problems(course_path: Path) -> list[str]:
     data = load_yaml(course_path)
+    if _uses_explicit_geometry(data):
+        return []
     centerline = _centerline(data)
     if len(centerline) < 2:
         return []
@@ -239,6 +519,9 @@ def official_rules_profile_problems(course_path: Path) -> list[str]:
         problems.append("official course must include barrel obstacles")
     if not course.ramps:
         problems.append("official course must include a ramp")
+    if not data.get("line_less_gps_sections", []):
+        problems.append(
+            "official course must include a line-less GPS waypoint section")
 
     for ramp in course.ramps:
         half_run = 0.5 * (ramp.end_x_m - ramp.start_x_m)
@@ -509,6 +792,10 @@ def validate(course_path: Path) -> tuple[bool, str]:
         elif lab != start_lab:
             problems.append(f"{name} ({x:.2f},{y:.2f}) not connected to start")
     problems.extend(legal_passage_problems(course_path))
+    problems.extend(generated_boundary_width_problems(course_path))
+    problems.extend(hairpin_connector_problems(course_path))
+    problems.extend(line_less_gps_section_problems(course_path))
+    problems.extend(slalom_gate_problems(course_path))
     problems.extend(ramp_geometry_problems(course_path))
     problems.extend(official_rules_profile_problems(course_path))
     problems.extend(generated_world_problems(course_path))

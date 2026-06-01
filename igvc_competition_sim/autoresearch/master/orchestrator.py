@@ -229,7 +229,7 @@ Minimum planning/control baseline:
 
 ```bash
 python3 run_timebox.py --duration 45m \\
-  --courses compact_baseline tight_gaps dense_obstacles sparse_lines ramp_turns \\
+  --courses blender_competition_course \\
   --runs 1 --tier 1 --timeout 300 \\
   --branch-scope {profile['branch_scope']} \\
   --robot-branch {profile['robot_branch']} \\
@@ -237,8 +237,8 @@ python3 run_timebox.py --duration 45m \\
   --description branch-baseline
 ```
 
-Use `official_full_loop` as a final acceptance gate after the fast suite is
-stable. Do not treat older fast-suite results as official full-loop validation.
+Use `blender_competition_course` as the authoritative course for the current
+nightly unless the user explicitly re-enables another course.
 """
 
 
@@ -261,17 +261,16 @@ test next.
 
 ## Baseline First
 
-- Run the fast oracle planning/control suite and record the result in this
-  branch profile.
+- Run the Blender-authored loop course only: `blender_competition_course`.
 - Compare against Hailmary as prior evidence, not as a pass/fail substitute.
-- Run `official_full_loop` only after the branch is stable enough for a final
-  long-course gate.
+- Do not run the older generated courses unless the user explicitly re-enables
+  them.
 
 ## Branch-Specific Targets
 
 - Planning/control: {planning_note}
 - Perception: {perception_note}
-- Official full loop: preserve the course geometry; failures on a validated
+- Blender loop course: preserve the course geometry; failures on a validated
   oracle course are robot-stack findings unless a concrete sim/scorer defect is
   proven.
 
@@ -333,8 +332,8 @@ def branch_profile(manifest: dict[str, Any], args: argparse.Namespace) -> int:
         "robot_head": branch_head,
         "base_branch": args.base_branch,
         "merge_base": merge_base,
-        "fast_suite": ["compact_baseline", "tight_gaps", "dense_obstacles", "sparse_lines", "ramp_turns"],
-        "official_full_loop": "final_gate_required_after_fast_suite_stability",
+        "fast_suite": ["blender_competition_course"],
+        "official_full_loop": "disabled_for_current_nightly_use_blender_competition_course_only",
     }
     context = render_branch_context(profile)
     targets = render_branch_targets(profile)
@@ -1863,7 +1862,7 @@ def main(argv: list[str]) -> int:
     sync_jetson.add_argument("--stash-dirty-destination", action="store_true")
     start = sub.add_parser("start-planning-control")
     start.add_argument("--duration", default="45m")
-    start.add_argument("--courses", nargs="+", default=["compact_baseline", "tight_gaps", "dense_obstacles", "sparse_lines", "ramp_turns"])
+    start.add_argument("--courses", nargs="+", default=["blender_competition_course"])
     start.add_argument("--runs", type=int, default=1)
     start.add_argument("--tier", type=int, default=1)
     start.add_argument("--timeout", type=int, default=300)
