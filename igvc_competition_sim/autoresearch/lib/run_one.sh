@@ -27,7 +27,15 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SIM_PACKAGE_DIR="$(cd "$HERE/../.." && pwd)"
 SIM_REPO_DIR="$(cd "$SIM_PACKAGE_DIR/.." && pwd)"
-ROS_WS="${ROS_WS:-$(cd "$HERE/../../../../.." && pwd)}"
+DEFAULT_ROS_WS="$(cd "$HERE/../../../../.." && pwd)"
+if [[ -z "${ROS_WS:-}" ]]; then
+  ROS_WS="$DEFAULT_ROS_WS"
+else
+  ROS_WS_SIM_PACKAGE="$ROS_WS/src/autonav_sim/igvc_competition_sim"
+  if [[ ! -d "$ROS_WS_SIM_PACKAGE" || "$(cd "$ROS_WS_SIM_PACKAGE" && pwd)" != "$SIM_PACKAGE_DIR" ]]; then
+    ROS_WS="$DEFAULT_ROS_WS"
+  fi
+fi
 WORKSPACE_SRC="$ROS_WS/src"
 NAV2_PARAM_NAMES=(
   "nav2_params_camera.yaml"
