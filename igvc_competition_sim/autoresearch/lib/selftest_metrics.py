@@ -69,6 +69,7 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
         "/cmd_vel": "geometry_msgs/msg/Twist",
         "/rosout": "rcl_interfaces/msg/Log",
         "/odom": "nav_msgs/msg/Odometry",
+        "/igvc_sim/ground_truth_odom": "nav_msgs/msg/Odometry",
         "/igvc_sim/score": "std_msgs/msg/String",
         "/scan_pca_filtered": "sensor_msgs/msg/LaserScan",
         "/back_up/_action/status": "action_msgs/msg/GoalStatusArray",
@@ -130,6 +131,7 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
         od.pose.pose.position.y = 0.0
         od.pose.pose.orientation.w = 1.0
         put("/odom", od, s)
+        put("/igvc_sim/ground_truth_odom", od, s)
         x += 0.1
         s += 0.5
 
@@ -138,11 +140,15 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
 
     # score
     score = {
+        "score_schema_version": 2,
         "course_id": "compact_baseline",
         "failed": fail,
         "failures": (["tape_crossing:left_boundary_3"] if fail else []),
         "distance_m": 12.3,
+        "finish_armed": True,
         "max_speed_mps": 0.49,
+        "odom_source": "primary",
+        "odom_topic": "/igvc_sim/ground_truth_odom",
         "finish_reached": (not fail),
         "speed_check_complete": True,
     }
@@ -177,9 +183,10 @@ def main() -> int:
             {k: m[k] for k in ("traversal_time", "breadcrumb", "gradient",
              "pathfootprint_rejects", "backup", "ang_reversals", "stuck_events",
              "time_below_speed", "finish_reached", "violations", "mission_completed",
-             "min_course_clear", "pca_first_s")}, default=str))
+             "min_course_clear", "pca_first_s", "score_trustworthy")}, default=str))
         ok &= check("score parsed + clean", m["score_loaded"] and not m["failed"]
                     and m["finish_reached"] and not m["violations"])
+        ok &= check("score is trustworthy", m["score_trustworthy"] is True)
         ok &= check("mission_completed True", m["mission_completed"] is True)
         ok &= check("traversal_time ~16s",
                     m["traversal_time"] is not None and 15.0 <= m["traversal_time"] <= 17.0)
@@ -237,6 +244,49 @@ def main() -> int:
                     F.run_clean(ma) is False
                     and resa["gate"] == "FAIL"
                     and "mission_status=1" in resa.get("notes", ""))
+
+        # Old/stale score schemas or fallback-odom scores must not be trusted
+        # as clean AutoResearch evidence.
+        stale_dir = tmp / "stale_score"
+        stale_dir.mkdir(parents=True)
+        write_bag(stale_dir, fail=False)
+        stale_score = {
+            "course_id": "compact_baseline",
+            "failed": False,
+            "failures": [],
+            "distance_m": 12.3,
+            "max_speed_mps": 0.49,
+            "finish_reached": True,
+            "speed_check_complete": True,
+        }
+        (stale_dir / "final_score.txt").write_text(
+            'data: "%s"\n'
+            % json.dumps(stale_score, sort_keys=True).replace('"', '\\"'),
+            encoding="utf-8")
+        ms = M.compute_metrics(stale_dir, COURSE)
+        ok &= check("stale score schema -> INCOMPLETE",
+                    ms["score_loaded"]
+                    and ms["score_trustworthy"] is False
+                    and F.run_clean(ms) is None)
+
+        fallback_dir = tmp / "fallback_score"
+        fallback_dir.mkdir(parents=True)
+        write_bag(fallback_dir, fail=False)
+        fallback_score = dict(stale_score)
+        fallback_score.update({
+            "score_schema_version": 2,
+            "odom_source": "fallback",
+            "odom_topic": "/igvc_sim/ground_truth_odom",
+        })
+        (fallback_dir / "final_score.txt").write_text(
+            'data: "%s"\n'
+            % json.dumps(fallback_score, sort_keys=True).replace('"', '\\"'),
+            encoding="utf-8")
+        mfallback = M.compute_metrics(fallback_dir, COURSE)
+        ok &= check("fallback odom score -> INCOMPLETE",
+                    mfallback["score_loaded"]
+                    and mfallback["score_trustworthy"] is False
+                    and F.run_clean(mfallback) is None)
 
         # incomplete run (no score) -> not clean
         inc_dir = tmp / "inc"

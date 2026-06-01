@@ -17,8 +17,10 @@ CLI: python3 metrics.py RUN_DIR [--course COURSE_YAML]  -> prints JSON dict.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import math
+import re
 import statistics
 from pathlib import Path
 from typing import Any
@@ -41,6 +43,7 @@ METRIC_TOPICS = {
     "/clock",
     "/odom",
     "/local_ekf/odom",
+    "/igvc_sim/ground_truth_odom",
     "/cmd_vel",
     "/navigate_to_pose/_action/status",
     "/navigate_to_waypoint/_action/status",
@@ -51,6 +54,8 @@ METRIC_TOPICS = {
     "/scan_pca_filtered",
     "/igvc_sim/score",
 }
+
+MIN_SCORE_SCHEMA_VERSION = 2
 
 def _read_bag(
     bag_dir: Path,
@@ -136,20 +141,36 @@ def _clock_mapper(msgs: dict[str, list[tuple[int, Any]]]):
     return to_sim
 
 
+def _parse_score_text(text: str) -> dict | None:
+    match = re.search(r"^data:\s*(.+)$", text, flags=re.MULTILINE)
+    if match:
+        raw = match.group(1).strip()
+        try:
+            payload = ast.literal_eval(raw)
+        except Exception:
+            payload = raw.strip("'\"")
+        try:
+            return json.loads(payload)
+        except Exception:
+            pass
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        blob = text[start:end + 1].replace("\\\"", "\"").replace("''", "")
+        try:
+            return json.loads(blob)
+        except Exception:
+            pass
+    return None
+
+
 def _load_score(run_dir: Path, msgs: dict) -> dict | None:
     fp = run_dir / "final_score.txt"
     if fp.is_file():
         txt = fp.read_text(encoding="utf-8", errors="replace")
-        # `ros2 topic echo --once` prints YAML-ish 'data: "{...json...}"'
-        # try to extract the embedded JSON object
-        start = txt.find("{")
-        end = txt.rfind("}")
-        if start >= 0 and end > start:
-            blob = txt[start:end + 1].replace("\\\"", "\"").replace("''", "")
-            try:
-                return json.loads(blob)
-            except Exception:
-                pass
+        parsed = _parse_score_text(txt)
+        if parsed is not None:
+            return parsed
     # fall back to last /igvc_sim/score String in the bag
     score_msgs = msgs.get("/igvc_sim/score") or []
     if score_msgs:
@@ -179,6 +200,13 @@ def _read_status_file(run_dir: Path, name: str) -> str:
     if not fp.is_file():
         return ""
     return fp.read_text(encoding="utf-8", errors="replace").strip()
+
+
+def _score_schema_version(score: dict) -> int:
+    try:
+        return int(score.get("score_schema_version") or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _count_action_starts(status_msgs: list[tuple[int, Any]]) -> int:
@@ -375,6 +403,14 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
         m["violations"] = list(score.get("failures", []))
         m["distance_m"] = score.get("distance_m")
         m["max_speed_mps"] = score.get("max_speed_mps")
+        m["score_schema_version"] = score.get("score_schema_version")
+        m["score_odom_source"] = score.get("odom_source")
+        m["score_odom_topic"] = score.get("odom_topic")
+        m["finish_armed"] = score.get("finish_armed")
+        m["score_trustworthy"] = (
+            _score_schema_version(score) >= MIN_SCORE_SCHEMA_VERSION
+            and score.get("odom_source") == "primary"
+        )
     m["mission_completed"] = _mission_completed(run_dir)
 
     # --- traversal time + first-motion origin ---
@@ -414,7 +450,12 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
     m["pca_first_s"] = _first_stamp(msgs.get("/scan_pca_filtered") or [], to_sim, origin)
 
     # --- clearance to course geometry (reliable, geometry-based) ---
-    odom = msgs.get("/odom") or msgs.get("/local_ekf/odom") or []
+    odom = (
+        msgs.get("/igvc_sim/ground_truth_odom")
+        or msgs.get("/odom")
+        or msgs.get("/local_ekf/odom")
+        or []
+    )
     m["min_course_clear"] = _min_course_clearance(course_yaml, odom)
 
     # --- costmap-based diagnostics (best-effort; NA if not computed here) ---

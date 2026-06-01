@@ -50,6 +50,8 @@ def run_clean(m: dict) -> bool | None:
         return False
     if not m.get("score_loaded"):
         return None
+    if m.get("score_trustworthy") is False:
+        return None
     if m.get("failed"):
         return False
     if m.get("finish_reached") is False:

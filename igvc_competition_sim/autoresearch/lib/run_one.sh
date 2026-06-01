@@ -226,8 +226,66 @@ echo "run_one: done (mission_status=$mission_status) -> $RUN_DIR"
 if [[ "$mission_status" -ne 0 ]]; then
   exit "$mission_status"
 fi
-if grep -q '"failed": true' "$RUN_DIR/final_score.txt"; then
-  echo "run_one: IGVC monitor reported a failure. See $RUN_DIR/final_score.txt" >&2
-  exit 1
-fi
+python3 - "$RUN_DIR/final_score.txt" <<'PY'
+import ast
+import json
+import re
+import sys
+from pathlib import Path
+
+score_file = Path(sys.argv[1])
+text = score_file.read_text(encoding="utf-8", errors="replace")
+match = re.search(r"^data:\s*(.+)$", text, flags=re.MULTILINE)
+if not match:
+    print(
+        f"run_one: missing /igvc_sim/score JSON in {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+raw = match.group(1).strip()
+try:
+    payload = ast.literal_eval(raw)
+except Exception:
+    payload = raw.strip("'\"")
+try:
+    score = json.loads(payload)
+except Exception as exc:
+    print(
+        f"run_one: invalid /igvc_sim/score JSON in {score_file}: {exc}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+try:
+    score_schema_version = int(score.get("score_schema_version") or 0)
+except (TypeError, ValueError):
+    score_schema_version = 0
+if score_schema_version < 2:
+    print(
+        f"run_one: untrusted /igvc_sim/score schema "
+        f"{score.get('score_schema_version')!r}; expected >= 2. "
+        f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("odom_source") != "primary":
+    print(
+        f"run_one: IGVC monitor did not score primary ground-truth odom "
+        f"(odom_source={score.get('odom_source')!r}). See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("failed"):
+    print(
+        f"run_one: IGVC monitor reported a failure. See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("finish_reached") is not True:
+    print(
+        f"run_one: IGVC monitor did not report finish_reached=true. "
+        f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+PY
 exit 0

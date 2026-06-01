@@ -7,6 +7,8 @@ import sys
 
 from .course import Course, load_course
 
+SCORE_SCHEMA_VERSION = 2
+
 try:
     import rclpy
     from rclpy.executors import ExternalShutdownException
@@ -47,22 +49,42 @@ def _point_segment_distance(x: float,
     return math.hypot(x - qx, y - qy)
 
 
+def _shortest_angle_delta(start: float, end: float) -> float:
+    return (end - start + math.pi) % (2.0 * math.pi) - math.pi
+
+
 class IgvcCourseMonitor(Node):
     def __init__(self) -> None:
         super().__init__("igvc_course_monitor")
         self.declare_parameter("course_config", "")
         self.declare_parameter("sample_spacing_m", 0.05)
+        self.declare_parameter("odom_topic", "/igvc_sim/ground_truth_odom")
+        self.declare_parameter("fallback_odom_topic", "/odom")
+        self.declare_parameter("finish_reentry_margin_m", 0.25)
         course_path = str(self.get_parameter("course_config").value).strip()
         self.course: Course = load_course(course_path or None)
         self.robot = self.course.robot
         self.sample_spacing_m = max(
             0.02, float(self.get_parameter("sample_spacing_m").value))
+        self.odom_topic = str(self.get_parameter("odom_topic").value).strip()
+        self.fallback_odom_topic = str(
+            self.get_parameter("fallback_odom_topic").value).strip()
+        self.finish_reentry_margin_m = max(
+            0.0, float(self.get_parameter("finish_reentry_margin_m").value))
         self.ramp_monitor_lateral_margin_m = 1.0
 
         self.score_pub = self.create_publisher(String, "/igvc_sim/score", 10)
         self.fail_pub = self.create_publisher(Bool, "/igvc_sim/fail", 10)
+        self.odom_source = ""
+        self.primary_odom_seen = False
         self.odom_sub = self.create_subscription(
-            Odometry, "/odom", self._odom_callback, 20)
+            Odometry, self.odom_topic,
+            lambda msg: self._odom_callback(msg, "primary"), 20)
+        self.fallback_odom_sub = None
+        if self.fallback_odom_topic and self.fallback_odom_topic != self.odom_topic:
+            self.fallback_odom_sub = self.create_subscription(
+                Odometry, self.fallback_odom_topic,
+                lambda msg: self._odom_callback(msg, "fallback"), 20)
 
         self.last_pose: tuple[float, float, float] | None = None
         self.last_time_s: float | None = None
@@ -79,17 +101,38 @@ class IgvcCourseMonitor(Node):
         self.first_failure: dict[str, object] | None = None
         self.max_speed_mps = 0.0
         self.finish_reached = False
+        fx, fy, radius = self.course.finish
+        start_finish_distance = math.hypot(
+            self.course.start.x - fx, self.course.start.y - fy)
+        self.finish_armed = start_finish_distance > radius
         self.create_timer(1.0, self._publish_score)
+        self.get_logger().info(
+            "IGVC course monitor scoring with odom_topic=%s fallback=%s "
+            "finish_armed=%s"
+            % (self.odom_topic, self.fallback_odom_topic, self.finish_armed))
 
-    def _odom_callback(self, msg: Odometry) -> None:
+    def _odom_callback(self, msg: Odometry, source: str = "primary") -> None:
+        if source == "fallback" and self.primary_odom_seen:
+            return
+        if source == "primary" and not self.primary_odom_seen:
+            self.primary_odom_seen = True
+            if self.odom_source == "fallback":
+                # Ground-truth odom is the scoring authority. If fallback odom
+                # arrived first during bringup, reset sampling state so a frame
+                # switch cannot create a fake speed, distance, or contact.
+                self.last_pose = None
+                self.last_time_s = None
+        self.odom_source = source
         now_s = _stamp_s(self)
         x = float(msg.pose.pose.position.x)
         y = float(msg.pose.pose.position.y)
         q = msg.pose.pose.orientation
         yaw = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
+        pose = (x, y, yaw)
         reported_speed = abs(float(msg.twist.twist.linear.x))
         step_distance = 0.0
         derived_speed = 0.0
+        previous_pose = self.last_pose
         if self.last_pose is not None:
             step_distance = math.hypot(x - self.last_pose[0],
                                        y - self.last_pose[1])
@@ -105,15 +148,15 @@ class IgvcCourseMonitor(Node):
         self.max_speed_mps = max(self.max_speed_mps, limit_speed)
 
         self.distance_m += step_distance
-        self.last_pose = (x, y, yaw)
+        if not self.finish_reached:
+            self._check_course_contact_swept(previous_pose, pose)
+            self._update_speed_checks(now_s, motion_speed, limit_speed, pose)
+            self._check_finish(x, y)
+            if self.finish_reached:
+                self.stop_started_s = None
+
+        self.last_pose = pose
         self.last_time_s = now_s
-        self._check_finish(x, y)
-        if self.finish_reached:
-            self.stop_started_s = None
-            return
-        self._update_speed_checks(now_s, motion_speed, limit_speed,
-                                  (x, y, yaw))
-        self._check_course_contact(x, y, yaw)
 
     def _update_speed_checks(self,
                              now_s: float,
@@ -181,8 +224,31 @@ class IgvcCourseMonitor(Node):
 
     def _check_finish(self, x: float, y: float) -> None:
         fx, fy, radius = self.course.finish
-        if math.hypot(x - fx, y - fy) <= radius:
+        distance_to_finish = math.hypot(x - fx, y - fy)
+        if not self.finish_armed:
+            if distance_to_finish > radius + self.finish_reentry_margin_m:
+                self.finish_armed = True
+            return
+        if distance_to_finish <= radius:
             self.finish_reached = True
+
+    def _check_course_contact_swept(
+            self,
+            previous_pose: tuple[float, float, float] | None,
+            current_pose: tuple[float, float, float]) -> None:
+        if previous_pose is None:
+            self._check_course_contact(*current_pose)
+            return
+        distance = math.hypot(current_pose[0] - previous_pose[0],
+                              current_pose[1] - previous_pose[1])
+        samples = max(1, int(math.ceil(distance / self.sample_spacing_m)))
+        yaw_delta = _shortest_angle_delta(previous_pose[2], current_pose[2])
+        for idx in range(samples + 1):
+            t = idx / float(samples)
+            x = previous_pose[0] + (current_pose[0] - previous_pose[0]) * t
+            y = previous_pose[1] + (current_pose[1] - previous_pose[1]) * t
+            yaw = previous_pose[2] + yaw_delta * t
+            self._check_course_contact(x, y, yaw)
 
     def _check_course_contact(self, base_x: float, base_y: float,
                               yaw: float) -> None:
@@ -310,6 +376,7 @@ class IgvcCourseMonitor(Node):
 
     def _publish_score(self) -> None:
         score = {
+            "score_schema_version": SCORE_SCHEMA_VERSION,
             "course_id": self.course.course_id,
             "failed": bool(self.failures),
             "failures": self.failures,
@@ -318,6 +385,9 @@ class IgvcCourseMonitor(Node):
             "distance_m": round(self.distance_m, 3),
             "max_speed_mps": round(self.max_speed_mps, 3),
             "finish_reached": self.finish_reached,
+            "finish_armed": self.finish_armed,
+            "odom_topic": self.odom_topic,
+            "odom_source": self.odom_source,
             "speed_check_complete": self.speed_check_end_s is not None,
         }
         self.score_pub.publish(String(data=json.dumps(score, sort_keys=True)))
