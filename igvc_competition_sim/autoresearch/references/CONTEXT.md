@@ -130,7 +130,7 @@ CURRENT STATUS:
 
 ## How to run once a sim is available
 1. Build the split workspace:
-   `cd /tmp/autonav_split_ws && source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-select autonav_interfaces custom_behavior_tree_plugins local_mirror_layer line_layer slam bringup gps_waypoint_handler autonav_detection igvc_competition_sim`.
+   `cd /tmp/autonav_split_ws && source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-select autonav_interfaces autonav_hybrid_planner custom_behavior_tree_plugins local_mirror_layer line_layer slam bringup gps_waypoint_handler autonav_detection igvc_competition_sim`.
 2. Gates: `python3 .../autoresearch/lib/check_footprint.py` and `... validate_course.py courses/*.yaml`.
 3. Smoke: `python3 .../autoresearch/evaluate.py --course compact_baseline --runs 1 --tier 1`
    (confirm a RESULT line + no orphaned gz/ros: `pgrep -fa 'gz sim|controller_server'` empty).

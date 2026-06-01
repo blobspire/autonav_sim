@@ -1382,6 +1382,7 @@ if [ {str(build).lower()} = true ]; then
   colcon build --symlink-install \
     --packages-select \
       autonav_interfaces \
+      autonav_hybrid_planner \
       bringup \
       slam \
       autonav_detection \
@@ -1448,6 +1449,7 @@ colcon build --symlink-install \
   --base-paths src /autonav_sim/igvc_competition_sim \
   --packages-select \
     autonav_interfaces \
+    autonav_hybrid_planner \
     custom_behavior_tree_plugins \
     local_mirror_layer \
     line_layer \
