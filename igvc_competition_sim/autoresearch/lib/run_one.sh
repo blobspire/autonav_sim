@@ -108,6 +108,15 @@ export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-$(( (RANDOM % 200) + 11 ))}"
 AUTORESEARCH_RUN_ID="${AUTORESEARCH_RUN_ID:-run-$(date +%s%N)-$RANDOM}"
 export AUTORESEARCH_RUN_ID
 mkdir -p "$RUN_DIR"
+printf '%s\n' "$AUTORESEARCH_RUN_ID" > "$RUN_DIR/run_id.txt"
+python3 - "$COURSE_YAML" > "$RUN_DIR/course_config_sha256.txt" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
+PY
+echo "pending" > "$RUN_DIR/run_one_status.txt"
 ROS_LOG_DIR="${ROS_LOG_DIR:-$RUN_DIR/ros_log}"
 export ROS_LOG_DIR
 mkdir -p "$ROS_LOG_DIR"
@@ -234,6 +243,8 @@ startup_not_ready() {
   local topic="$2"
   echo "startup_not_ready:$label:$topic" > "$RUN_DIR/startup_status.txt"
   echo 4 > "$RUN_DIR/mission_status.txt"
+  echo 4 > "$RUN_DIR/run_one_status.txt"
+  echo "startup_not_ready:$label:$topic" > "$RUN_DIR/run_one_status_reason.txt"
   exit 4
 }
 
@@ -260,8 +271,11 @@ cleanup
 trap - EXIT INT TERM
 echo "run_one: done (mission_status=$mission_status) -> $RUN_DIR"
 if [[ "$mission_status" -ne 0 ]]; then
+  echo "$mission_status" > "$RUN_DIR/run_one_status.txt"
+  echo "mission_status=$mission_status" > "$RUN_DIR/run_one_status_reason.txt"
   exit "$mission_status"
 fi
+set +e
 python3 - "$RUN_DIR/final_score.txt" "$COURSE_YAML" "$AUTORESEARCH_RUN_ID" <<'PY'
 import ast
 import hashlib
@@ -300,10 +314,19 @@ try:
     score_schema_version = int(score.get("score_schema_version") or 0)
 except (TypeError, ValueError):
     score_schema_version = 0
-if score_schema_version < 3:
+if score_schema_version < 4:
     print(
         f"run_one: untrusted /igvc_sim/score schema "
-        f"{score.get('score_schema_version')!r}; expected >= 3. "
+        f"{score.get('score_schema_version')!r}; expected >= 4. "
+        f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("scoring_mode") != "ground_truth_odom_swept_footprint_v4":
+    print(
+        f"run_one: unexpected scoring_mode "
+        f"{score.get('scoring_mode')!r}; expected "
+        "'ground_truth_odom_swept_footprint_v4'. "
         f"See {score_file}",
         file=sys.stderr,
     )
@@ -348,6 +371,29 @@ if odom_sample_count < 2:
         file=sys.stderr,
     )
     raise SystemExit(1)
+try:
+    primary_odom_sample_count = int(score.get("primary_odom_sample_count") or 0)
+except (TypeError, ValueError):
+    primary_odom_sample_count = 0
+if primary_odom_sample_count < 2:
+    print(
+        f"run_one: IGVC monitor saw too few primary ground-truth odom samples. "
+        f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+try:
+    fallback_odom_sample_count = int(score.get("fallback_odom_sample_count") or 0)
+except (TypeError, ValueError):
+    fallback_odom_sample_count = 0
+if score.get("used_fallback_before_primary") or fallback_odom_sample_count > 0:
+    print(
+        f"run_one: fallback odom contributed before primary ground-truth odom "
+        f"(fallback_odom_sample_count={fallback_odom_sample_count}). "
+        f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 last_odom_age_s = score.get("last_odom_age_s")
 try:
     last_odom_age_value = (
@@ -385,4 +431,12 @@ if score.get("all_waypoints_reached") is not True:
     )
     raise SystemExit(1)
 PY
+validation_status=$?
+set -e
+echo "$validation_status" > "$RUN_DIR/run_one_status.txt"
+if [[ "$validation_status" -ne 0 ]]; then
+  echo "score_validation_failed" > "$RUN_DIR/run_one_status_reason.txt"
+  exit "$validation_status"
+fi
+echo "clean" > "$RUN_DIR/run_one_status_reason.txt"
 exit 0

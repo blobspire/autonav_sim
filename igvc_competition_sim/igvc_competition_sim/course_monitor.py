@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .course import Course, load_course
 
-SCORE_SCHEMA_VERSION = 3
+SCORE_SCHEMA_VERSION = 4
 
 try:
     import rclpy
@@ -185,9 +185,14 @@ class IgvcCourseMonitor(Node):
         self.failures: list[str] = []
         self.failure_details: list[dict[str, object]] = []
         self.first_failure: dict[str, object] | None = None
+        self.violation_detection_count = 0
+        self.violation_detection_type_counts: dict[str, int] = {}
         self.max_speed_mps = 0.0
         self.finish_reached = False
         self.odom_sample_count = 0
+        self.primary_odom_sample_count = 0
+        self.fallback_odom_sample_count = 0
+        self.used_fallback_before_primary = False
         self.last_odom_time_s: float | None = None
         self.waypoints_reached = [
             False for _ in self.course.mission_waypoints
@@ -213,6 +218,10 @@ class IgvcCourseMonitor(Node):
     def _odom_callback(self, msg: Odometry, source: str = "primary") -> None:
         if source == "fallback" and self.primary_odom_seen:
             return
+        if source == "fallback":
+            self.fallback_odom_sample_count += 1
+            if not self.primary_odom_seen:
+                self.used_fallback_before_primary = True
         if source == "primary" and not self.primary_odom_seen:
             self.primary_odom_seen = True
             if self.odom_source == "fallback":
@@ -221,6 +230,8 @@ class IgvcCourseMonitor(Node):
                 # switch cannot create a fake speed, distance, or contact.
                 self.last_pose = None
                 self.last_time_s = None
+        if source == "primary":
+            self.primary_odom_sample_count += 1
         self.odom_source = source
         now_s = _stamp_s(self)
         self.odom_sample_count += 1
@@ -538,6 +549,9 @@ class IgvcCourseMonitor(Node):
               failure_type: str = "unknown",
               hazard: str = "",
               pose: tuple[float, float, float] | None = None) -> None:
+        self.violation_detection_count += 1
+        self.violation_detection_type_counts[failure_type] = (
+            self.violation_detection_type_counts.get(failure_type, 0) + 1)
         if reason not in self.failures:
             self.failures.append(reason)
             pose = pose if pose is not None else self.last_pose
@@ -567,13 +581,16 @@ class IgvcCourseMonitor(Node):
             last_odom_age_s = max(0.0, score_time_s - self.last_odom_time_s)
         score = {
             "score_schema_version": SCORE_SCHEMA_VERSION,
-            "scoring_mode": "ground_truth_odom_swept_footprint_v3",
+            "scoring_mode": "ground_truth_odom_swept_footprint_v4",
             "run_id": self.run_id,
             "course_id": self.course.course_id,
             "course_config": str(self.course.config_path),
             "course_config_sha256": self.course_config_sha256,
             "failed": bool(self.failures),
             "failures": self.failures,
+            "unique_failure_count": len(self.failures),
+            "violation_detection_count": self.violation_detection_count,
+            "violation_detection_type_counts": self.violation_detection_type_counts,
             "first_failure": self.first_failure,
             "failure_details": self.failure_details,
             "distance_m": round(self.distance_m, 3),
@@ -583,6 +600,9 @@ class IgvcCourseMonitor(Node):
             "odom_topic": self.odom_topic,
             "odom_source": self.odom_source,
             "odom_sample_count": self.odom_sample_count,
+            "primary_odom_sample_count": self.primary_odom_sample_count,
+            "fallback_odom_sample_count": self.fallback_odom_sample_count,
+            "used_fallback_before_primary": self.used_fallback_before_primary,
             "last_odom_time_s": (
                 None if self.last_odom_time_s is None
                 else round(self.last_odom_time_s, 3)

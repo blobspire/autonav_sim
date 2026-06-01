@@ -50,14 +50,18 @@ def _course_paths(course: str) -> tuple[Path, Path]:
     return COURSES / f"{course}.yaml", WORLDS / f"{course}.sdf"
 
 
-def _run_sim(course: str, run_dir: Path, timeout: int) -> None:
+def _run_sim(course: str, run_dir: Path, timeout: int) -> int:
     yaml, world = _course_paths(course)
     if not yaml.is_file() or not world.is_file():
         raise FileNotFoundError(f"course/world missing for '{course}': {yaml}, {world}")
     cmd = ["bash", str(LIB / "run_one.sh"),
            "--course-yaml", str(yaml), "--world", str(world),
            "--run-dir", str(run_dir), "--timeout", str(timeout)]
-    subprocess.run(cmd, check=False)
+    proc = subprocess.run(cmd, check=False)
+    status_file = run_dir / "run_one_status.txt"
+    if not status_file.is_file():
+        status_file.write_text(f"{proc.returncode}\n", encoding="utf-8")
+    return proc.returncode
 
 
 def _g(v):
@@ -157,8 +161,9 @@ def main() -> int:
                 run_dir.mkdir(parents=True, exist_ok=True)
                 print(f"--- {course} run {k + 1}/{args.runs} "
                       f"try {startup_try + 1}/{args.startup_retries + 1} -> {run_dir} ---")
-                _run_sim(course, run_dir, args.timeout)
+                run_rc = _run_sim(course, run_dir, args.timeout)
                 m = M.compute_metrics(run_dir, str(yaml))
+                m["run_one_exit_code"] = run_rc
                 m["startup_retry_count"] = startup_try
                 if m.get("startup_not_ready") and startup_try < args.startup_retries:
                     print("startup not ready; retrying this run")

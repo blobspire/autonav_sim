@@ -259,6 +259,17 @@ def main() -> int:
         if rc != 0:
             print("preflight failed: validate_course", file=sys.stderr)
             return rc
+        print("=== preflight: metrics selftest ===")
+        rc, _ = run_cmd(
+            ["python3", str(LIB / "selftest_metrics.py")],
+            cwd=HERE,
+            env=env,
+            log_path=logs / "preflight_selftest_metrics.log",
+            dry_run=args.dry_run,
+        )
+        if rc != 0:
+            print("preflight failed: selftest_metrics", file=sys.stderr)
+            return rc
 
     attempt = 0
     while True:

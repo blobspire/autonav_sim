@@ -52,6 +52,15 @@ def run_clean(m: dict) -> bool | None:
         return None
     if m.get("score_trustworthy") is False:
         return None
+    run_one_status = str(m.get("run_one_status") or "").strip()
+    if run_one_status and run_one_status != "0":
+        if not (
+            m.get("failed")
+            or m.get("finish_reached") is False
+            or m.get("all_waypoints_reached") is False
+            or m.get("violations")
+        ):
+            return None
     if m.get("failed"):
         return False
     if m.get("finish_reached") is False:

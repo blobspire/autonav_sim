@@ -33,6 +33,8 @@ from sensor_msgs.msg import LaserScan  # noqa: E402
 from builtin_interfaces.msg import Time  # noqa: E402
 
 COURSE = str(HERE.parent / "courses" / "compact_baseline.yaml")
+COURSE_SHA256 = hashlib.sha256(Path(COURSE).read_bytes()).hexdigest()
+RUN_ID = "selftest-run"
 
 
 def wall(sim_s: float) -> int:
@@ -141,11 +143,11 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
 
     # score
     score = {
-        "score_schema_version": 3,
-        "scoring_mode": "ground_truth_odom_swept_footprint_v3",
+        "score_schema_version": 4,
+        "scoring_mode": "ground_truth_odom_swept_footprint_v4",
+        "run_id": RUN_ID,
         "course_id": "compact_baseline",
-        "course_config_sha256": hashlib.sha256(
-            Path(COURSE).read_bytes()).hexdigest(),
+        "course_config_sha256": COURSE_SHA256,
         "failed": fail,
         "failures": (["tape_crossing:left_boundary_3"] if fail else []),
         "distance_m": 12.3,
@@ -154,6 +156,9 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
         "odom_source": "primary",
         "odom_topic": "/igvc_sim/ground_truth_odom",
         "odom_sample_count": 33,
+        "primary_odom_sample_count": 33,
+        "fallback_odom_sample_count": 0,
+        "used_fallback_before_primary": False,
         "last_odom_age_s": 0.1,
         "waypoints_total": 1,
         "waypoints_reached_count": 1,
@@ -171,6 +176,17 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
         encoding="utf-8")
     (run_dir / "mission.log").write_text(
         ("mission aborted at waypoint x\n" if fail else "mission complete\n"),
+        encoding="utf-8")
+    (run_dir / "mission_status.txt").write_text("0\n", encoding="utf-8")
+    (run_dir / "run_one_status.txt").write_text("0\n", encoding="utf-8")
+    (run_dir / "run_id.txt").write_text(RUN_ID + "\n", encoding="utf-8")
+    (run_dir / "course_config_sha256.txt").write_text(
+        COURSE_SHA256 + "\n", encoding="utf-8")
+
+
+def write_score_file(run_dir: Path, score: dict) -> None:
+    (run_dir / "final_score.txt").write_text(
+        'data: "%s"\n' % json.dumps(score, sort_keys=True).replace('"', '\\"'),
         encoding="utf-8")
 
 
@@ -285,13 +301,16 @@ def main() -> int:
         write_bag(fallback_dir, fail=False)
         fallback_score = dict(stale_score)
         fallback_score.update({
-            "score_schema_version": 3,
-            "scoring_mode": "ground_truth_odom_swept_footprint_v3",
-            "course_config_sha256": hashlib.sha256(
-                Path(COURSE).read_bytes()).hexdigest(),
+            "score_schema_version": 4,
+            "scoring_mode": "ground_truth_odom_swept_footprint_v4",
+            "run_id": RUN_ID,
+            "course_config_sha256": COURSE_SHA256,
             "odom_source": "fallback",
             "odom_topic": "/igvc_sim/ground_truth_odom",
             "odom_sample_count": 33,
+            "primary_odom_sample_count": 0,
+            "fallback_odom_sample_count": 33,
+            "used_fallback_before_primary": True,
             "last_odom_age_s": 0.1,
             "waypoints_total": 1,
             "waypoints_reached_count": 1,
@@ -313,6 +332,9 @@ def main() -> int:
         stale_odom_score = dict(fallback_score)
         stale_odom_score.update({
             "odom_source": "primary",
+            "primary_odom_sample_count": 33,
+            "fallback_odom_sample_count": 0,
+            "used_fallback_before_primary": False,
             "last_odom_age_s": 10.0,
         })
         (stale_odom_dir / "final_score.txt").write_text(
@@ -331,6 +353,9 @@ def main() -> int:
         missed_wp_score = dict(fallback_score)
         missed_wp_score.update({
             "odom_source": "primary",
+            "primary_odom_sample_count": 33,
+            "fallback_odom_sample_count": 0,
+            "used_fallback_before_primary": False,
             "waypoints_total": 2,
             "waypoints_reached_count": 1,
             "all_waypoints_reached": False,
@@ -354,6 +379,64 @@ def main() -> int:
                     and mbag_only["score_source"] == "bag"
                     and mbag_only["score_trustworthy"] is False
                     and F.run_clean(mbag_only) is None)
+
+        wrong_run_dir = tmp / "wrong_run_id"
+        wrong_run_dir.mkdir(parents=True)
+        write_bag(wrong_run_dir, fail=False)
+        wrong_run_score = {
+            "score_schema_version": 4,
+            "scoring_mode": "ground_truth_odom_swept_footprint_v4",
+            "run_id": "different-run",
+            "course_id": "compact_baseline",
+            "course_config_sha256": COURSE_SHA256,
+            "failed": False,
+            "failures": [],
+            "distance_m": 12.3,
+            "finish_armed": True,
+            "max_speed_mps": 0.49,
+            "odom_source": "primary",
+            "odom_topic": "/igvc_sim/ground_truth_odom",
+            "odom_sample_count": 33,
+            "primary_odom_sample_count": 33,
+            "fallback_odom_sample_count": 0,
+            "used_fallback_before_primary": False,
+            "last_odom_age_s": 0.1,
+            "waypoints_total": 1,
+            "waypoints_reached_count": 1,
+            "all_waypoints_reached": True,
+            "finish_reached": True,
+            "speed_check_complete": True,
+        }
+        write_score_file(wrong_run_dir, wrong_run_score)
+        mwrong_run = M.compute_metrics(wrong_run_dir, COURSE)
+        ok &= check("wrong run_id score -> INCOMPLETE",
+                    mwrong_run["score_loaded"]
+                    and mwrong_run["score_trustworthy"] is False
+                    and F.run_clean(mwrong_run) is None)
+
+        wrong_course_dir = tmp / "wrong_course_hash"
+        wrong_course_dir.mkdir(parents=True)
+        write_bag(wrong_course_dir, fail=False)
+        wrong_course_score = dict(wrong_run_score)
+        wrong_course_score.update({
+            "run_id": RUN_ID,
+            "course_config_sha256": "0" * 64,
+        })
+        write_score_file(wrong_course_dir, wrong_course_score)
+        mwrong_course = M.compute_metrics(wrong_course_dir, COURSE)
+        ok &= check("wrong course hash score -> INCOMPLETE",
+                    mwrong_course["score_loaded"]
+                    and mwrong_course["score_trustworthy"] is False
+                    and F.run_clean(mwrong_course) is None)
+
+        rejected_dir = tmp / "run_one_rejected_clean_score"
+        rejected_dir.mkdir(parents=True)
+        write_bag(rejected_dir, fail=False)
+        (rejected_dir / "run_one_status.txt").write_text("1\n", encoding="utf-8")
+        mrejected = M.compute_metrics(rejected_dir, COURSE)
+        ok &= check("nonzero run_one_status with clean-looking score -> INCOMPLETE",
+                    mrejected["score_trustworthy"] is True
+                    and F.run_clean(mrejected) is None)
 
         # incomplete run (no score) -> not clean
         inc_dir = tmp / "inc"

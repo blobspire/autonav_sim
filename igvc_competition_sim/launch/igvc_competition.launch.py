@@ -417,6 +417,8 @@ def generate_launch_description() -> LaunchDescription:
             "use_sim_time": True,
             "course_config": course_config,
             "run_id": run_id,
+            "odom_topic": "/igvc_sim/ground_truth_odom",
+            "fallback_odom_topic": "",
         }],
         condition=IfCondition(launch_monitor),
     )

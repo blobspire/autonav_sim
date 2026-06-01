@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import math
 import re
@@ -55,7 +56,8 @@ METRIC_TOPICS = {
     "/igvc_sim/score",
 }
 
-MIN_SCORE_SCHEMA_VERSION = 3
+MIN_SCORE_SCHEMA_VERSION = 4
+EXPECTED_SCORING_MODE = "ground_truth_odom_swept_footprint_v4"
 
 def _read_bag(
     bag_dir: Path,
@@ -200,6 +202,15 @@ def _read_status_file(run_dir: Path, name: str) -> str:
     if not fp.is_file():
         return ""
     return fp.read_text(encoding="utf-8", errors="replace").strip()
+
+
+def _sha256_file(path: str | Path | None) -> str:
+    if not path:
+        return ""
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return ""
 
 
 def _score_schema_version(score: dict) -> int:
@@ -397,9 +408,16 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
     to_sim = _clock_mapper(msgs)
     startup_status = _read_status_file(run_dir, "startup_status.txt")
     mission_status = _read_status_file(run_dir, "mission_status.txt")
+    run_one_status = _read_status_file(run_dir, "run_one_status.txt")
+    run_id = _read_status_file(run_dir, "run_id.txt")
+    expected_course_sha256 = _read_status_file(
+        run_dir, "course_config_sha256.txt") or _sha256_file(course_yaml)
     mission_log = _read_status_file(run_dir, "mission.log")
     m["startup_status"] = startup_status
     m["mission_status"] = mission_status
+    m["run_one_status"] = run_one_status
+    m["expected_run_id"] = run_id
+    m["expected_course_config_sha256"] = expected_course_sha256
     m["startup_not_ready"] = (
         startup_status.startswith("startup_not_ready:")
         or "run_one: timed out waiting for" in mission_log
@@ -418,26 +436,43 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
         m["failed"] = bool(score.get("failed"))
         m["finish_reached"] = bool(score.get("finish_reached"))
         m["violations"] = list(score.get("failures", []))
+        m["unique_failure_count"] = score.get("unique_failure_count")
+        m["violation_detection_count"] = score.get("violation_detection_count")
+        m["violation_detection_type_counts"] = score.get(
+            "violation_detection_type_counts")
         m["distance_m"] = score.get("distance_m")
         m["max_speed_mps"] = score.get("max_speed_mps")
         m["score_schema_version"] = score.get("score_schema_version")
+        m["score_run_id"] = score.get("run_id")
         m["score_odom_source"] = score.get("odom_source")
         m["score_odom_topic"] = score.get("odom_topic")
         m["finish_armed"] = score.get("finish_armed")
         m["course_config_sha256"] = score.get("course_config_sha256")
         m["scoring_mode"] = score.get("scoring_mode")
         m["odom_sample_count"] = score.get("odom_sample_count")
+        m["primary_odom_sample_count"] = score.get("primary_odom_sample_count")
+        m["fallback_odom_sample_count"] = score.get("fallback_odom_sample_count")
+        m["used_fallback_before_primary"] = score.get("used_fallback_before_primary")
         m["last_odom_age_s"] = score.get("last_odom_age_s")
         m["waypoints_total"] = score.get("waypoints_total")
         m["waypoints_reached_count"] = score.get("waypoints_reached_count")
         m["all_waypoints_reached"] = score.get("all_waypoints_reached")
         last_odom_age_s = _float_or_none(score.get("last_odom_age_s"))
+        fallback_count = _int_or_zero(score.get("fallback_odom_sample_count"))
         m["score_trustworthy"] = (
             score_source == "final_score"
             and _score_schema_version(score) >= MIN_SCORE_SCHEMA_VERSION
+            and score.get("scoring_mode") == EXPECTED_SCORING_MODE
+            and bool(run_id)
+            and score.get("run_id") == run_id
+            and bool(expected_course_sha256)
+            and score.get("course_config_sha256") == expected_course_sha256
             and score.get("odom_source") == "primary"
             and score.get("odom_topic") == "/igvc_sim/ground_truth_odom"
             and _int_or_zero(score.get("odom_sample_count")) >= 2
+            and _int_or_zero(score.get("primary_odom_sample_count")) >= 2
+            and fallback_count == 0
+            and not bool(score.get("used_fallback_before_primary"))
             and last_odom_age_s is not None
             and last_odom_age_s <= 3.0
             and score.get("all_waypoints_reached") is not None
