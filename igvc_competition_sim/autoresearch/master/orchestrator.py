@@ -1182,43 +1182,60 @@ def sync_planning_control(manifest: dict[str, Any], args: argparse.Namespace) ->
     lane = manifest["lanes"][lane_name]
     robot_source = args.robot_source or manifest["host_repos"]["robot_primary"]
     sim_source = args.sim_source or manifest["host_repos"]["autonav_sim"]
+    if args.skip_robot and args.skip_sim:
+        print("nothing to sync: --skip-robot and --skip-sim were both set", file=sys.stderr)
+        return 2
     try:
-        robot_bundle, robot_sha, robot_fetch_ref = create_bundle(
-            robot_source,
-            args.robot_ref,
-            f"{lane_name}-robot",
-        )
-        sim_bundle, sim_sha, sim_fetch_ref = create_bundle(
-            sim_source,
-            args.sim_ref,
-            f"{lane_name}-sim",
-        )
+        if not args.skip_robot:
+            robot_bundle, robot_sha, robot_fetch_ref = create_bundle(
+                robot_source,
+                args.robot_ref,
+                f"{lane_name}-robot",
+            )
+        else:
+            robot_bundle = Path()
+            robot_sha = ""
+            robot_fetch_ref = ""
+        if not args.skip_sim:
+            sim_bundle, sim_sha, sim_fetch_ref = create_bundle(
+                sim_source,
+                args.sim_ref,
+                f"{lane_name}-sim",
+            )
+        else:
+            sim_bundle = Path()
+            sim_sha = ""
+            sim_fetch_ref = ""
     except RuntimeError as exc:
         print(f"refusing to sync: {exc}", file=sys.stderr)
         return 2
-    print(f"{lane_name} robot source {robot_source}@{args.robot_ref} -> {robot_sha}")
-    print(f"{lane_name} sim source {sim_source}@{args.sim_ref} -> {sim_sha}")
+    if not args.skip_robot:
+        print(f"{lane_name} robot source {robot_source}@{args.robot_ref} -> {robot_sha}")
+    if not args.skip_sim:
+        print(f"{lane_name} sim source {sim_source}@{args.sim_ref} -> {sim_sha}")
     ok = True
-    ok &= print_sync_result(
-        f"{lane_name}.robot",
-        sync_bundle_to_vm(
-            robot_bundle,
-            vm=lane["vm"],
-            destination=f"{lane['workspace']}/src/AutoNav_25-26",
-            bundle_ref=robot_fetch_ref,
-            stash_dirty_destination=args.stash_dirty_destination,
-        ),
-    )
-    ok &= print_sync_result(
-        f"{lane_name}.autonav_sim",
-        sync_bundle_to_vm(
-            sim_bundle,
-            vm=lane["vm"],
-            destination=f"{lane['workspace']}/src/autonav_sim",
-            bundle_ref=sim_fetch_ref,
-            stash_dirty_destination=args.stash_dirty_destination,
-        ),
-    )
+    if not args.skip_robot:
+        ok &= print_sync_result(
+            f"{lane_name}.robot",
+            sync_bundle_to_vm(
+                robot_bundle,
+                vm=lane["vm"],
+                destination=f"{lane['workspace']}/src/AutoNav_25-26",
+                bundle_ref=robot_fetch_ref,
+                stash_dirty_destination=args.stash_dirty_destination,
+            ),
+        )
+    if not args.skip_sim:
+        ok &= print_sync_result(
+            f"{lane_name}.autonav_sim",
+            sync_bundle_to_vm(
+                sim_bundle,
+                vm=lane["vm"],
+                destination=f"{lane['workspace']}/src/autonav_sim",
+                bundle_ref=sim_fetch_ref,
+                stash_dirty_destination=args.stash_dirty_destination,
+            ),
+        )
     return 0 if ok else 2
 
 
@@ -1942,6 +1959,8 @@ def main(argv: list[str]) -> int:
     sync_plan.add_argument("--robot-ref", default="HEAD")
     sync_plan.add_argument("--sim-source", default="")
     sync_plan.add_argument("--sim-ref", default="HEAD")
+    sync_plan.add_argument("--skip-robot", action="store_true")
+    sync_plan.add_argument("--skip-sim", action="store_true")
     sync_plan.add_argument("--stash-dirty-destination", action="store_true")
     sync_jetson = sub.add_parser("sync-jetson-perception")
     sync_jetson.add_argument("--robot-source", default="")
