@@ -102,8 +102,8 @@ ROS_LOG_DIR="${ROS_LOG_DIR:-$RUN_DIR/ros_log}"
 export ROS_LOG_DIR
 mkdir -p "$ROS_LOG_DIR"
 
-if [[ ! -f /opt/ros/humble/setup.bash || ! -f "$ROS_WS/install/setup.bash" ]]; then
-  echo "ROS env not ready (need /opt/ros/humble + $ROS_WS/install). Build the workspace." >&2
+if [[ ! -f /opt/ros/humble/setup.bash || ! -f "$ROS_WS/install/local_setup.bash" ]]; then
+  echo "ROS env not ready (need /opt/ros/humble + $ROS_WS/install/local_setup.bash). Build the workspace." >&2
   exit 3
 fi
 if [[ "${AUTORESEARCH_CLEAN_ROS_ENV:-true}" == "true" ]]; then
@@ -111,7 +111,7 @@ if [[ "${AUTORESEARCH_CLEAN_ROS_ENV:-true}" == "true" ]]; then
 fi
 set +u
 source /opt/ros/humble/setup.bash
-source "$ROS_WS/install/setup.bash"
+source "$ROS_WS/install/local_setup.bash"
 set -u
 
 stop_process() {  # pid name [group]
