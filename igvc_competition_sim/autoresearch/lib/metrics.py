@@ -37,8 +37,25 @@ MARK_CLEAR = "Clearing"  # nav2 ClearCostmap service logs vary; best-effort
 STUCK_GAP_S = 1.0          # nonzero-cmd gap longer than this while not at goal
 SLOW_SPEED = 0.05          # |linear.x| below this counts as "not moving"
 
+METRIC_TOPICS = {
+    "/clock",
+    "/odom",
+    "/local_ekf/odom",
+    "/cmd_vel",
+    "/navigate_to_pose/_action/status",
+    "/navigate_to_waypoint/_action/status",
+    "/back_up/_action/status",
+    "/spin/_action/status",
+    "/rosout",
+    "/line_points",
+    "/scan_pca_filtered",
+    "/igvc_sim/score",
+}
 
-def _read_bag(bag_dir: Path) -> tuple[dict[str, list[tuple[int, Any]]], dict[str, str]]:
+def _read_bag(
+    bag_dir: Path,
+    topics: set[str] | None = None,
+) -> tuple[dict[str, list[tuple[int, Any]]], dict[str, str]]:
     """Return {topic: [(t_ns, msg), ...]} and {topic: type_str}. Empty on failure."""
     import rosbag2_py
     from rclpy.serialization import deserialize_message
@@ -61,6 +78,8 @@ def _read_bag(bag_dir: Path) -> tuple[dict[str, list[tuple[int, Any]]], dict[str
     out: dict[str, list[tuple[int, Any]]] = {}
     while reader.has_next():
         topic, data, t_ns = reader.read_next()
+        if topics is not None and topic not in topics:
+            continue
         ty = types.get(topic)
         if ty is None:
             continue
@@ -328,7 +347,7 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
     msgs: dict[str, list] = {}
     try:
         if bag_dir.is_dir():
-            msgs, _types = _read_bag(bag_dir)
+            msgs, _types = _read_bag(bag_dir, METRIC_TOPICS)
     except Exception as exc:  # noqa: BLE001
         m["bag_error"] = str(exc)
     to_sim = _clock_mapper(msgs)
