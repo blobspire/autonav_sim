@@ -167,8 +167,10 @@ ros2 bag record --include-hidden-topics -o "$RUN_DIR/bag" \
   /cmd_vel /cmd_vel_nav \
   /breadcrumb_tail \
   /navigate_to_pose/_action/status /navigate_to_waypoint/_action/status \
+  /navigate_to_pose/_action/feedback /navigate_to_waypoint/_action/feedback \
   /follow_path/_action/status /compute_path_to_pose/_action/status \
   /back_up/_action/status /spin/_action/status /drive_on_heading/_action/status \
+  /gps_fix /gps_waypoint/debug /gps_waypoint/health \
   /rosout \
   /behavior_tree_log \
   /plan /unsmoothed_plan /local_plan /trajectories \
