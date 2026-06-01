@@ -8,6 +8,10 @@ separate so agents can work in parallel without colliding.
 - `planning_control`: runs entirely in `autonav-gazebo-sim`.
   Gazebo is headless, Nav2 runs in the same VM, and perception is oracle-backed
   with `LINE_DETECTION_MODE=ground_truth` and `GROUND_TRUTH_PCA=true`.
+- `planning_control_ros22`: runs the same oracle planning/control stack in
+  `autonav-ros22`, using `/home/cole.guest/autonav_jetson_sim_ws` and no
+  Jetson. Use this as the second Blender-only planning lane when the goal is
+  more sim throughput rather than perception validation.
 - `jetson_perception`: runs headless Gazebo in `autonav-ros22` and the robot
   ROS stack on the Jetson at `jetson-spare-eth` / `10.66.0.2`.
   The Jetson must run only the sim-safe robot stack.
@@ -25,8 +29,10 @@ sed -n '1,220p' NEXT_MASTER_RESEARCH_TARGETS.md
 python3 master/orchestrator.py status
 python3 master/orchestrator.py verify-workspaces
 python3 master/orchestrator.py preflight planning_control
+python3 master/orchestrator.py preflight planning_control_ros22
 python3 master/orchestrator.py preflight jetson_perception
 python3 master/orchestrator.py commands planning_control
+python3 master/orchestrator.py commands planning_control_ros22
 python3 master/orchestrator.py commands jetson_perception
 ```
 
@@ -57,6 +63,14 @@ before testing it:
 # Planning/control runtime in autonav-gazebo-sim.
 python3 master/orchestrator.py sync-planning-control \
   --robot-source /Users/cole/code/git/autonav_worktrees/AutoNavB-control-stable-goalbender \
+  --robot-ref HEAD \
+  --sim-source /Users/cole/code/git/autonav_sim \
+  --sim-ref main
+
+# Second planning/control runtime in autonav-ros22, no Jetson.
+python3 master/orchestrator.py sync-planning-control \
+  --lane planning_control_ros22 \
+  --robot-source /Users/cole/code/git/autonav_worktrees/AutoNav-control-ros22-candidate \
   --robot-ref HEAD \
   --sim-source /Users/cole/code/git/autonav_sim \
   --sim-ref main
@@ -97,6 +111,25 @@ python3 master/orchestrator.py start-planning-control \
   --tier 1 \
   --timeout 300 \
   --description master-planning-control
+```
+
+Start the second planning/control lane with the same command plus
+`--lane planning_control_ros22`. For screening, prefer bounded attempt counts
+over long validation timeboxes:
+
+```bash
+python3 master/orchestrator.py start-planning-control \
+  --lane planning_control_ros22 \
+  --duration 35m \
+  --max-attempts 5 \
+  --courses blender_competition_course \
+  --runs 1 \
+  --tier 1 \
+  --timeout 300 \
+  --branch-scope auto_main \
+  --robot-branch auto_main \
+  --base-branch hailmary_deploy \
+  --description auto-main-screen-ros22
 ```
 
 Use the Blender-authored loop course as the authoritative planning/control
@@ -142,6 +175,9 @@ Do not use `stop-owned` for the current unmanaged AutoResearch run.
 ## Isolation Rules
 
 - Use separate ROS domains for the two lanes.
+- The two planning/control lanes use separate ROS domains by default:
+  `planning_control` uses `61` and `planning_control_ros22` uses `62`. Both set
+  `ROS_LOCALHOST_ONLY=1` because Gazebo and Nav2 live inside the same VM.
 - Keep the direct `jetsoneth` Lima network dedicated to `autonav-ros22`.
   `autonav-gazebo-sim` should not attach to `jetsoneth`; planning/control does
   not need Jetson Ethernet, and multiple VMs on that bridge can leave only one

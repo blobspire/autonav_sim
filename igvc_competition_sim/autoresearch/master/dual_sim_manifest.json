@@ -10,6 +10,10 @@
       "repo": "robot_primary",
       "branch_prefix": "AutoNav-control"
     },
+    "planning_control_ros22": {
+      "repo": "robot_primary",
+      "branch_prefix": "AutoNav-control-ros22"
+    },
     "jetson_perception": {
       "repo": "robot_primary",
       "branch_prefix": "AutoNav-perception"
@@ -25,15 +29,32 @@
       "vm": "autonav-gazebo-sim",
       "workspace": "/home/cole.guest/autonav_split_ws",
       "autoresearch_dir": "/home/cole.guest/autonav_split_ws/src/autonav_sim/igvc_competition_sim/autoresearch",
-      "ros_domain_id": "master-assigned",
+      "ros_domain_id": "61",
       "default_env": {
         "LINE_DETECTION_MODE": "ground_truth",
         "GROUND_TRUTH_PCA": "true",
         "PUBLISH_FULL_LIDAR_CLOUD": "false",
         "LAUNCH_DETECTION": "false",
+        "ROS_LOCALHOST_ONLY": "1",
         "AUTORESEARCH_CLEAN_ROS_ENV": "true"
       },
       "default_command": "python3 run_timebox.py --duration 45m --courses blender_competition_course --runs 1 --tier 1 --timeout 300 --description master-planning-control"
+    },
+    "planning_control_ros22": {
+      "purpose": "Second headless Gazebo plus robot Nav2 planning/control lane in autonav-ros22, using oracle perception and no Jetson.",
+      "vm": "autonav-ros22",
+      "workspace": "/home/cole.guest/autonav_jetson_sim_ws",
+      "autoresearch_dir": "/home/cole.guest/autonav_jetson_sim_ws/src/autonav_sim/igvc_competition_sim/autoresearch",
+      "ros_domain_id": "62",
+      "default_env": {
+        "LINE_DETECTION_MODE": "ground_truth",
+        "GROUND_TRUTH_PCA": "true",
+        "PUBLISH_FULL_LIDAR_CLOUD": "false",
+        "LAUNCH_DETECTION": "false",
+        "ROS_LOCALHOST_ONLY": "1",
+        "AUTORESEARCH_CLEAN_ROS_ENV": "true"
+      },
+      "default_command": "python3 run_timebox.py --duration 45m --courses blender_competition_course --runs 1 --tier 1 --timeout 300 --description master-planning-control-ros22"
     },
     "jetson_perception": {
       "purpose": "Headless Gazebo in a VM with simulated sensors feeding the Jetson robot stack for perception/full-stack testing.",

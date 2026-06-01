@@ -32,6 +32,7 @@ ACTIVE_DIR = STATE_DIR / "active"
 BUNDLES_DIR = STATE_DIR / "bundles"
 SNAPSHOTS_DIR = STATE_DIR / "snapshots"
 BRANCHES_DIR = AUTORESEARCH_DIR / "branches"
+PLANNING_LANES = ("planning_control", "planning_control_ros22")
 
 
 def run(
@@ -91,6 +92,21 @@ def ssh(host: str, command: str, *, timeout: float = 20.0) -> subprocess.Complet
 
 def load_manifest() -> dict[str, Any]:
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def planning_lane_names(manifest: dict[str, Any]) -> list[str]:
+    return [
+        name for name in PLANNING_LANES
+        if name in manifest.get("lanes", {})
+    ]
+
+
+def planning_env(lane: dict[str, Any]) -> dict[str, str]:
+    env = dict(lane.get("default_env", {}))
+    ros_domain_id = str(lane.get("ros_domain_id", "") or "")
+    if ros_domain_id and ros_domain_id != "master-assigned":
+        env["ROS_DOMAIN_ID"] = ros_domain_id
+    return env
 
 
 def ensure_state_dirs() -> None:
@@ -532,10 +548,21 @@ def clean_process_lines(output: str) -> list[str]:
 
 
 def status_report(manifest: dict[str, Any]) -> dict[str, Any]:
-    planning = manifest["lanes"]["planning_control"]
     jetson = manifest["lanes"]["jetson_perception"]
     repos = {name: git_status(path) for name, path in manifest["host_repos"].items()}
     lima_list = run(["limactl", "list"], timeout=10).stdout.strip().splitlines()
+    planning_reports = {}
+    for lane_name in planning_lane_names(manifest):
+        lane = manifest["lanes"][lane_name]
+        planning_reports[lane_name] = {
+            "vm": lane["vm"],
+            "workspace": lane["workspace"],
+            "ros_domain_id": lane.get("ros_domain_id", ""),
+            "processes": process_lines_vm(
+                lane["vm"],
+                "run_timebox.py|evaluate.py|igvc_competition.launch.py|ign gazebo|ros2 bag|igvc_mission_runner",
+            ),
+        }
     report: dict[str, Any] = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "host_repos": repos,
@@ -543,13 +570,8 @@ def status_report(manifest: dict[str, Any]) -> dict[str, Any]:
         "host_visualization_processes": process_lines_local(
             "Screen Sharing|rviz2|x11vnc|Xvfb|openbox|ign gazebo|gz sim"
         ),
-        "planning_control": {
-            "vm": planning["vm"],
-            "processes": process_lines_vm(
-                planning["vm"],
-                "run_timebox.py|evaluate.py|igvc_competition.launch.py|ign gazebo|ros2 bag|igvc_mission_runner",
-            ),
-        },
+        "planning_control_lanes": planning_reports,
+        "planning_control": planning_reports.get("planning_control", {}),
         "jetson_perception": {
             "sim_vm": jetson["sim_vm"],
             "sim_vm_processes": process_lines_vm(
@@ -571,6 +593,8 @@ def status_report(manifest: dict[str, Any]) -> dict[str, Any]:
         )
     else:
         report["jetson_perception"]["jetson_error"] = jetson_probe.stdout.strip()
+    if "planning_control_ros22" in planning_reports:
+        report["planning_control_ros22"] = planning_reports["planning_control_ros22"]
     return report
 
 
@@ -622,9 +646,10 @@ def runtime_dirty_messages(
 def preflight_planning(
     manifest: dict[str, Any],
     *,
+    lane_name: str = "planning_control",
     allow_dirty_runtime: bool = False,
 ) -> tuple[bool, list[str]]:
-    lane = manifest["lanes"]["planning_control"]
+    lane = manifest["lanes"][lane_name]
     messages: list[str] = []
     ok = True
     proc = lima(
@@ -636,14 +661,38 @@ def preflight_planning(
     )
     if proc.returncode != 0:
         ok = False
-        messages.append("planning workspace is not built or autoresearch dir is missing")
+        messages.append(f"{lane_name} workspace is not built or autoresearch dir is missing")
+    package_check = lima(
+        lane["vm"],
+        (
+            f"bash -lc 'set -eo pipefail; "
+            f"source /opt/ros/humble/setup.bash; "
+            f"source {shlex.quote(lane['workspace'])}/install/setup.bash; "
+            "ros2 pkg prefix igvc_competition_sim >/dev/null; "
+            "ros2 pkg prefix bringup >/dev/null; "
+            "ros2 pkg prefix slam >/dev/null; "
+            "ros2 pkg prefix gps_waypoint_handler >/dev/null; "
+            "ros2 pkg prefix custom_behavior_tree_plugins >/dev/null; "
+            "ros2 pkg prefix line_layer >/dev/null; "
+            "ros2 pkg prefix local_mirror_layer >/dev/null; "
+            f"params_dir={shlex.quote(lane['workspace'])}/src/AutoNav_25-26/isaac_ros-dev/src/slam/config; "
+            "test -f \"$params_dir/nav2_paramsv2.yaml\" || "
+            "test -f \"$params_dir/nav2_params_camera.yaml\" || "
+            "test -f \"$params_dir/nav2_params.yaml\"; "
+            f"test -f {shlex.quote(lane['workspace'])}/src/AutoNav_25-26/isaac_ros-dev/src/slam/behavior_trees/bt_nav.xml'"
+        ),
+        timeout=30,
+    )
+    if package_check.returncode != 0:
+        ok = False
+        messages.append(f"{lane_name} ROS package/source check failed: {package_check.stdout.strip()}")
     gui = process_lines_vm(lane["vm"], "ign gazebo gui|rviz2|x11vnc|Xvfb")
     if gui:
         ok = False
-        messages.append("planning VM has visualization processes: " + "; ".join(gui))
+        messages.append(f"{lane_name} VM has visualization processes: " + "; ".join(gui))
     active = process_lines_vm(lane["vm"], "run_timebox.py|evaluate.py|igvc_competition.launch.py|ign gazebo")
     if active:
-        messages.append("planning VM already has an active sim/autoresearch run")
+        messages.append(f"{lane_name} VM already has an active sim/autoresearch run")
     robot_info = git_info_vm(lane["vm"], f"{lane['workspace']}/src/AutoNav_25-26")
     sim_info = git_info_vm(lane["vm"], f"{lane['workspace']}/src/autonav_sim")
     for msg in runtime_dirty_messages([robot_info, sim_info], allow_dirty=allow_dirty_runtime):
@@ -897,44 +946,63 @@ def compare_heads(
     checks.append({"label": label, "ok": True})
 
 
-def workspace_report(manifest: dict[str, Any]) -> dict[str, Any]:
-    planning = manifest["lanes"]["planning_control"]
+def workspace_report(
+    manifest: dict[str, Any],
+    *,
+    planning_only: bool = False,
+) -> dict[str, Any]:
     jetson = manifest["lanes"]["jetson_perception"]
     host_sim = git_info_local(manifest["host_repos"]["autonav_sim"])
     host_robot = git_info_local(manifest["host_repos"]["robot_primary"])
-    planning_sim = git_info_vm(
-        planning["vm"],
-        f"{planning['workspace']}/src/autonav_sim",
-    )
-    planning_robot = git_info_vm(
-        planning["vm"],
-        f"{planning['workspace']}/src/AutoNav_25-26",
-    )
-    jetson_sim = git_info_vm(
-        jetson["sim_vm"],
-        f"{jetson['sim_workspace']}/src/autonav_sim",
-    )
-    jetson_robot_sim_vm = git_info_vm(
-        jetson["sim_vm"],
-        f"{jetson['sim_workspace']}/src/AutoNav_25-26",
-    )
-    jetson_sim_on_jetson = git_info_ssh(jetson["jetson_host"], jetson["jetson_sim_repo"])
-    jetson_robot = git_info_ssh(jetson["jetson_host"], jetson["jetson_repo"])
+    planning_reports = {}
+    planning_git_infos = {}
+    for lane_name in planning_lane_names(manifest):
+        lane = manifest["lanes"][lane_name]
+        lane_sim = git_info_vm(
+            lane["vm"],
+            f"{lane['workspace']}/src/autonav_sim",
+        )
+        lane_robot = git_info_vm(
+            lane["vm"],
+            f"{lane['workspace']}/src/AutoNav_25-26",
+        )
+        planning_git_infos[lane_name] = {
+            "autonav_sim": lane_sim,
+            "robot": lane_robot,
+        }
+        planning_reports[lane_name] = {
+            "vm": lane["vm"],
+            "workspace": lane["workspace"],
+            "ros_domain_id": lane.get("ros_domain_id", ""),
+            "autonav_sim": lane_sim,
+            "robot": lane_robot,
+            "processes": process_lines_vm(
+                lane["vm"],
+                "run_timebox.py|evaluate.py|igvc_competition.launch.py|ign gazebo|ros2 bag|igvc_mission_runner",
+            ),
+        }
     report: dict[str, Any] = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "host": {
             "autonav_sim": host_sim,
             "robot_primary": host_robot,
         },
-        "planning_control": {
-            "vm": planning["vm"],
-            "autonav_sim": planning_sim,
-            "robot": planning_robot,
-            "processes": process_lines_vm(
-                planning["vm"],
-                "run_timebox.py|evaluate.py|igvc_competition.launch.py|ign gazebo|ros2 bag|igvc_mission_runner",
-            ),
-        },
+        "planning_control_lanes": planning_reports,
+        "planning_control": planning_reports.get("planning_control", {}),
+        "checks": [],
+    }
+    if not planning_only:
+        jetson_sim = git_info_vm(
+            jetson["sim_vm"],
+            f"{jetson['sim_workspace']}/src/autonav_sim",
+        )
+        jetson_robot_sim_vm = git_info_vm(
+            jetson["sim_vm"],
+            f"{jetson['sim_workspace']}/src/AutoNav_25-26",
+        )
+        jetson_sim_on_jetson = git_info_ssh(jetson["jetson_host"], jetson["jetson_sim_repo"])
+        jetson_robot = git_info_ssh(jetson["jetson_host"], jetson["jetson_repo"])
+        report.update({
         "jetson_perception": {
             "sim_vm": jetson["sim_vm"],
             "jetson_host": jetson["jetson_host"],
@@ -951,27 +1019,31 @@ def workspace_report(manifest: dict[str, Any]) -> dict[str, Any]:
                 "ros2|component_container|nav2|zed|sick|control_node|docker|isaac|bringup|slam|detection",
             ),
         },
-        "checks": [],
-    }
-    compare_heads(report, "planning_control.autonav_sim", host_sim, planning_sim)
-    compare_heads(report, "planning_control.robot", host_robot, planning_robot)
-    compare_heads(report, "jetson_perception.autonav_sim", host_sim, jetson_sim)
-    compare_heads(report, "jetson_perception.robot_dependency", host_robot, jetson_robot_sim_vm)
-    compare_heads(report, "jetson_perception.autonav_sim_jetson", host_sim, jetson_sim_on_jetson)
-    compare_heads(report, "jetson_perception.robot", host_robot, jetson_robot)
-    forbidden_pattern = "|".join(manifest["forbidden_jetson_process_patterns"])
-    forbidden = process_lines_ssh(jetson["jetson_host"], forbidden_pattern)
-    if forbidden:
-        report["checks"].append(
-            {
-                "label": "jetson_perception.forbidden_processes",
-                "ok": False,
-                "reason": "forbidden Jetson processes are active",
-                "processes": forbidden,
-            }
-        )
-    else:
-        report["checks"].append({"label": "jetson_perception.forbidden_processes", "ok": True})
+        })
+    if "planning_control_ros22" in planning_reports:
+        report["planning_control_ros22"] = planning_reports["planning_control_ros22"]
+    for lane_name, infos in planning_git_infos.items():
+        compare_heads(report, f"{lane_name}.autonav_sim", host_sim, infos["autonav_sim"])
+        compare_heads(report, f"{lane_name}.robot", host_robot, infos["robot"])
+    if not planning_only:
+        compare_heads(report, "jetson_perception.autonav_sim", host_sim, jetson_sim)
+        compare_heads(report, "jetson_perception.robot_dependency", host_robot, jetson_robot_sim_vm)
+        compare_heads(report, "jetson_perception.autonav_sim_jetson", host_sim, jetson_sim_on_jetson)
+        compare_heads(report, "jetson_perception.robot", host_robot, jetson_robot)
+        forbidden_pattern = "|".join(manifest["forbidden_jetson_process_patterns"])
+        forbidden = process_lines_ssh(jetson["jetson_host"], forbidden_pattern)
+        if forbidden:
+            report["checks"].append(
+                {
+                    "label": "jetson_perception.forbidden_processes",
+                    "ok": False,
+                    "reason": "forbidden Jetson processes are active",
+                    "processes": forbidden,
+                }
+            )
+        else:
+            report["checks"].append({"label": "jetson_perception.forbidden_processes", "ok": True})
+    report["planning_only"] = planning_only
     report["ready"] = all(check.get("ok") for check in report["checks"])
     return report
 
@@ -1106,28 +1178,29 @@ def print_sync_result(label: str, proc: subprocess.CompletedProcess[str]) -> boo
 
 
 def sync_planning_control(manifest: dict[str, Any], args: argparse.Namespace) -> int:
-    lane = manifest["lanes"]["planning_control"]
+    lane_name = getattr(args, "lane", "planning_control")
+    lane = manifest["lanes"][lane_name]
     robot_source = args.robot_source or manifest["host_repos"]["robot_primary"]
     sim_source = args.sim_source or manifest["host_repos"]["autonav_sim"]
     try:
         robot_bundle, robot_sha, robot_fetch_ref = create_bundle(
             robot_source,
             args.robot_ref,
-            "planning-control-robot",
+            f"{lane_name}-robot",
         )
         sim_bundle, sim_sha, sim_fetch_ref = create_bundle(
             sim_source,
             args.sim_ref,
-            "planning-control-sim",
+            f"{lane_name}-sim",
         )
     except RuntimeError as exc:
         print(f"refusing to sync: {exc}", file=sys.stderr)
         return 2
-    print(f"planning_control robot source {robot_source}@{args.robot_ref} -> {robot_sha}")
-    print(f"planning_control sim source {sim_source}@{args.sim_ref} -> {sim_sha}")
+    print(f"{lane_name} robot source {robot_source}@{args.robot_ref} -> {robot_sha}")
+    print(f"{lane_name} sim source {sim_source}@{args.sim_ref} -> {sim_sha}")
     ok = True
     ok &= print_sync_result(
-        "planning_control.robot",
+        f"{lane_name}.robot",
         sync_bundle_to_vm(
             robot_bundle,
             vm=lane["vm"],
@@ -1137,7 +1210,7 @@ def sync_planning_control(manifest: dict[str, Any], args: argparse.Namespace) ->
         ),
     )
     ok &= print_sync_result(
-        "planning_control.autonav_sim",
+        f"{lane_name}.autonav_sim",
         sync_bundle_to_vm(
             sim_bundle,
             vm=lane["vm"],
@@ -1258,10 +1331,10 @@ def snapshot_jetson_dirty(manifest: dict[str, Any]) -> int:
 
 
 def command_snippets(manifest: dict[str, Any], lane_name: str) -> str:
-    if lane_name == "planning_control":
+    if lane_name in planning_lane_names(manifest):
         lane = manifest["lanes"][lane_name]
-        env = " ".join(f"{key}={shlex.quote(value)}" for key, value in lane["default_env"].items())
-        return f"""# Planning/control lane: run in {lane['vm']}
+        env = " ".join(f"{key}={shlex.quote(value)}" for key, value in planning_env(lane).items())
+        return f"""# Planning/control lane {lane_name}: run in {lane['vm']}
 limactl shell {lane['vm']} -- env -i HOME=/home/cole.guest USER=cole LOGNAME=cole SHELL=/bin/bash PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 TERM=xterm {env} bash --noprofile --norc -lc '
   set -eo pipefail
   cd {lane['workspace']}
@@ -1601,26 +1674,27 @@ def start_jetson_perception(manifest: dict[str, Any], args: argparse.Namespace) 
 
 def start_planning(manifest: dict[str, Any], args: argparse.Namespace) -> int:
     ensure_state_dirs()
-    state = active_state("planning_control")
+    lane_name = getattr(args, "lane", "planning_control")
+    state = active_state(lane_name)
     if state and check_active_local_pid(state):
-        print("planning_control is already owned by master:", active_state_path("planning_control"))
+        print(f"{lane_name} is already owned by master:", active_state_path(lane_name))
         return 2
-    ok, messages = preflight_planning(manifest)
+    ok, messages = preflight_planning(manifest, lane_name=lane_name)
     if any("already has an active" in msg for msg in messages) and not args.allow_active:
-        print("refusing to start planning_control because an unmanaged run is active")
+        print(f"refusing to start {lane_name} because an unmanaged run is active")
         for msg in messages:
             print(" -", msg)
         return 2
     if not ok:
-        print("planning_control preflight failed")
+        print(f"{lane_name} preflight failed")
         for msg in messages:
             print(" -", msg)
         return 2
-    lane = manifest["lanes"]["planning_control"]
-    run_dir = RUNS_DIR / f"{timestamp()}_planning_control"
+    lane = manifest["lanes"][lane_name]
+    run_dir = RUNS_DIR / f"{timestamp()}_{lane_name}"
     run_dir.mkdir(parents=True)
-    description = args.description or "master-planning-control"
-    courses = " ".join(args.courses)
+    description = args.description or f"master-{lane_name}"
+    courses = " ".join(shlex.quote(course) for course in args.courses)
     branch_args = ""
     if args.branch_scope:
         branch_args += f" --branch-scope {shlex.quote(args.branch_scope)}"
@@ -1628,6 +1702,17 @@ def start_planning(manifest: dict[str, Any], args: argparse.Namespace) -> int:
         branch_args += f" --robot-branch {shlex.quote(args.robot_branch)}"
     if args.base_branch:
         branch_args += f" --base-branch {shlex.quote(args.base_branch)}"
+    candidate_args = ""
+    if args.max_attempts:
+        candidate_args += f" --max-attempts {args.max_attempts}"
+    if args.experiment_hypothesis:
+        candidate_args += f" --experiment-hypothesis {shlex.quote(args.experiment_hypothesis)}"
+    if args.change_summary:
+        candidate_args += f" --change-summary {shlex.quote(args.change_summary)}"
+    if args.experiment_status:
+        candidate_args += f" --experiment-status {shlex.quote(args.experiment_status)}"
+    if args.allow_duplicate_hypothesis:
+        candidate_args += " --allow-duplicate-hypothesis"
     command = (
         f"set -eo pipefail; cd {shlex.quote(lane['workspace'])}; "
         "source /opt/ros/humble/setup.bash; source install/setup.bash; "
@@ -1635,9 +1720,9 @@ def start_planning(manifest: dict[str, Any], args: argparse.Namespace) -> int:
         f"python3 run_timebox.py --duration {shlex.quote(args.duration)} "
         f"--courses {courses} --runs {args.runs} --tier {args.tier} "
         f"--timeout {args.timeout} --description {shlex.quote(description)}"
-        f"{branch_args}"
+        f"{branch_args}{candidate_args}"
     )
-    env_parts = [f"{k}={v}" for k, v in lane["default_env"].items()]
+    env_parts = [f"{k}={v}" for k, v in planning_env(lane).items()]
     outer = [
         "ssh",
         "-S",
@@ -1663,16 +1748,16 @@ def start_planning(manifest: dict[str, Any], args: argparse.Namespace) -> int:
         "-lc",
         command,
     ]
-    log_file = open(run_dir / "planning_control.log", "w", encoding="utf-8")
+    log_file = open(run_dir / f"{lane_name}.log", "w", encoding="utf-8")
     proc = subprocess.Popen(outer, stdout=log_file, stderr=subprocess.STDOUT, start_new_session=True)
     state_doc = {
-        "lane": "planning_control",
+        "lane": lane_name,
         "started_at": datetime.now().isoformat(timespec="seconds"),
         "local_pid": proc.pid,
         "run_dir": str(run_dir),
         "command": outer,
     }
-    active_state_path("planning_control").write_text(json.dumps(state_doc, indent=2), encoding="utf-8")
+    active_state_path(lane_name).write_text(json.dumps(state_doc, indent=2), encoding="utf-8")
     print(json.dumps(state_doc, indent=2))
     return 0
 
@@ -1725,8 +1810,8 @@ for pid in matching_pids():
 
 
 def cleanup_remote_lane(manifest: dict[str, Any], lane: str) -> None:
-    if lane == "planning_control":
-        vm = manifest["lanes"]["planning_control"]["vm"]
+    if lane in planning_lane_names(manifest):
+        vm = manifest["lanes"][lane]["vm"]
         lima(
             vm,
             remote_kill_command(
@@ -1826,15 +1911,16 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
-    sub.add_parser("verify-workspaces")
+    verify = sub.add_parser("verify-workspaces")
+    verify.add_argument("--planning-only", action="store_true")
     sub.add_parser("snapshot-jetson-dirty")
     pre = sub.add_parser("preflight")
-    pre.add_argument("lane", choices=["planning_control", "jetson_perception"])
+    pre.add_argument("lane", choices=[*PLANNING_LANES, "jetson_perception"])
     pre.add_argument("--allow-dirty-runtime", action="store_true")
     commands = sub.add_parser("commands")
-    commands.add_argument("lane", choices=["planning_control", "jetson_perception"])
+    commands.add_argument("lane", choices=[*PLANNING_LANES, "jetson_perception"])
     wt = sub.add_parser("create-worktree")
-    wt.add_argument("lane", choices=["planning_control", "jetson_perception", "harness"])
+    wt.add_argument("lane", choices=[*PLANNING_LANES, "jetson_perception", "harness"])
     wt.add_argument("experiment")
     wt.add_argument("--base", default="HEAD")
     wt.add_argument("--print-only", action="store_true")
@@ -1851,6 +1937,7 @@ def main(argv: list[str]) -> int:
     prep_runtime = sub.add_parser("prepare-jetson-runtime")
     prep_runtime.add_argument("--build", action="store_true")
     sync_plan = sub.add_parser("sync-planning-control")
+    sync_plan.add_argument("--lane", choices=PLANNING_LANES, default="planning_control")
     sync_plan.add_argument("--robot-source", default="")
     sync_plan.add_argument("--robot-ref", default="HEAD")
     sync_plan.add_argument("--sim-source", default="")
@@ -1863,37 +1950,44 @@ def main(argv: list[str]) -> int:
     sync_jetson.add_argument("--sim-ref", default="HEAD")
     sync_jetson.add_argument("--stash-dirty-destination", action="store_true")
     start = sub.add_parser("start-planning-control")
+    start.add_argument("--lane", choices=PLANNING_LANES, default="planning_control")
     start.add_argument("--duration", default="45m")
     start.add_argument("--courses", nargs="+", default=["blender_competition_course"])
     start.add_argument("--runs", type=int, default=1)
     start.add_argument("--tier", type=int, default=1)
     start.add_argument("--timeout", type=int, default=300)
+    start.add_argument("--max-attempts", type=int, default=0)
     start.add_argument("--description", default="")
     start.add_argument("--allow-active", action="store_true")
     start.add_argument("--branch-scope", default="")
     start.add_argument("--robot-branch", default="")
     start.add_argument("--base-branch", default="")
+    start.add_argument("--experiment-hypothesis", default="")
+    start.add_argument("--change-summary", default="")
+    start.add_argument("--experiment-status", default="")
+    start.add_argument("--allow-duplicate-hypothesis", action="store_true")
     jetson = sub.add_parser("start-jetson-perception")
     jetson.add_argument("--name", default="smoke")
     jetson.add_argument("--ros-domain-id", default="")
     jetson.add_argument("--jetson-delay-sec", type=float, default=8.0)
     stop = sub.add_parser("stop-owned")
-    stop.add_argument("lane", choices=["planning_control", "jetson_perception"])
+    stop.add_argument("lane", choices=[*PLANNING_LANES, "jetson_perception"])
     args = parser.parse_args(argv)
     manifest = load_manifest()
     if args.cmd == "status":
         print_report(status_report(manifest))
         return 0
     if args.cmd == "verify-workspaces":
-        report = workspace_report(manifest)
+        report = workspace_report(manifest, planning_only=args.planning_only)
         print_report(report)
         return 0 if report.get("ready") else 2
     if args.cmd == "snapshot-jetson-dirty":
         return snapshot_jetson_dirty(manifest)
     if args.cmd == "preflight":
-        if args.lane == "planning_control":
+        if args.lane in planning_lane_names(manifest):
             ok, messages = preflight_planning(
                 manifest,
+                lane_name=args.lane,
                 allow_dirty_runtime=args.allow_dirty_runtime,
             )
         else:

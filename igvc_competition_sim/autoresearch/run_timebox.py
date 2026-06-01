@@ -150,6 +150,8 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--min-start-seconds", type=int, default=420,
                     help="do not start a new attempt with less time remaining")
+    ap.add_argument("--max-attempts", type=int, default=0,
+                    help="optional cap on evaluate.py attempts; 0 means run until the timebox ends")
     ap.add_argument("--run-root", default=str(HERE / "results" / "timebox"))
     ap.add_argument("--description", default="timebox")
     ap.add_argument("--best-fitness", default=None)
@@ -223,6 +225,7 @@ def main() -> int:
         "runs": args.runs,
         "tier": args.tier,
         "timeout_s": args.timeout,
+        "max_attempts": args.max_attempts,
         "repo_commit": git_sha(HERE.parent.parent),
         "attempts": [],
     }
@@ -259,6 +262,9 @@ def main() -> int:
 
     attempt = 0
     while True:
+        if args.max_attempts > 0 and attempt >= args.max_attempts:
+            print(f"stopping: reached max attempts {args.max_attempts}")
+            break
         now = time.monotonic()
         remaining = deadline - now
         if remaining <= 0:

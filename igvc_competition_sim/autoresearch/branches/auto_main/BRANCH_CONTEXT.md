@@ -107,22 +107,38 @@ Affected subsystems: costmaps, gps_waypoint, launch_env, perception, planning_co
 - **needs_revalidation**: Camera-line fidelity against real bags remains perception-specific future work (perception files changed)
 - **global**: Pre-official-full-loop kept/discarded results are fast-suite evidence only (official_full_loop was added after the earlier fast-suite findings)
 
-## Required Baseline
-
-Run a fresh baseline on this branch before tuning. Hailmary evidence is prior
-evidence, not binding truth, when this branch changed the affected subsystem.
-
-Minimum planning/control baseline for the current nightly:
-
-```bash
-python3 run_timebox.py --duration 45m \
-  --courses blender_competition_course \
-  --runs 1 --tier 1 --timeout 300 \
-  --branch-scope auto_main \
-  --robot-branch auto_main \
-  --base-branch hailmary_deploy \
-  --description branch-baseline
-```
+## 2026-06-01 Blender Oracle Findings
 
 Use only `blender_competition_course` for the current nightly. The older
 generated courses are not the authoritative validation target for `auto_main`.
+
+Baseline result:
+
+- Run dir: `results/timebox/20260601_040501`
+- Robot: `auto_main@6fd4e2b3a`
+- Sim/scorer: `autonav_sim@380abd69d245`
+- Result: stopped early after nine repeated waypoint-1 aborts.
+- Evidence: each attempt returned `NavigateToPose finished with ABORTED` within
+  about 0.5 s of waypoint 1; progress stayed at `0.49-1.25 m`; course monitor
+  reported no line crossing or obstacle contact.
+
+Candidate result:
+
+- Hypothesis: avoid self-preempting the first waypoint by using only the direct
+  `NavigateToPose` action for the initial handoff instead of also publishing the
+  same pose on `/goal_pose`.
+- Change: first topic-side publish routed through `/goal_update`; the direct
+  `NavigateToPose` action still starts the leg.
+- Run dir: `results/timebox/20260601_041335`
+- Status: `needs_rerun`, not committed.
+- Evidence: the immediate abort disappeared and progress improved to
+  `14.577 m` and `28.558 m`, with no course-monitor line/obstacle failure.
+  Both completed attempts still timed out with `mission_status=124`.
+- New dominant failure: repeated `GradientEscape` followed by
+  `DriveOnHeading` `Collision Ahead` / `backup failed` churn after forward
+  progress. This is now a recovery/blocked-forward target, not the original
+  first-waypoint action abort.
+
+The handoff candidate was reverted after logging so the next agent starts from
+clean `auto_main` unless it intentionally reapplies that patch from the ledger
+evidence.
