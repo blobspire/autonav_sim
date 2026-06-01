@@ -278,25 +278,38 @@ def _cone_model(name: str,
 def _ramp_model(course: Course) -> str:
     out: list[str] = []
     for ramp in course.ramps:
-        half_run = 0.5 * (ramp.end_x_m - ramp.start_x_m)
+        run_length_m = (
+            ramp.run_length_m
+            if ramp.run_length_m is not None
+            else ramp.end_x_m - ramp.start_x_m
+        )
+        half_run = 0.5 * run_length_m
         if half_run <= 1e-6:
             continue
-        mid_x = 0.5 * (ramp.start_x_m + ramp.end_x_m)
+        center_x = (
+            ramp.center_x_m
+            if ramp.center_x_m is not None
+            else 0.5 * (ramp.start_x_m + ramp.end_x_m)
+        )
+        cos_yaw = math.cos(ramp.yaw_rad)
+        sin_yaw = math.sin(ramp.yaw_rad)
         length = math.hypot(half_run, ramp.rise_m)
         pitch = math.atan2(ramp.rise_m, half_run)
-        for suffix, center_x, segment_pitch in (
-                ("up", 0.5 * (ramp.start_x_m + mid_x), -pitch),
-                ("down", 0.5 * (mid_x + ramp.end_x_m), pitch),
+        for suffix, local_x, segment_pitch in (
+                ("up", -0.5 * half_run, -pitch),
+                ("down", 0.5 * half_run, pitch),
         ):
+            segment_x = center_x + cos_yaw * local_x
+            segment_y = ramp.center_y_m + sin_yaw * local_x
             out.append(_box_visual_model(
                 f"{ramp.name}_{suffix}",
                 (
-                    center_x,
-                    ramp.center_y_m,
+                    segment_x,
+                    segment_y,
                     0.5 * ramp.rise_m,
                     0.0,
                     segment_pitch,
-                    0.0,
+                    ramp.yaw_rad,
                 ),
                 (length, ramp.width_m, 0.08),
                 (0.45, 0.45, 0.42, 1.0),
@@ -309,27 +322,41 @@ def _ramp_line_models(course: Course) -> str:
     out: list[str] = []
     tape_width = course.tapes[0].width_m if course.tapes else 0.0762
     for ramp in course.ramps:
-        half_run = 0.5 * (ramp.end_x_m - ramp.start_x_m)
+        run_length_m = (
+            ramp.run_length_m
+            if ramp.run_length_m is not None
+            else ramp.end_x_m - ramp.start_x_m
+        )
+        half_run = 0.5 * run_length_m
         if half_run <= 1e-6:
             continue
-        mid_x = 0.5 * (ramp.start_x_m + ramp.end_x_m)
+        center_x = (
+            ramp.center_x_m
+            if ramp.center_x_m is not None
+            else 0.5 * (ramp.start_x_m + ramp.end_x_m)
+        )
+        cos_yaw = math.cos(ramp.yaw_rad)
+        sin_yaw = math.sin(ramp.yaw_rad)
         length = math.hypot(half_run, ramp.rise_m)
         pitch = math.atan2(ramp.rise_m, half_run)
         z = 0.5 * ramp.rise_m + 0.052
-        for suffix, center_x, segment_pitch in (
-                ("up", 0.5 * (ramp.start_x_m + mid_x), -pitch),
-                ("down", 0.5 * (mid_x + ramp.end_x_m), pitch),
+        for suffix, local_x, segment_pitch in (
+                ("up", -0.5 * half_run, -pitch),
+                ("down", 0.5 * half_run, pitch),
         ):
             for side, y_sign in (("left", 1.0), ("right", -1.0)):
+                local_y = y_sign * ramp.width_m * 0.5
+                line_x = center_x + cos_yaw * local_x - sin_yaw * local_y
+                line_y = ramp.center_y_m + sin_yaw * local_x + cos_yaw * local_y
                 out.append(_sloped_tape_model(
                     f"{ramp.name}_{suffix}_{side}_white_line",
                     (
-                        center_x,
-                        ramp.center_y_m + y_sign * ramp.width_m * 0.5,
+                        line_x,
+                        line_y,
                         z,
                         0.0,
                         segment_pitch,
-                        0.0,
+                        ramp.yaw_rad,
                     ),
                     length,
                     tape_width,

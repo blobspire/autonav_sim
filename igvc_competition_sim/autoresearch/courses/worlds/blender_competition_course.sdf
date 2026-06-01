@@ -11180,11 +11180,11 @@
     </model>
     <model name='Ramp_up'>
       <static>1</static>
-      <pose>-1.5453 3.6169 0.1485 0.000000 -0.154179 0.000000</pose>
+      <pose>-0.4272 2.6406 0.1485 0.000000 -0.148923 1.735700</pose>
       <link name='link'>
-        <collision name='collision'><geometry><box><size>1.9340 4.4334 0.0800</size></box></geometry></collision>
+        <collision name='collision'><geometry><box><size>2.0017 3.2157 0.0800</size></box></geometry></collision>
         <visual name='visual'>
-          <geometry><box><size>1.9340 4.4334 0.0800</size></box></geometry>
+          <geometry><box><size>2.0017 3.2157 0.0800</size></box></geometry>
           <material><ambient>0.45 0.45 0.42 1.0</ambient><diffuse>0.45 0.45 0.42 1.0</diffuse><specular>0.05 0.05 0.05 1</specular></material>
         </visual>
       </link>
@@ -11192,21 +11192,21 @@
 
     <model name='Ramp_down'>
       <static>1</static>
-      <pose>0.3658 3.6169 0.1485 0.000000 0.154179 0.000000</pose>
+      <pose>-0.7522 4.5932 0.1485 0.000000 0.148923 1.735700</pose>
       <link name='link'>
-        <collision name='collision'><geometry><box><size>1.9340 4.4334 0.0800</size></box></geometry></collision>
+        <collision name='collision'><geometry><box><size>2.0017 3.2157 0.0800</size></box></geometry></collision>
         <visual name='visual'>
-          <geometry><box><size>1.9340 4.4334 0.0800</size></box></geometry>
+          <geometry><box><size>2.0017 3.2157 0.0800</size></box></geometry>
           <material><ambient>0.45 0.45 0.42 1.0</ambient><diffuse>0.45 0.45 0.42 1.0</diffuse><specular>0.05 0.05 0.05 1</specular></material>
         </visual>
       </link>
     </model>
     <model name='Ramp_up_left_white_line'>
       <static>1</static>
-      <pose>-1.5453 5.8336 0.2005 0.000000 -0.154179 0.000000</pose>
+      <pose>-2.0133 2.3766 0.2005 0.000000 -0.148923 1.735700</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>1.9340 0.0762 0.012</size></box></geometry>
+          <geometry><box><size>2.0017 0.0762 0.012</size></box></geometry>
           <material><ambient>0.98 0.98 0.98 1</ambient><diffuse>0.98 0.98 0.98 1</diffuse><specular>0.05 0.05 0.05 1</specular><emissive>0.9 0.9 0.9 1</emissive></material>
         </visual>
       </link>
@@ -11214,10 +11214,10 @@
 
     <model name='Ramp_up_right_white_line'>
       <static>1</static>
-      <pose>-1.5453 1.4002 0.2005 0.000000 -0.154179 0.000000</pose>
+      <pose>1.1588 2.9045 0.2005 0.000000 -0.148923 1.735700</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>1.9340 0.0762 0.012</size></box></geometry>
+          <geometry><box><size>2.0017 0.0762 0.012</size></box></geometry>
           <material><ambient>0.98 0.98 0.98 1</ambient><diffuse>0.98 0.98 0.98 1</diffuse><specular>0.05 0.05 0.05 1</specular><emissive>0.9 0.9 0.9 1</emissive></material>
         </visual>
       </link>
@@ -11225,10 +11225,10 @@
 
     <model name='Ramp_down_left_white_line'>
       <static>1</static>
-      <pose>0.3658 5.8336 0.2005 0.000000 0.154179 0.000000</pose>
+      <pose>-2.3382 4.3293 0.2005 0.000000 0.148923 1.735700</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>1.9340 0.0762 0.012</size></box></geometry>
+          <geometry><box><size>2.0017 0.0762 0.012</size></box></geometry>
           <material><ambient>0.98 0.98 0.98 1</ambient><diffuse>0.98 0.98 0.98 1</diffuse><specular>0.05 0.05 0.05 1</specular><emissive>0.9 0.9 0.9 1</emissive></material>
         </visual>
       </link>
@@ -11236,10 +11236,10 @@
 
     <model name='Ramp_down_right_white_line'>
       <static>1</static>
-      <pose>0.3658 1.4002 0.2005 0.000000 0.154179 0.000000</pose>
+      <pose>0.8339 4.8572 0.2005 0.000000 0.148923 1.735700</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>1.9340 0.0762 0.012</size></box></geometry>
+          <geometry><box><size>2.0017 0.0762 0.012</size></box></geometry>
           <material><ambient>0.98 0.98 0.98 1</ambient><diffuse>0.98 0.98 0.98 1</diffuse><specular>0.05 0.05 0.05 1</specular><emissive>0.9 0.9 0.9 1</emissive></material>
         </visual>
       </link>

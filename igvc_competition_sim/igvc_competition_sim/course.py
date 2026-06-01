@@ -61,6 +61,9 @@ class Ramp:
     center_y_m: float
     width_m: float
     rise_m: float
+    center_x_m: float | None = None
+    yaw_rad: float = 0.0
+    run_length_m: float | None = None
 
 
 @dataclass(frozen=True)
@@ -736,6 +739,11 @@ def load_course(path: str | Path | None = None) -> Course:
                 center_y_m=float(raw["center_y_m"]),
                 width_m=float(raw["width_m"]),
                 rise_m=float(raw["rise_m"]),
+                center_x_m=float(raw["center_x_m"])
+                if "center_x_m" in raw else None,
+                yaw_rad=float(raw.get("yaw_rad", 0.0)),
+                run_length_m=float(raw["run_length_m"])
+                if "run_length_m" in raw else None,
             )
             for raw in data.get("ramps", [])
         ),
@@ -799,8 +807,24 @@ def iter_course_points(course: Course) -> Iterable[tuple[float, float]]:
     for obstacle in course.obstacles:
         yield obstacle.center
     for ramp in course.ramps:
-        yield ramp.start_x_m, ramp.center_y_m
-        yield ramp.end_x_m, ramp.center_y_m
+        center_x = (
+            ramp.center_x_m
+            if ramp.center_x_m is not None
+            else 0.5 * (ramp.start_x_m + ramp.end_x_m)
+        )
+        run_length = (
+            ramp.run_length_m
+            if ramp.run_length_m is not None
+            else ramp.end_x_m - ramp.start_x_m
+        )
+        cos_yaw = math.cos(ramp.yaw_rad)
+        sin_yaw = math.sin(ramp.yaw_rad)
+        for local_x in (-0.5 * run_length, 0.5 * run_length):
+            for local_y in (-0.5 * ramp.width_m, 0.5 * ramp.width_m):
+                yield (
+                    center_x + cos_yaw * local_x - sin_yaw * local_y,
+                    ramp.center_y_m + sin_yaw * local_x + cos_yaw * local_y,
+                )
     for waypoint in course.mission_waypoints:
         yield waypoint.x_m, waypoint.y_m
 

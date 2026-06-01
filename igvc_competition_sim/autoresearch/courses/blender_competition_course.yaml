@@ -3625,10 +3625,13 @@ obstacles:
 
 ramps:
   - name: "Ramp"
-    start_x_m: -2.5008
-    end_x_m: 1.3213
+    start_x_m: -2.5693
+    end_x_m: 1.3898
+    center_x_m: -0.5897
     center_y_m: 3.6169
-    width_m: 4.4334
+    yaw_rad: 1.7357
+    run_length_m: 3.9591
+    width_m: 3.2157
     rise_m: 0.297
 
 speed_check:

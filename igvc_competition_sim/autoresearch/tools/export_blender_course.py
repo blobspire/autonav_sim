@@ -312,17 +312,64 @@ def mesh_world_vertices(obj: bpy.types.Object) -> list[Vector]:
 
 
 def ramp_entry(obj: bpy.types.Object, frame: Frame) -> dict[str, float | str]:
-    points = [frame.xy(vertex) + (frame.z(vertex),) for vertex in mesh_world_vertices(obj)]
-    xs = [point[0] for point in points]
-    ys = [point[1] for point in points]
+    points = [
+        frame.xy(vertex) + (frame.z(vertex),)
+        for vertex in mesh_world_vertices(obj)
+    ]
     zs = [point[2] for point in points]
+    min_z = min(zs)
+    max_z = max(zs)
+    rise = max_z - min_z
+    high_threshold = max_z - max(0.01, rise * 0.20)
+    high_xy = [(point[0], point[1]) for point in points if point[2] >= high_threshold]
+    if len(high_xy) >= 2:
+        best_pair = (high_xy[0], high_xy[1])
+        best_distance = -1.0
+        for idx, first in enumerate(high_xy):
+            for second in high_xy[idx + 1:]:
+                distance = math.hypot(second[0] - first[0], second[1] - first[1])
+                if distance > best_distance:
+                    best_distance = distance
+                    best_pair = (first, second)
+        width_dx = best_pair[1][0] - best_pair[0][0]
+        width_dy = best_pair[1][1] - best_pair[0][1]
+    else:
+        width_dx = 0.0
+        width_dy = 1.0
+    width_len = math.hypot(width_dx, width_dy)
+    if width_len <= 1e-6:
+        width_axis = (0.0, 1.0)
+    else:
+        width_axis = (width_dx / width_len, width_dy / width_len)
+    run_axis = (-width_axis[1], width_axis[0])
+
+    projections = []
+    for x_m, y_m, _z_m in points:
+        projections.append((
+            x_m * run_axis[0] + y_m * run_axis[1],
+            x_m * width_axis[0] + y_m * width_axis[1],
+        ))
+    min_run = min(item[0] for item in projections)
+    max_run = max(item[0] for item in projections)
+    min_width = min(item[1] for item in projections)
+    max_width = max(item[1] for item in projections)
+    center_run = 0.5 * (min_run + max_run)
+    center_width = 0.5 * (min_width + max_width)
+    center_x = run_axis[0] * center_run + width_axis[0] * center_width
+    center_y = run_axis[1] * center_run + width_axis[1] * center_width
+    run_length = max_run - min_run
+    width = max_width - min_width
+    yaw = math.atan2(run_axis[1], run_axis[0])
     return {
         "name": obj.name,
-        "start_x_m": min(xs),
-        "end_x_m": max(xs),
-        "center_y_m": 0.5 * (min(ys) + max(ys)),
-        "width_m": max(ys) - min(ys),
-        "rise_m": max(zs) - min(zs),
+        "start_x_m": center_x - 0.5 * run_length,
+        "end_x_m": center_x + 0.5 * run_length,
+        "center_x_m": center_x,
+        "center_y_m": center_y,
+        "yaw_rad": yaw,
+        "run_length_m": run_length,
+        "width_m": width,
+        "rise_m": rise,
     }
 
 
@@ -419,7 +466,10 @@ def write_yaml(path: Path,
             lines.append(f"  - name: {yaml_string(str(ramp['name']))}")
             lines.append(f"    start_x_m: {fmt(float(ramp['start_x_m']))}")
             lines.append(f"    end_x_m: {fmt(float(ramp['end_x_m']))}")
+            lines.append(f"    center_x_m: {fmt(float(ramp['center_x_m']))}")
             lines.append(f"    center_y_m: {fmt(float(ramp['center_y_m']))}")
+            lines.append(f"    yaw_rad: {fmt(float(ramp['yaw_rad']))}")
+            lines.append(f"    run_length_m: {fmt(float(ramp['run_length_m']))}")
             lines.append(f"    width_m: {fmt(float(ramp['width_m']))}")
             lines.append(f"    rise_m: {fmt(float(ramp['rise_m']))}")
     else:
