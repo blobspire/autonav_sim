@@ -20,6 +20,7 @@ import argparse
 import math
 import sys
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import numpy as np
 from scipy.ndimage import binary_dilation, label
@@ -37,6 +38,9 @@ from igvc_competition_sim.course import (  # noqa: E402
 RES = 0.05
 FT_TO_M = 0.3048
 IN_TO_M = 0.0254
+ROBOT_TOTAL_MASS_KG = 117.0 * 0.45359237
+ROBOT_CG_HEIGHT_M = 10.5 * IN_TO_M
+ROBOT_CG_FORWARD_OF_DRIVE_AXLE_M = 5.58 * IN_TO_M
 MIN_LEGAL_PASSAGE_M = 1.524  # 5 ft IGVC minimum passage.
 OFFICIAL_RULES_PROFILE = "igvc_2026_autonav_full_course"
 OFFICIAL_AREA_LONG_M = 120.0 * FT_TO_M
@@ -132,6 +136,23 @@ def _exact_bounds(course) -> tuple[float, float, float, float]:
     return min(xs), min(ys), max(xs), max(ys)
 
 
+def ramp_geometry_problems(course_path: Path) -> list[str]:
+    course = load_course(course_path)
+    problems: list[str] = []
+    for ramp in course.ramps:
+        half_run = 0.5 * (ramp.end_x_m - ramp.start_x_m)
+        if half_run <= 1e-6:
+            problems.append(f"ramp {ramp.name} has non-positive half-run")
+            continue
+        grade = ramp.rise_m / half_run
+        if grade > OFFICIAL_MAX_RAMP_GRADE + 1e-6:
+            problems.append(
+                f"ramp {ramp.name} up/down grade {grade * 100:.1f}% "
+                "exceeds 15%; start_x_m/end_x_m define the full up-and-down "
+                "ramp footprint")
+    return problems
+
+
 def legal_passage_problems(course_path: Path) -> list[str]:
     data = load_yaml(course_path)
     centerline = _centerline(data)
@@ -220,15 +241,15 @@ def official_rules_profile_problems(course_path: Path) -> list[str]:
         problems.append("official course must include a ramp")
 
     for ramp in course.ramps:
-        run = ramp.end_x_m - ramp.start_x_m
-        if run <= 1e-6:
-            problems.append(f"ramp {ramp.name} has non-positive run")
+        half_run = 0.5 * (ramp.end_x_m - ramp.start_x_m)
+        if half_run <= 1e-6:
+            problems.append(f"ramp {ramp.name} has non-positive half-run")
             continue
         if ramp.width_m < OFFICIAL_TRACK_MIN_M - 1e-6:
             problems.append(
                 f"ramp {ramp.name} width {ramp.width_m / FT_TO_M:.1f}ft "
                 "below the 10ft lane width; real ramp lanes have white lines")
-        grade = ramp.rise_m / run
+        grade = ramp.rise_m / half_run
         if grade > OFFICIAL_MAX_RAMP_GRADE + 1e-6:
             problems.append(
                 f"ramp {ramp.name} grade {grade * 100:.1f}% exceeds 15%")
@@ -243,6 +264,188 @@ def official_rules_profile_problems(course_path: Path) -> list[str]:
     if speed.maximum_speed_mps > OFFICIAL_MAX_SPEED_MPS + 1e-6:
         problems.append("maximum speed gate exceeds 5 mph")
 
+    return problems
+
+
+def generated_world_problems(course_path: Path) -> list[str]:
+    if course_path.parent.name != "courses":
+        return []
+    world_path = course_path.parent / "worlds" / f"{course_path.stem}.sdf"
+    if not world_path.is_file():
+        return [f"generated world missing: {world_path}"]
+    try:
+        root = ET.parse(world_path).getroot()
+    except ET.ParseError as exc:
+        return [f"generated world XML parse failed: {exc}"]
+
+    course = load_course(course_path)
+    model_names = {
+        model.attrib.get("name", "")
+        for model in root.findall(".//model")
+    }
+
+    shogi = None
+    for model in root.findall(".//model"):
+        if model.attrib.get("name") == "shogi":
+            shogi = model
+            break
+    if shogi is None:
+        return ["generated world missing shogi model"]
+
+    problems: list[str] = []
+
+    def _pose_xyz(element: ET.Element | None) -> tuple[float, float, float]:
+        if element is None or element.text is None:
+            return 0.0, 0.0, 0.0
+        parts = [float(part) for part in element.text.split()[:3]]
+        while len(parts) < 3:
+            parts.append(0.0)
+        return parts[0], parts[1], parts[2]
+
+    def _link_cg(link_name: str) -> tuple[float, float, float, float] | None:
+        link = shogi.find(f"./link[@name='{link_name}']")
+        if link is None:
+            return None
+        mass_node = link.find("./inertial/mass")
+        if mass_node is None or mass_node.text is None:
+            return None
+        mass = float(mass_node.text)
+        lx, ly, lz = _pose_xyz(link.find("./pose"))
+        ix, iy, iz = _pose_xyz(link.find("./inertial/pose"))
+        return mass, lx + ix, ly + iy, lz + iz
+
+    base_link = shogi.find("./link[@name='base_link']")
+    caster_link = shogi.find("./link[@name='Caster_link']")
+    if base_link is None:
+        problems.append("generated world missing base_link")
+    else:
+        base_mesh_uri = base_link.find(
+            "./visual[@name='base_link_mesh']/geometry/mesh/uri")
+        if base_mesh_uri is None or (
+                base_mesh_uri.text or "").strip() != (
+                    "model://bringup/description/meshes/base_link.STL"):
+            problems.append(
+                "generated world base visual is not derived from "
+                "bringup/description/meshes/base_link.STL")
+    if caster_link is None:
+        problems.append(
+            "generated world missing Caster_link Chaplygin-sleigh support")
+    else:
+        caster_mesh_uri = caster_link.find(
+            "./visual[@name='caster_mesh']/geometry/mesh/uri")
+        if caster_mesh_uri is not None:
+            problems.append(
+                "generated world still uses fixed Caster_link.STL; the "
+                "canonical Gazebo model should use a passive swivel + rolling "
+                "caster wheel because the single caster mesh cannot turn")
+    caster_swivel = shogi.find("./joint[@name='Caster_Swivel']")
+    if caster_swivel is None or caster_swivel.attrib.get("type") != "revolute":
+        problems.append("generated world missing passive Caster_Swivel joint")
+    else:
+        child = caster_swivel.find("./child")
+        if child is None or (child.text or "").strip() != "Caster_link":
+            problems.append("Caster_Swivel should drive Caster_link directly")
+        axis = caster_swivel.find("./axis/xyz")
+        xyz = " ".join((axis.text or "").split()) if axis is not None else ""
+        if xyz != "0 0 1":
+            problems.append(
+                f"Caster_Swivel axis is {xyz or 'missing'}, expected 0 0 1")
+    caster_wheel = shogi.find("./link[@name='caster_wheel_link']")
+    if caster_wheel is None:
+        problems.append("generated world missing caster_wheel_link")
+    else:
+        caster_wheel_collision = caster_wheel.find(
+            "./collision[@name='caster_wheel_collision']")
+        if caster_wheel_collision is None:
+            problems.append(
+                "generated world missing rolling caster wheel collision")
+    caster_roll = shogi.find("./joint[@name='Caster_Wheel_Roll']")
+    if caster_roll is None or caster_roll.attrib.get("type") != "revolute":
+        problems.append("generated world missing Caster_Wheel_Roll joint")
+    else:
+        child = caster_roll.find("./child")
+        if child is None or (child.text or "").strip() != "caster_wheel_link":
+            problems.append(
+                "Caster_Wheel_Roll should drive caster_wheel_link directly")
+        axis = caster_roll.find("./axis/xyz")
+        xyz = " ".join((axis.text or "").split()) if axis is not None else ""
+        if xyz != "0 1 0":
+            problems.append(
+                f"Caster_Wheel_Roll axis is {xyz or 'missing'}, expected "
+                "0 1 0 for the lateral caster axle")
+    for link_name, visual_name, mesh_name in (
+            ("left_wheel_link", "left_wheel_mesh", "Left_Wheel_Link.STL"),
+            ("right_wheel_link", "right_wheel_mesh", "Right_Wheel_Link.STL"),
+    ):
+        wheel_link = shogi.find(f"./link[@name='{link_name}']")
+        if wheel_link is None:
+            problems.append(f"generated world missing {link_name}")
+            continue
+        wheel_mesh_uri = wheel_link.find(
+            f"./visual[@name='{visual_name}']/geometry/mesh/uri")
+        if wheel_mesh_uri is None or (
+                wheel_mesh_uri.text or "").strip() != (
+                    f"model://bringup/description/meshes/{mesh_name}"):
+            problems.append(
+                f"generated world {link_name} visual is not derived from "
+                f"bringup/description/meshes/{mesh_name}")
+
+    for ramp in course.ramps:
+        expected = (
+            f"{ramp.name}_up",
+            f"{ramp.name}_down",
+            f"{ramp.name}_up_left_white_line",
+            f"{ramp.name}_up_right_white_line",
+            f"{ramp.name}_down_left_white_line",
+            f"{ramp.name}_down_right_white_line",
+        )
+        for model_name in expected:
+            if model_name not in model_names:
+                problems.append(f"generated world missing {model_name}")
+
+    for joint_name in ("Left_Wheel", "Right_Wheel"):
+        joint = shogi.find(f"./joint[@name='{joint_name}']")
+        if joint is None:
+            problems.append(f"generated world missing {joint_name} joint")
+            continue
+        axis = joint.find("./axis/xyz")
+        xyz = " ".join((axis.text or "").split()) if axis is not None else ""
+        if xyz != "0 0 -1":
+            problems.append(
+                f"{joint_name} axis is {xyz or 'missing'}, expected 0 0 -1 "
+                "because wheel links are rolled 90deg; 0 1 0 makes the "
+                "rendered wheels spin about the vertical axis")
+
+    cg_terms = [
+        _link_cg("base_link"),
+        _link_cg("left_wheel_link"),
+        _link_cg("right_wheel_link"),
+        _link_cg("Caster_link"),
+        _link_cg("caster_wheel_link"),
+    ]
+    if any(term is None for term in cg_terms):
+        problems.append("generated world cannot verify measured robot CG")
+    else:
+        mass = sum(term[0] for term in cg_terms if term is not None)
+        cg_x = sum(term[0] * term[1] for term in cg_terms
+                   if term is not None) / mass
+        cg_y = sum(term[0] * term[2] for term in cg_terms
+                   if term is not None) / mass
+        cg_z = sum(term[0] * term[3] for term in cg_terms
+                   if term is not None) / mass
+        expected_x = ROBOT_CG_FORWARD_OF_DRIVE_AXLE_M
+        expected_y = 0.0
+        expected_z = ROBOT_CG_HEIGHT_M - course.robot.wheel_radius_m
+        if abs(mass - ROBOT_TOTAL_MASS_KG) > 0.05:
+            problems.append(
+                f"generated world mass {mass:.2f}kg does not match "
+                "measured 117 lb robot")
+        if math.hypot(cg_x - expected_x, cg_y - expected_y) > 0.01 or (
+                abs(cg_z - expected_z) > 0.01):
+            problems.append(
+                f"generated world CG ({cg_x:.3f},{cg_y:.3f},{cg_z:.3f}) "
+                f"relative to drive axle does not match measured "
+                f"({expected_x:.3f},{expected_y:.3f},{expected_z:.3f})")
     return problems
 
 
@@ -306,7 +509,9 @@ def validate(course_path: Path) -> tuple[bool, str]:
         elif lab != start_lab:
             problems.append(f"{name} ({x:.2f},{y:.2f}) not connected to start")
     problems.extend(legal_passage_problems(course_path))
+    problems.extend(ramp_geometry_problems(course_path))
     problems.extend(official_rules_profile_problems(course_path))
+    problems.extend(generated_world_problems(course_path))
     free_frac = float(free.mean())
     detail = (f"grid={nx}x{ny} r_in={r_in:.2f}m free={free_frac*100:.0f}% "
               f"wp={len(c.mission_waypoints)}")

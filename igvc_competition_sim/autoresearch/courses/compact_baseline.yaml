@@ -73,8 +73,8 @@ obstacles:
 
 ramps:
   - name: legal_approach_ramp
-    start_x_m: 23.0
-    end_x_m: 27.0
+    start_x_m: 22.0
+    end_x_m: 28.0
     center_y_m: -0.55
     width_m: 1.80
     rise_m: 0.40

@@ -511,6 +511,7 @@ def generate_launch_description() -> LaunchDescription:
             "IGN_GAZEBO_RESOURCE_PATH",
             os.pathsep.join([
                 _package_share("igvc_competition_sim"),
+                str(Path(_package_share("bringup")).parent),
                 os.environ.get("IGN_GAZEBO_RESOURCE_PATH", ""),
             ]),
         ),

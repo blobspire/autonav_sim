@@ -65,10 +65,26 @@ legal 5 ft passages, first-44-ft speed scoring, and four GPS mission waypoints.
 Keep this as an explicit final gate; it is intentionally longer than the
 default nightly course list.
 
-The ramp is modeled at lane width with visible white lane lines on the sloped
-surface. This matches the real qualification-course detail that robots can use
-camera line detection to stay centered on the ramp; do not replace it with an
-unmarked narrow ramp.
+The ramp is modeled as a physically drivable up-and-down obstacle inside the
+configured `start_x_m`/`end_x_m` footprint, with visible white lane lines on
+both sloped surfaces. This matches the real qualification-course detail that
+robots can use camera line detection to stay centered on the ramp; do not
+replace it with an unmarked narrow ramp or a one-sided floating incline.
+
+The Gazebo robot model is generated from the real Shogi description assets in
+the active AutoNav `bringup` package: `base_link.STL`,
+`Left_Wheel_Link.STL`, `Right_Wheel_Link.STL`, and the real camera/lidar/GPS
+mesh poses. Physics uses the same two drive wheels plus a passive front
+swivel/rolling caster, not a four-wheel cart and not an unsupported rectangle.
+The front caster assembly is procedural because the single `Caster_link.STL`
+mesh bakes the fork and wheel into one fixed visual, so it cannot show or
+simulate the caster swivel correctly. The old split base meshes from the
+AutoNav `sim` branch were for MuJoCo mesh-size limits; do not import those into
+Gazebo unless Gazebo itself develops a mesh-load problem. The simulated mass is
+set from the measured robot weight of 117 lb (53.1 kg), and the inertial center
+of gravity is set from measured robot data: 10.5 in above ground and 5.58 in
+forward of the driven axle. Keep the visual/physics model derived from AutoNav
+robot description files so the sim remains canonical across branches.
 
 Course-integrity rule: do not move obstacles, widen lanes, or relax waypoint
 radii merely because the current robot stack fails this course. If
@@ -112,6 +128,10 @@ cd ~/autonav_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+ROS setup scripts are not `set -u` clean. Do not enable shell nounset while
+sourcing `/opt/ros/humble/setup.bash` or `install/setup.bash`; either avoid
+`set -u` in ROS wrappers or bracket setup calls with `set +u` before sourcing.
 
 Run the full test:
 

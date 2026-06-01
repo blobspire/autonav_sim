@@ -30,6 +30,10 @@ python3 master/orchestrator.py commands planning_control
 python3 master/orchestrator.py commands jetson_perception
 ```
 
+Shell safety note: ROS setup scripts are not `set -u` clean. Do not source
+`/opt/ros/humble/setup.bash` or `install/setup.bash` while nounset is enabled;
+use `set +u` around those source calls or omit `set -u` in launch wrappers.
+
 Install the Codex skill from a fresh clone so future agents automatically load
 the dual-sim workflow:
 

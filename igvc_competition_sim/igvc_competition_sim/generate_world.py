@@ -7,6 +7,19 @@ import re
 
 from .course import Course, DEFAULT_COURSE_CONFIG, course_bounds, load_course
 
+BRINGUP_MESH_URI_PREFIX = "model://bringup/description/meshes"
+IN_TO_M = 0.0254
+ROBOT_TOTAL_MASS_KG = 117.0 * 0.45359237
+ROBOT_CG_HEIGHT_M = 10.5 * IN_TO_M
+ROBOT_CG_FORWARD_OF_DRIVE_AXLE_M = 5.58 * IN_TO_M
+CASTER_SWIVEL_MASS_KG = 0.45
+CASTER_WHEEL_MASS_KG = 0.35
+DRIVE_WHEEL_MASS_KG = 2.0
+SHOGI_BODY_MASS_KG = ROBOT_TOTAL_MASS_KG - (
+    2.0 * DRIVE_WHEEL_MASS_KG + CASTER_SWIVEL_MASS_KG +
+    CASTER_WHEEL_MASS_KG
+)
+
 
 def _clean_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_") or "model"
@@ -19,6 +32,106 @@ def _material(name: str, rgba: tuple[float, float, float, float]) -> str:
         f"<diffuse>{r} {g} {b} {a}</diffuse>"
         f"<specular>0.05 0.05 0.05 1</specular></material>"
     )
+
+
+def _mesh_uri(mesh_name: str) -> str:
+    return f"{BRINGUP_MESH_URI_PREFIX}/{mesh_name}"
+
+
+def _mesh_visual(name: str,
+                 mesh_name: str,
+                 pose: tuple[float, float, float, float, float, float],
+                 rgba: tuple[float, float, float, float]) -> str:
+    return f"""
+        <visual name='{_clean_name(name)}'>
+          <pose>{pose[0]:.6f} {pose[1]:.6f} {pose[2]:.6f} {pose[3]:.6f} {pose[4]:.6f} {pose[5]:.6f}</pose>
+          <geometry><mesh><uri>{_mesh_uri(mesh_name)}</uri></mesh></geometry>
+          {_material('mat', rgba)}
+        </visual>"""
+
+
+def _box_collision(name: str,
+                   pose: tuple[float, float, float, float, float, float],
+                   size: tuple[float, float, float],
+                   mu: float = 0.9,
+                   mu2: float | None = None) -> str:
+    if mu2 is None:
+        mu2 = mu
+    return f"""
+        <collision name='{_clean_name(name)}'>
+          <pose>{pose[0]:.6f} {pose[1]:.6f} {pose[2]:.6f} {pose[3]:.6f} {pose[4]:.6f} {pose[5]:.6f}</pose>
+          <geometry><box><size>{size[0]:.4f} {size[1]:.4f} {size[2]:.4f}</size></box></geometry>
+          <surface><friction><ode><mu>{mu:.4f}</mu><mu2>{mu2:.4f}</mu2></ode></friction></surface>
+        </collision>"""
+
+
+def _box_visual(name: str,
+                pose: tuple[float, float, float, float, float, float],
+                size: tuple[float, float, float],
+                rgba: tuple[float, float, float, float]) -> str:
+    return f"""
+        <visual name='{_clean_name(name)}'>
+          <pose>{pose[0]:.6f} {pose[1]:.6f} {pose[2]:.6f} {pose[3]:.6f} {pose[4]:.6f} {pose[5]:.6f}</pose>
+          <geometry><box><size>{size[0]:.4f} {size[1]:.4f} {size[2]:.4f}</size></box></geometry>
+          {_material('mat', rgba)}
+        </visual>"""
+
+
+def _cylinder_collision(name: str,
+                        radius: float,
+                        length: float,
+                        pose: tuple[float, float, float, float, float, float]
+                        | None = None,
+                        mu: float = 1.2,
+                        mu2: float | None = None) -> str:
+    if mu2 is None:
+        mu2 = mu
+    pose_xml = ""
+    if pose is not None:
+        pose_xml = (
+            f"<pose>{pose[0]:.6f} {pose[1]:.6f} {pose[2]:.6f} "
+            f"{pose[3]:.6f} {pose[4]:.6f} {pose[5]:.6f}</pose>")
+    return f"""
+        <collision name='{_clean_name(name)}'>
+          {pose_xml}
+          <geometry><cylinder><radius>{radius:.5f}</radius><length>{length:.4f}</length></cylinder></geometry>
+          <surface><friction><ode><mu>{mu:.4f}</mu><mu2>{mu2:.4f}</mu2></ode></friction></surface>
+        </collision>"""
+
+
+def _cylinder_visual(name: str,
+                     radius: float,
+                     length: float,
+                     pose: tuple[float, float, float, float, float, float],
+                     rgba: tuple[float, float, float, float]) -> str:
+    return f"""
+        <visual name='{_clean_name(name)}'>
+          <pose>{pose[0]:.6f} {pose[1]:.6f} {pose[2]:.6f} {pose[3]:.6f} {pose[4]:.6f} {pose[5]:.6f}</pose>
+          <geometry><cylinder><radius>{radius:.5f}</radius><length>{length:.4f}</length></cylinder></geometry>
+          {_material('mat', rgba)}
+        </visual>"""
+
+
+def _inertial(mass: float,
+              ixx: float,
+              iyy: float,
+              izz: float,
+              pose: tuple[float, float, float, float, float, float]
+              | None = None) -> str:
+    pose_xml = ""
+    if pose is not None:
+        pose_xml = (
+            f"<pose>{pose[0]:.6f} {pose[1]:.6f} {pose[2]:.6f} "
+            f"{pose[3]:.6f} {pose[4]:.6f} {pose[5]:.6f}</pose>")
+    return f"""
+        <inertial>
+          {pose_xml}
+          <mass>{mass:.4f}</mass>
+          <inertia>
+            <ixx>{ixx:.5f}</ixx><iyy>{iyy:.5f}</iyy><izz>{izz:.5f}</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>"""
 
 
 def _box_visual_model(name: str,
@@ -165,23 +278,30 @@ def _cone_model(name: str,
 def _ramp_model(course: Course) -> str:
     out: list[str] = []
     for ramp in course.ramps:
-        run = ramp.end_x_m - ramp.start_x_m
-        length = math.hypot(run, ramp.rise_m)
-        pitch = -math.atan2(ramp.rise_m, run)
-        out.append(_box_visual_model(
-            ramp.name,
-            (
-                0.5 * (ramp.start_x_m + ramp.end_x_m),
-                ramp.center_y_m,
-                0.5 * ramp.rise_m,
-                0.0,
-                pitch,
-                0.0,
-            ),
-            (length, ramp.width_m, 0.08),
-            (0.45, 0.45, 0.42, 1.0),
-            collide=True,
-        ))
+        half_run = 0.5 * (ramp.end_x_m - ramp.start_x_m)
+        if half_run <= 1e-6:
+            continue
+        mid_x = 0.5 * (ramp.start_x_m + ramp.end_x_m)
+        length = math.hypot(half_run, ramp.rise_m)
+        pitch = math.atan2(ramp.rise_m, half_run)
+        for suffix, center_x, segment_pitch in (
+                ("up", 0.5 * (ramp.start_x_m + mid_x), -pitch),
+                ("down", 0.5 * (mid_x + ramp.end_x_m), pitch),
+        ):
+            out.append(_box_visual_model(
+                f"{ramp.name}_{suffix}",
+                (
+                    center_x,
+                    ramp.center_y_m,
+                    0.5 * ramp.rise_m,
+                    0.0,
+                    segment_pitch,
+                    0.0,
+                ),
+                (length, ramp.width_m, 0.08),
+                (0.45, 0.45, 0.42, 1.0),
+                collide=True,
+            ))
     return "\n".join(out)
 
 
@@ -189,26 +309,31 @@ def _ramp_line_models(course: Course) -> str:
     out: list[str] = []
     tape_width = course.tapes[0].width_m if course.tapes else 0.0762
     for ramp in course.ramps:
-        run = ramp.end_x_m - ramp.start_x_m
-        length = math.hypot(run, ramp.rise_m)
-        if run <= 1e-6:
+        half_run = 0.5 * (ramp.end_x_m - ramp.start_x_m)
+        if half_run <= 1e-6:
             continue
-        pitch = -math.atan2(ramp.rise_m, run)
+        mid_x = 0.5 * (ramp.start_x_m + ramp.end_x_m)
+        length = math.hypot(half_run, ramp.rise_m)
+        pitch = math.atan2(ramp.rise_m, half_run)
         z = 0.5 * ramp.rise_m + 0.052
-        for side, y_sign in (("left", 1.0), ("right", -1.0)):
-            out.append(_sloped_tape_model(
-                f"{ramp.name}_{side}_white_line",
-                (
-                    0.5 * (ramp.start_x_m + ramp.end_x_m),
-                    ramp.center_y_m + y_sign * ramp.width_m * 0.5,
-                    z,
-                    0.0,
-                    pitch,
-                    0.0,
-                ),
-                length,
-                tape_width,
-            ))
+        for suffix, center_x, segment_pitch in (
+                ("up", 0.5 * (ramp.start_x_m + mid_x), -pitch),
+                ("down", 0.5 * (mid_x + ramp.end_x_m), pitch),
+        ):
+            for side, y_sign in (("left", 1.0), ("right", -1.0)):
+                out.append(_sloped_tape_model(
+                    f"{ramp.name}_{suffix}_{side}_white_line",
+                    (
+                        center_x,
+                        ramp.center_y_m + y_sign * ramp.width_m * 0.5,
+                        z,
+                        0.0,
+                        segment_pitch,
+                        0.0,
+                    ),
+                    length,
+                    tape_width,
+                ))
     return "\n".join(out)
 
 
@@ -216,27 +341,68 @@ def _robot_model(course: Course) -> str:
     robot = course.robot
     track = robot.wheel_track_m
     radius = robot.wheel_radius_m
+    wheel_width = 0.1000
+    caster_pivot_x = 0.577000
+    caster_pivot_y = -0.000795
+    caster_pivot_z = -0.040880
+    caster_trail = 0.0450
+    caster_wheel_radius = 0.0750
+    caster_wheel_width = 0.0640
+    caster_wheel_x = caster_pivot_x - caster_trail
+    caster_wheel_y = caster_pivot_y
+    caster_wheel_z = caster_wheel_radius - radius
+    target_cg_x = ROBOT_CG_FORWARD_OF_DRIVE_AXLE_M
+    target_cg_y = 0.0
+    target_cg_z = ROBOT_CG_HEIGHT_M - radius
+    child_cg_moment_x = (
+        CASTER_SWIVEL_MASS_KG * caster_pivot_x +
+        CASTER_WHEEL_MASS_KG * caster_wheel_x)
+    child_cg_moment_y = (
+        CASTER_SWIVEL_MASS_KG * caster_pivot_y +
+        CASTER_WHEEL_MASS_KG * caster_wheel_y)
+    child_cg_moment_z = (
+        CASTER_SWIVEL_MASS_KG * caster_pivot_z +
+        CASTER_WHEEL_MASS_KG * caster_wheel_z)
+    body_cg_x = (
+        ROBOT_TOTAL_MASS_KG * target_cg_x - child_cg_moment_x
+    ) / SHOGI_BODY_MASS_KG
+    body_cg_y = (
+        ROBOT_TOTAL_MASS_KG * target_cg_y - child_cg_moment_y
+    ) / SHOGI_BODY_MASS_KG
+    body_cg_z = (
+        ROBOT_TOTAL_MASS_KG * target_cg_z - child_cg_moment_z
+    ) / SHOGI_BODY_MASS_KG
     z0 = radius
     return f"""
     <model name='shogi'>
       <pose>{course.start.x:.4f} {course.start.y:.4f} {z0:.4f} 0 0 {course.start.yaw:.6f}</pose>
       <link name='base_link'>
-        <inertial>
-          <mass>90.0</mass>
-          <inertia>
-            <ixx>4.0</ixx><iyy>8.0</iyy><izz>9.0</izz>
-            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
-          </inertia>
-        </inertial>
-        <collision name='body_collision'>
-          <pose>{robot.base_link_to_nav_center_m:.4f} 0 0.1800 0 0 0</pose>
-          <geometry><box><size>1.0900 0.8200 0.2600</size></box></geometry>
-        </collision>
-        <visual name='body_visual'>
-          <pose>{robot.base_link_to_nav_center_m:.4f} 0 0.1800 0 0 0</pose>
-          <geometry><box><size>1.0900 0.8200 0.2600</size></box></geometry>
-          {_material('body', (0.22, 0.28, 0.36, 1.0))}
-        </visual>
+        {_inertial(SHOGI_BODY_MASS_KG, 2.20, 4.30, 4.80,
+                   (body_cg_x, body_cg_y, body_cg_z, 0.0, 0.0, 0.0))}
+        {_box_collision('body_collision',
+                        (robot.base_link_to_nav_center_m, 0.0, 0.1800,
+                         0.0, 0.0, 0.0),
+                        (1.0900, 0.8200, 0.2600))}
+        {_mesh_visual('base_link_mesh',
+                      'base_link.STL',
+                      (-1.712700, -0.778935, -0.344190,
+                       0.0, 0.0, 1.570796),
+                      (0.79, 0.82, 0.93, 1.0))}
+        {_mesh_visual('lidar_mesh',
+                      'Lidar_Link.STL',
+                      (0.659800, 0.000105, 0.205680,
+                       -3.141593, -0.000004, 0.0),
+                      (1.0, 1.0, 1.0, 1.0))}
+        {_mesh_visual('camera_mesh',
+                      'Camera_Link.STL',
+                      (0.657600, 0.009075, 0.307230,
+                       0.0, 0.349070, 0.0),
+                      (0.79, 0.82, 0.93, 1.0))}
+        {_mesh_visual('gps_mesh',
+                      'GPS_Link.STL',
+                      (-0.212200, -0.000105, 0.661610,
+                       0.0, 0.000004, 0.0),
+                      (1.0, 1.0, 1.0, 1.0))}
         <sensor name='zed2i_rgbd' type='rgbd_camera'>
           <pose>0.657600 0.009075 0.307230 0 0.349070 0</pose>
           <always_on>1</always_on>
@@ -257,27 +423,80 @@ def _robot_model(course: Course) -> str:
           </camera>
         </sensor>
       </link>
+      <link name='Caster_link'>
+        <pose>{caster_pivot_x:.6f} {caster_pivot_y:.6f} {caster_pivot_z:.6f} 0 0 0</pose>
+        {_inertial(CASTER_SWIVEL_MASS_KG, 0.0009, 0.0009, 0.0005)}
+        {_cylinder_visual('caster_mount',
+                          0.0280,
+                          0.0550,
+                          (0.0, 0.0, 0.0250, 0.0, 0.0, 0.0),
+                          (0.55, 0.58, 0.66, 1.0))}
+        {_cylinder_visual('caster_swivel_pin',
+                          0.0180,
+                          0.0500,
+                          (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                          (0.32, 0.34, 0.40, 1.0))}
+        {_box_visual('caster_fork_left',
+                     (-caster_trail, 0.0420, -0.0030, 0.0, 0.0, 0.0),
+                     (0.0360, 0.0160, 0.1500),
+                     (0.42, 0.45, 0.52, 1.0))}
+        {_box_visual('caster_fork_right',
+                     (-caster_trail, -0.0420, -0.0030, 0.0, 0.0, 0.0),
+                     (0.0360, 0.0160, 0.1500),
+                     (0.42, 0.45, 0.52, 1.0))}
+      </link>
+      <joint name='Caster_Swivel' type='revolute'>
+        <parent>base_link</parent>
+        <child>Caster_link</child>
+        <axis><xyz>0 0 1</xyz><dynamics><damping>0.004</damping><friction>0.0005</friction></dynamics><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <link name='caster_wheel_link'>
+        <pose>{caster_wheel_x:.6f} {caster_wheel_y:.6f} {caster_wheel_z:.6f} 0 0 0</pose>
+        {_inertial(CASTER_WHEEL_MASS_KG, 0.0007, 0.0007, 0.0004)}
+        {_cylinder_collision('caster_wheel_collision',
+                             caster_wheel_radius,
+                             caster_wheel_width,
+                             (0.0, 0.0, 0.0, 1.570796, 0.0, 0.0),
+                             mu=0.75,
+                             mu2=0.02)}
+        {_cylinder_visual('caster_wheel_visual',
+                          caster_wheel_radius,
+                          caster_wheel_width,
+                          (0.0, 0.0, 0.0, 1.570796, 0.0, 0.0),
+                          (0.04, 0.04, 0.04, 1.0))}
+      </link>
+      <joint name='Caster_Wheel_Roll' type='revolute'>
+        <parent>Caster_link</parent>
+        <child>caster_wheel_link</child>
+        <axis><xyz>0 1 0</xyz><dynamics><damping>0.003</damping><friction>0.0001</friction></dynamics><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
       <link name='left_wheel_link'>
         <pose>0 {track * 0.5:.5f} 0 1.570796 0 0</pose>
-        <inertial><mass>3.0</mass><inertia><ixx>0.05</ixx><iyy>0.05</iyy><izz>0.05</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
-        <collision name='collision'><geometry><cylinder><radius>{radius:.5f}</radius><length>0.1000</length></cylinder></geometry></collision>
-        <visual name='visual'><geometry><cylinder><radius>{radius:.5f}</radius><length>0.1000</length></cylinder></geometry>{_material('wheel', (0.03, 0.03, 0.03, 1.0))}</visual>
+        {_inertial(DRIVE_WHEEL_MASS_KG, 0.025, 0.025, 0.025)}
+        {_cylinder_collision('left_drive_wheel_collision', radius, wheel_width)}
+        {_mesh_visual('left_wheel_mesh',
+                      'Left_Wheel_Link.STL',
+                      (0.0, 0.0, -0.767804, 0.0, -1.570796, 0.0),
+                      (1.0, 1.0, 1.0, 1.0))}
       </link>
       <link name='right_wheel_link'>
         <pose>0 {-track * 0.5:.5f} 0 1.570796 0 0</pose>
-        <inertial><mass>3.0</mass><inertia><ixx>0.05</ixx><iyy>0.05</iyy><izz>0.05</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
-        <collision name='collision'><geometry><cylinder><radius>{radius:.5f}</radius><length>0.1000</length></cylinder></geometry></collision>
-        <visual name='visual'><geometry><cylinder><radius>{radius:.5f}</radius><length>0.1000</length></cylinder></geometry>{_material('wheel', (0.03, 0.03, 0.03, 1.0))}</visual>
+        {_inertial(DRIVE_WHEEL_MASS_KG, 0.025, 0.025, 0.025)}
+        {_cylinder_collision('right_drive_wheel_collision', radius, wheel_width)}
+        {_mesh_visual('right_wheel_mesh',
+                      'Right_Wheel_Link.STL',
+                      (0.0, 0.0, 0.044545, 0.0, -1.570796, 0.0),
+                      (1.0, 1.0, 1.0, 1.0))}
       </link>
       <joint name='Left_Wheel' type='revolute'>
         <parent>base_link</parent>
         <child>left_wheel_link</child>
-        <axis><xyz>0 1 0</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+        <axis><xyz>0 0 -1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
       </joint>
       <joint name='Right_Wheel' type='revolute'>
         <parent>base_link</parent>
         <child>right_wheel_link</child>
-        <axis><xyz>0 1 0</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+        <axis><xyz>0 0 -1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
       </joint>
       <plugin filename='ignition-gazebo-diff-drive-system' name='ignition::gazebo::systems::DiffDrive'>
         <left_joint>Left_Wheel</left_joint>
@@ -394,7 +613,8 @@ def main() -> None:
     course = load_course(args.course_config)
     output = Path(args.output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(generate_world(course), encoding="utf-8")
+    text = "\n".join(line.rstrip() for line in generate_world(course).splitlines())
+    output.write_text(text + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
