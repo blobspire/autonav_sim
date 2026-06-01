@@ -481,6 +481,8 @@ def write_yaml(path: Path,
     lines.append("  minimum_average_mps: 0.44704")
     lines.append("  maximum_speed_mps: 2.2352")
     lines.append("  blocking_stop_s: 60.0")
+    lines.append("  blocking_speed_mps: 0.02")
+    lines.append("  blocking_progress_radius_m: 0.25")
     lines.append("")
     lines.append("mission_waypoints:")
     if waypoints:

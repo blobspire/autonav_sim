@@ -111,6 +111,8 @@ class SpeedCheck:
     minimum_average_mps: float
     maximum_speed_mps: float
     blocking_stop_s: float
+    blocking_speed_mps: float = 0.02
+    blocking_progress_radius_m: float = 0.25
 
 
 @dataclass(frozen=True)
@@ -772,6 +774,9 @@ def load_course(path: str | Path | None = None) -> Course:
             minimum_average_mps=float(speed_check["minimum_average_mps"]),
             maximum_speed_mps=float(speed_check["maximum_speed_mps"]),
             blocking_stop_s=float(speed_check["blocking_stop_s"]),
+            blocking_speed_mps=float(speed_check.get("blocking_speed_mps", 0.02)),
+            blocking_progress_radius_m=float(
+                speed_check.get("blocking_progress_radius_m", 0.25)),
         ),
     )
 

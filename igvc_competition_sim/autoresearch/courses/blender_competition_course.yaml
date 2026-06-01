@@ -3640,6 +3640,8 @@ speed_check:
   minimum_average_mps: 0.44704
   maximum_speed_mps: 2.2352
   blocking_stop_s: 60.0
+  blocking_speed_mps: 0.02
+  blocking_progress_radius_m: 0.25
 
 mission_waypoints:
   - {label: "1", type: "gps", x_m: 32.2813, y_m: 0, radius_m: 1, order: 1}

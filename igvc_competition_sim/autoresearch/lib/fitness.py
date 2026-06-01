@@ -95,7 +95,7 @@ def _progress_score(run: dict) -> float:
     for violation in run.get("violations") or []:
         if "tape_crossing" in violation or "obstacle_contact" in violation:
             score -= P_CONTACT
-        elif "blocking_stop" in violation:
+        elif "blocking_stop" in violation or "blocking_traffic" in violation:
             score -= P_BLOCKING
         else:
             score -= 20.0

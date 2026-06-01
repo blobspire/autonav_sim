@@ -71,6 +71,8 @@ class IgvcCourseMonitor(Node):
         self.speed_check_start_distance_m: float = 0.0
         self.speed_check_end_s: float | None = None
         self.stop_started_s: float | None = None
+        self.blocking_anchor_pose: tuple[float, float] | None = None
+        self.blocking_anchor_time_s: float | None = None
         self.autonomous = True
         self.failures: list[str] = []
         self.failure_details: list[dict[str, object]] = []
@@ -109,13 +111,15 @@ class IgvcCourseMonitor(Node):
         if self.finish_reached:
             self.stop_started_s = None
             return
-        self._update_speed_checks(now_s, motion_speed, limit_speed)
+        self._update_speed_checks(now_s, motion_speed, limit_speed,
+                                  (x, y, yaw))
         self._check_course_contact(x, y, yaw)
 
     def _update_speed_checks(self,
                              now_s: float,
                              motion_speed: float,
-                             limit_speed: float) -> None:
+                             limit_speed: float,
+                             pose: tuple[float, float, float]) -> None:
         if self.speed_check_start_s is None:
             # The sim stack can publish odom for many seconds before the
             # mission runner sends the first waypoint. The IGVC 44 ft speed
@@ -134,18 +138,46 @@ class IgvcCourseMonitor(Node):
             if avg < self.course.speed_check.minimum_average_mps:
                 self._fail(
                     "first_44ft_speed_below_1mph: %.3f m/s" % avg,
-                    failure_type="speed_check")
+                    failure_type="speed_check",
+                    pose=pose)
         if limit_speed > self.course.speed_check.maximum_speed_mps:
             self._fail("max_speed_exceeded: %.3f m/s" % limit_speed,
-                       failure_type="speed_check")
-        if motion_speed < 0.02:
+                       failure_type="speed_check",
+                       pose=pose)
+        if motion_speed < self.course.speed_check.blocking_speed_mps:
             if self.stop_started_s is None:
                 self.stop_started_s = now_s
             elif now_s - self.stop_started_s > self.course.speed_check.blocking_stop_s:
-                self._fail("blocking_stop_over_60s",
-                           failure_type="speed_check")
+                self._fail(
+                    "blocking_traffic_over_60s",
+                    failure_type="blocking_traffic",
+                    pose=pose)
         else:
             self.stop_started_s = None
+        self._update_blocking_progress(now_s, pose)
+
+    def _update_blocking_progress(
+            self,
+            now_s: float,
+            pose: tuple[float, float, float]) -> None:
+        radius = self.course.speed_check.blocking_progress_radius_m
+        if self.blocking_anchor_pose is None:
+            self.blocking_anchor_pose = (pose[0], pose[1])
+            self.blocking_anchor_time_s = now_s
+            return
+        moved = math.hypot(pose[0] - self.blocking_anchor_pose[0],
+                           pose[1] - self.blocking_anchor_pose[1])
+        if moved > radius:
+            self.blocking_anchor_pose = (pose[0], pose[1])
+            self.blocking_anchor_time_s = now_s
+            return
+        if (self.blocking_anchor_time_s is not None
+                and now_s - self.blocking_anchor_time_s
+                > self.course.speed_check.blocking_stop_s):
+            self._fail(
+                "blocking_traffic_no_progress_over_60s",
+                failure_type="blocking_traffic",
+                pose=pose)
 
     def _check_finish(self, x: float, y: float) -> None:
         fx, fy, radius = self.course.finish

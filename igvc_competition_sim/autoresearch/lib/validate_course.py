@@ -546,6 +546,9 @@ def official_rules_profile_problems(course_path: Path) -> list[str]:
         problems.append("minimum speed gate is below 1 mph")
     if speed.maximum_speed_mps > OFFICIAL_MAX_SPEED_MPS + 1e-6:
         problems.append("maximum speed gate exceeds 5 mph")
+    if speed.blocking_stop_s > 60.0 + 1e-6:
+        problems.append(
+            "blocking traffic stop window exceeds the official one-minute limit")
 
     return problems
 

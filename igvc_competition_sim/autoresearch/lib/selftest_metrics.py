@@ -215,6 +215,13 @@ def main() -> int:
         ok &= check("failed candidate has progress score",
                     resf.get("progress_fitness") is not None
                     and resf.get("distance_mean") is not None)
+        mb = dict(mf)
+        mb["violations"] = ["blocking_traffic_over_60s"]
+        resb = F.evaluate_candidate([mb], course="compact_baseline", tier=1)
+        ok &= check("blocking traffic violation -> gate FAIL",
+                    F.run_clean(mb) is False
+                    and resb["gate"] == "FAIL"
+                    and "blocking_traffic_over_60s" in resb.get("notes", ""))
 
         # mission runner abort with a superficially clean monitor score must
         # still fail the reliability gate.
