@@ -100,6 +100,20 @@ implemented, or invalidated, and add only actionable newly discovered future
 work. Keep detailed proof and the full dead-end history in
 `results/experiments.jsonl` and `references/CONTEXT.md`.
 
+For a robot branch derived from Hailmary, create a branch profile before
+autoresearch:
+
+```bash
+python3 master/orchestrator.py init-branch-profile \
+  --robot-branch <branch-under-test> \
+  --base-branch hailmary_deploy
+```
+
+Use the generated `branches/<branch-scope>/NEXT_RESEARCH_TARGETS.md` and
+`experiments.jsonl` for branch-local work. Hailmary findings are prior
+evidence, not binding truth, when the branch changed the affected subsystem.
+Older fast-suite findings are not `official_full_loop` validation.
+
 ## Useful Commands
 
 Print launch commands without starting:

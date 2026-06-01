@@ -370,3 +370,13 @@ RGB+depth bag and confirm raw_pixels>0. Until line detection fires, nav tuning o
   jitter in position-derived odom speed (`6-10m/s` spikes while commanded speed was capped at `0.5m/s`).
   `course_monitor.py` now uses reported odom twist for max-speed enforcement when available, while still
   using position-derived motion for stop detection and first-44-ft average distance/time scoring.
+- PROCESS KEEP: branch-derived autoresearch now needs branch-scoped memory under
+  `autoresearch/branches/<branch-scope>/`. Hailmary dead ends and next steps are prior evidence, not
+  automatic truth, when a new branch changes planning/control, costmap, waypoint, perception, or launch
+  code. Use `master/orchestrator.py init-branch-profile --robot-branch <branch> --base-branch
+  hailmary_deploy` before tuning a derived branch, and use `log_experiment.py check/add --branch-scope
+  <scope>` so duplicate checks block only branch-local repeats while warning on global/Hailmary repeats.
+- VALIDATION SCOPE: runs and kept/discarded decisions recorded before `official_full_loop` was added are
+  fast-suite evidence (`compact_baseline`, `tight_gaps`, `dense_obstacles`, `sparse_lines`,
+  `ramp_turns`). They remain useful, but they are not full official-course validation unless an
+  `official_full_loop` gate is explicitly recorded.

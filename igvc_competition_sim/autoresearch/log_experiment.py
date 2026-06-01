@@ -21,6 +21,7 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_LEDGER = HERE / "results" / "experiments.jsonl"
+BRANCHES_DIR = HERE / "branches"
 
 
 def _default_robot_repo() -> Path:
@@ -55,6 +56,25 @@ def slug(text: str, limit: int = 44) -> str:
     words = re.findall(r"[a-z0-9]+", text.lower())
     out = "-".join(words)[:limit].strip("-")
     return out or "experiment"
+
+
+def branch_slug(text: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", text.strip()).strip("-").lower()
+
+
+def ledger_for_scope(branch_scope: str) -> Path:
+    scope = branch_slug(branch_scope)
+    if not scope:
+        raise ValueError("branch scope must contain at least one alphanumeric character")
+    return BRANCHES_DIR / scope / "experiments.jsonl"
+
+
+def resolve_ledger(ledger_arg: str, branch_scope: str = "") -> Path:
+    if ledger_arg:
+        return Path(ledger_arg).expanduser()
+    if branch_scope:
+        return ledger_for_scope(branch_scope)
+    return DEFAULT_LEDGER
 
 
 def git_cmd(repo: Path, args: list[str]) -> str:
@@ -194,6 +214,12 @@ def make_entry(args: argparse.Namespace) -> dict[str, Any]:
         "normalized_hypothesis": normalize_hypothesis(args.hypothesis),
         "change_summary": args.change_summary,
         "files_changed": files,
+        "branch_scope": getattr(args, "branch_scope", ""),
+        "robot_branch": (
+            getattr(args, "robot_branch", "")
+            or git_cmd(robot_repo, ["branch", "--show-current"])
+        ),
+        "base_branch": getattr(args, "base_branch", ""),
         "robot_commit": args.robot_commit or git_sha(robot_repo),
         "sim_commit": args.sim_commit or git_sha(sim_repo),
         "status": args.status,
@@ -216,11 +242,11 @@ def make_entry(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def cmd_add(args: argparse.Namespace) -> int:
-    ledger = Path(args.ledger).expanduser()
+    ledger = resolve_ledger(args.ledger, args.branch_scope)
     if not args.allow_duplicate:
         matches = find_duplicates(args.hypothesis, ledger, terminal_only=True)
         if matches:
-            print("duplicate terminal hypothesis found:", file=sys.stderr)
+            print("duplicate terminal hypothesis found in branch scope:", file=sys.stderr)
             for entry in matches[-5:]:
                 print(
                     f"- {entry.get('id')} status={entry.get('status')} "
@@ -228,6 +254,16 @@ def cmd_add(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
             return 4
+        if args.branch_scope:
+            global_matches = find_duplicates(args.hypothesis, DEFAULT_LEDGER, terminal_only=True)
+            if global_matches:
+                print("global duplicate warning; allowed because branch scope differs:", file=sys.stderr)
+                for entry in global_matches[-5:]:
+                    print(
+                        f"- {entry.get('id')} status={entry.get('status')} "
+                        f"robot_commit={entry.get('robot_commit')} retry_rule={entry.get('retry_rule')}",
+                        file=sys.stderr,
+                    )
     entry = make_entry(args)
     append_entry(entry, ledger)
     print(json.dumps(entry, indent=2, sort_keys=True))
@@ -235,23 +271,37 @@ def cmd_add(args: argparse.Namespace) -> int:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    ledger = resolve_ledger(args.ledger, args.branch_scope)
     matches = find_duplicates(
         args.hypothesis,
-        Path(args.ledger).expanduser(),
+        ledger,
         terminal_only=not args.include_nonterminal,
     )
-    if not matches:
-        print("no duplicate terminal hypothesis found")
-        return 0
     for entry in matches:
         print(
             f"{entry.get('id')}\t{entry.get('status')}\t"
             f"{entry.get('hypothesis')}\t{entry.get('retry_rule')}")
-    return 4
+    if matches:
+        return 4
+    if args.branch_scope:
+        global_matches = find_duplicates(
+            args.hypothesis,
+            DEFAULT_LEDGER,
+            terminal_only=not args.include_nonterminal,
+        )
+        if global_matches:
+            print("global duplicate warning; not blocking this branch scope")
+            for entry in global_matches:
+                print(
+                    f"{entry.get('id')}\t{entry.get('status')}\t"
+                    f"{entry.get('hypothesis')}\t{entry.get('retry_rule')}")
+            return 0
+    print("no duplicate terminal hypothesis found")
+    return 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
-    entries = load_entries(Path(args.ledger).expanduser())
+    entries = load_entries(resolve_ledger(args.ledger, args.branch_scope))
     for entry in entries[-args.limit:]:
         result = entry.get("result") or {}
         print(
@@ -265,7 +315,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_summary(args: argparse.Namespace) -> int:
     counts: dict[str, int] = {}
-    for entry in load_entries(Path(args.ledger).expanduser()):
+    for entry in load_entries(resolve_ledger(args.ledger, args.branch_scope)):
         status = str(entry.get("status", "unknown"))
         counts[status] = counts.get(status, 0) + 1
     print(json.dumps(counts, indent=2, sort_keys=True))
@@ -277,7 +327,10 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     add = sub.add_parser("add")
-    add.add_argument("--ledger", default=str(DEFAULT_LEDGER))
+    add.add_argument("--ledger", default="")
+    add.add_argument("--branch-scope", default="")
+    add.add_argument("--robot-branch", default="")
+    add.add_argument("--base-branch", default="")
     add.add_argument("--hypothesis", required=True)
     add.add_argument("--change-summary", required=True)
     add.add_argument("--status", required=True,
@@ -302,18 +355,21 @@ def main() -> int:
     add.set_defaults(func=cmd_add)
 
     check = sub.add_parser("check")
-    check.add_argument("--ledger", default=str(DEFAULT_LEDGER))
+    check.add_argument("--ledger", default="")
+    check.add_argument("--branch-scope", default="")
     check.add_argument("--hypothesis", required=True)
     check.add_argument("--include-nonterminal", action="store_true")
     check.set_defaults(func=cmd_check)
 
     list_cmd = sub.add_parser("list")
-    list_cmd.add_argument("--ledger", default=str(DEFAULT_LEDGER))
+    list_cmd.add_argument("--ledger", default="")
+    list_cmd.add_argument("--branch-scope", default="")
     list_cmd.add_argument("--limit", type=int, default=20)
     list_cmd.set_defaults(func=cmd_list)
 
     summary = sub.add_parser("summary")
-    summary.add_argument("--ledger", default=str(DEFAULT_LEDGER))
+    summary.add_argument("--ledger", default="")
+    summary.add_argument("--branch-scope", default="")
     summary.set_defaults(func=cmd_summary)
 
     args = ap.parse_args()

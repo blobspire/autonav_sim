@@ -24,12 +24,14 @@ from typing import Any
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+AUTORESEARCH_DIR = SCRIPT_DIR.parent
 MANIFEST_PATH = SCRIPT_DIR / "dual_sim_manifest.json"
 STATE_DIR = Path.home() / ".autonav_master"
 RUNS_DIR = STATE_DIR / "runs"
 ACTIVE_DIR = STATE_DIR / "active"
 BUNDLES_DIR = STATE_DIR / "bundles"
 SNAPSHOTS_DIR = STATE_DIR / "snapshots"
+BRANCHES_DIR = AUTORESEARCH_DIR / "branches"
 
 
 def run(
@@ -100,6 +102,259 @@ def ensure_state_dirs() -> None:
 
 def timestamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def scope_slug(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip()).strip("-").lower()
+    if not slug:
+        raise SystemExit("branch scope must contain at least one alphanumeric character")
+    return slug
+
+
+def git_text(repo: str, args: list[str], *, timeout: float = 20.0) -> str:
+    proc = run(["git", "-C", repo, *args], timeout=timeout)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stdout.strip())
+    return proc.stdout.strip()
+
+
+def resolve_git_ref(repo: str, ref: str) -> tuple[str, str]:
+    candidates = [ref]
+    if not ref.startswith("origin/"):
+        candidates.append(f"origin/{ref}")
+    for candidate in candidates:
+        proc = run(
+            ["git", "-C", repo, "rev-parse", "--verify", f"{candidate}^{{commit}}"],
+            timeout=20,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            return candidate, proc.stdout.strip()
+    raise RuntimeError(f"could not resolve git ref {ref!r} in {repo}")
+
+
+def classify_changed_files(files: list[str]) -> list[str]:
+    subsystems: set[str] = set()
+    for path in files:
+        lowered = path.lower()
+        if "igvc_competition_sim" in lowered:
+            subsystems.add("sim_or_harness")
+        if "gps_waypoint_handler" in lowered or "gps" in lowered:
+            subsystems.add("gps_waypoint")
+        if "autonav_detection" in lowered or "line_detector" in lowered or "grade_detector" in lowered:
+            subsystems.add("perception")
+        if "slam/config/nav2" in lowered or "behavior_trees" in lowered or "custom_behavior_tree_plugins" in lowered:
+            subsystems.add("planning_control")
+        if "local_mirror_layer" in lowered or "line_layer" in lowered or "costmap" in lowered:
+            subsystems.add("costmaps")
+        if (
+            "/launch/" in lowered
+            or lowered.endswith(".launch.py")
+            or lowered.startswith("env/")
+            or "docker" in lowered
+            or lowered.endswith("package.xml")
+            or lowered.endswith("setup.py")
+            or lowered.startswith("bringup/")
+        ):
+            subsystems.add("launch_env")
+    if not subsystems:
+        subsystems.add("unknown_or_low_risk")
+    return sorted(subsystems)
+
+
+def inherited_findings(subsystems: list[str]) -> list[dict[str, str]]:
+    affected = set(subsystems)
+    planning_changed = bool(affected & {"planning_control", "costmaps"})
+    perception_changed = "perception" in affected
+    waypoint_changed = "gps_waypoint" in affected
+    return [
+        {
+            "finding": "IGVC course geometry, official full-loop validation, scorer integrity, and no-course-softening rules",
+            "status": "global",
+            "reason": "course and scorer constraints are independent of robot branch",
+        },
+        {
+            "finding": "GPS waypoint handoff 0.45s delay fixed stale NavigateToPose goal consumption on Hailmary",
+            "status": "needs_revalidation" if waypoint_changed else "inherited",
+            "reason": "gps_waypoint files changed" if waypoint_changed else "gps_waypoint files unchanged",
+        },
+        {
+            "finding": "GoalBender and PathGoalConsistent global timeout/radius/angle-only tweaks caused cross-course regressions",
+            "status": "needs_revalidation" if planning_changed else "inherited",
+            "reason": "planning/control or costmap files changed" if planning_changed else "planning/control files unchanged",
+        },
+        {
+            "finding": "Camera-line fidelity against real bags remains perception-specific future work",
+            "status": "needs_revalidation" if perception_changed else "inherited",
+            "reason": "perception files changed" if perception_changed else "perception files unchanged",
+        },
+        {
+            "finding": "Pre-official-full-loop kept/discarded results are fast-suite evidence only",
+            "status": "global",
+            "reason": "official_full_loop was added after the earlier fast-suite findings",
+        },
+    ]
+
+
+def render_branch_context(profile: dict[str, Any]) -> str:
+    findings = "\n".join(
+        f"- **{item['status']}**: {item['finding']} ({item['reason']})"
+        for item in profile["inherited_findings"]
+    )
+    changed = "\n".join(f"- `{path}`" for path in profile["changed_files"]) or "- No files changed from the base branch."
+    subsystems = ", ".join(profile["affected_subsystems"])
+    return f"""# Branch Autoresearch Context: {profile['branch_scope']}
+
+Generated: {profile['generated_at']}
+
+Robot branch: `{profile['robot_branch']}`<br>
+Base branch: `{profile['base_branch']}`<br>
+Merge base: `{profile['merge_base']}`<br>
+Robot head: `{profile['robot_head']}`<br>
+Affected subsystems: {subsystems}
+
+## Branch Delta
+
+{changed}
+
+## Inherited Findings
+
+{findings}
+
+## Required Baseline
+
+Run a fresh baseline on this branch before tuning. Hailmary evidence is prior
+evidence, not binding truth, when this branch changed the affected subsystem.
+
+Minimum planning/control baseline:
+
+```bash
+python3 run_timebox.py --duration 45m \\
+  --courses compact_baseline tight_gaps dense_obstacles sparse_lines ramp_turns \\
+  --runs 1 --tier 1 --timeout 300 \\
+  --branch-scope {profile['branch_scope']} \\
+  --robot-branch {profile['robot_branch']} \\
+  --base-branch {profile['base_branch']} \\
+  --description branch-baseline
+```
+
+Use `official_full_loop` as a final acceptance gate after the fast suite is
+stable. Do not treat older fast-suite results as official full-loop validation.
+"""
+
+
+def render_branch_targets(profile: dict[str, Any]) -> str:
+    planning_note = (
+        "Planning/control changed; revalidate Hailmary planning dead ends before treating them as blocked."
+        if any(s in profile["affected_subsystems"] for s in ("planning_control", "costmaps"))
+        else "Planning/control files did not change; Hailmary planning findings are strong prior evidence."
+    )
+    perception_note = (
+        "Perception changed; run the Jetson/camera lane before using detector output as a planning signal."
+        if "perception" in profile["affected_subsystems"]
+        else "Perception files did not change; camera-fidelity work remains global future work."
+    )
+    return f"""# Next Research Targets: {profile['branch_scope']}
+
+This file is branch-local. Keep global rules and permanent history in the
+top-level autoresearch docs; keep this file focused on what this branch should
+test next.
+
+## Baseline First
+
+- Run the fast oracle planning/control suite and record the result in this
+  branch profile.
+- Compare against Hailmary as prior evidence, not as a pass/fail substitute.
+- Run `official_full_loop` only after the branch is stable enough for a final
+  long-course gate.
+
+## Branch-Specific Targets
+
+- Planning/control: {planning_note}
+- Perception: {perception_note}
+- Official full loop: preserve the course geometry; failures on a validated
+  oracle course are robot-stack findings unless a concrete sim/scorer defect is
+  proven.
+
+## Logging Rules
+
+- Use `log_experiment.py check --branch-scope {profile['branch_scope']}` and
+  `log_experiment.py add --branch-scope {profile['branch_scope']}` for checks
+  and experiment entries.
+- Branch-local terminal duplicates block repeat work.
+- Global/Hailmary duplicates warn only; they do not block revalidation when
+  this branch changed the relevant subsystem.
+"""
+
+
+def branch_profile(manifest: dict[str, Any], args: argparse.Namespace) -> int:
+    repo = args.robot_repo or manifest["host_repos"]["robot_primary"]
+    info = git_info_local(repo)
+    if not info.get("is_repo"):
+        print(f"robot repo is not a git repo: {repo}", file=sys.stderr)
+        return 2
+    if info.get("dirty") and not args.allow_dirty:
+        print(f"robot repo is dirty; commit/stash before creating a branch profile: {repo}", file=sys.stderr)
+        return 2
+    robot_branch = args.robot_branch or info.get("branch")
+    if not robot_branch:
+        print("robot branch is detached; pass --robot-branch explicitly", file=sys.stderr)
+        return 2
+    try:
+        base_ref, base_head = resolve_git_ref(repo, args.base_branch)
+        branch_ref, branch_head = resolve_git_ref(repo, robot_branch)
+        merge_base = git_text(repo, ["merge-base", base_head, branch_head])
+        changed_files = git_text(repo, ["diff", "--name-only", f"{merge_base}..{branch_head}"]).splitlines()
+        diff_stat = git_text(repo, ["diff", "--stat", f"{merge_base}..{branch_head}"])
+    except RuntimeError as exc:
+        print(f"cannot audit branch delta: {exc}", file=sys.stderr)
+        return 2
+    scope = scope_slug(args.branch_scope or robot_branch)
+    profile = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "branch_scope": scope,
+        "robot_repo": repo,
+        "robot_branch": robot_branch,
+        "base_branch": args.base_branch,
+        "base_ref": base_ref,
+        "branch_ref": branch_ref,
+        "base_head": base_head,
+        "robot_head": branch_head,
+        "merge_base": merge_base,
+        "changed_files": changed_files,
+        "diff_stat": diff_stat,
+        "affected_subsystems": classify_changed_files(changed_files),
+    }
+    profile["inherited_findings"] = inherited_findings(profile["affected_subsystems"])
+    baseline = {
+        "branch_scope": scope,
+        "status": "baseline_required",
+        "created_at": profile["generated_at"],
+        "robot_branch": robot_branch,
+        "robot_head": branch_head,
+        "base_branch": args.base_branch,
+        "merge_base": merge_base,
+        "fast_suite": ["compact_baseline", "tight_gaps", "dense_obstacles", "sparse_lines", "ramp_turns"],
+        "official_full_loop": "final_gate_required_after_fast_suite_stability",
+    }
+    context = render_branch_context(profile)
+    targets = render_branch_targets(profile)
+    profile_dir = BRANCHES_DIR / scope
+    if args.dry_run:
+        print(json.dumps({"profile_dir": str(profile_dir), "profile": profile, "baseline": baseline}, indent=2))
+        return 0
+    if profile_dir.exists() and not args.force:
+        print(f"branch profile already exists: {profile_dir}; use --force to rewrite", file=sys.stderr)
+        return 2
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    (profile_dir / "profile.json").write_text(json.dumps(profile, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (profile_dir / "baseline_summary.json").write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (profile_dir / "BRANCH_CONTEXT.md").write_text(context, encoding="utf-8")
+    (profile_dir / "NEXT_RESEARCH_TARGETS.md").write_text(targets, encoding="utf-8")
+    experiments = profile_dir / "experiments.jsonl"
+    if not experiments.exists():
+        experiments.write_text("", encoding="utf-8")
+    print(json.dumps({"profile_dir": str(profile_dir), "branch_scope": scope, "affected_subsystems": profile["affected_subsystems"]}, indent=2))
+    return 0
 
 
 def git_status(path: str) -> dict[str, Any]:
@@ -1365,6 +1620,13 @@ def start_planning(manifest: dict[str, Any], args: argparse.Namespace) -> int:
     run_dir.mkdir(parents=True)
     description = args.description or "master-planning-control"
     courses = " ".join(args.courses)
+    branch_args = ""
+    if args.branch_scope:
+        branch_args += f" --branch-scope {shlex.quote(args.branch_scope)}"
+    if args.robot_branch:
+        branch_args += f" --robot-branch {shlex.quote(args.robot_branch)}"
+    if args.base_branch:
+        branch_args += f" --base-branch {shlex.quote(args.base_branch)}"
     command = (
         f"set -eo pipefail; cd {shlex.quote(lane['workspace'])}; "
         "source /opt/ros/humble/setup.bash; source install/setup.bash; "
@@ -1372,6 +1634,7 @@ def start_planning(manifest: dict[str, Any], args: argparse.Namespace) -> int:
         f"python3 run_timebox.py --duration {shlex.quote(args.duration)} "
         f"--courses {courses} --runs {args.runs} --tier {args.tier} "
         f"--timeout {args.timeout} --description {shlex.quote(description)}"
+        f"{branch_args}"
     )
     env_parts = [f"{k}={v}" for k, v in lane["default_env"].items()]
     outer = [
@@ -1574,6 +1837,14 @@ def main(argv: list[str]) -> int:
     wt.add_argument("experiment")
     wt.add_argument("--base", default="HEAD")
     wt.add_argument("--print-only", action="store_true")
+    branch = sub.add_parser("init-branch-profile")
+    branch.add_argument("--robot-branch", default="")
+    branch.add_argument("--base-branch", default="hailmary_deploy")
+    branch.add_argument("--branch-scope", default="")
+    branch.add_argument("--robot-repo", default="")
+    branch.add_argument("--force", action="store_true")
+    branch.add_argument("--allow-dirty", action="store_true")
+    branch.add_argument("--dry-run", action="store_true")
     prep = sub.add_parser("prepare-jetson-sim-workspace")
     prep.add_argument("--build", action="store_true")
     prep_runtime = sub.add_parser("prepare-jetson-runtime")
@@ -1598,6 +1869,9 @@ def main(argv: list[str]) -> int:
     start.add_argument("--timeout", type=int, default=300)
     start.add_argument("--description", default="")
     start.add_argument("--allow-active", action="store_true")
+    start.add_argument("--branch-scope", default="")
+    start.add_argument("--robot-branch", default="")
+    start.add_argument("--base-branch", default="")
     jetson = sub.add_parser("start-jetson-perception")
     jetson.add_argument("--name", default="smoke")
     jetson.add_argument("--ros-domain-id", default="")
@@ -1633,6 +1907,8 @@ def main(argv: list[str]) -> int:
         return 0
     if args.cmd == "create-worktree":
         return create_worktree(manifest, args)
+    if args.cmd == "init-branch-profile":
+        return branch_profile(manifest, args)
     if args.cmd == "prepare-jetson-sim-workspace":
         return prepare_jetson_sim_workspace(manifest, args.build)
     if args.cmd == "prepare-jetson-runtime":

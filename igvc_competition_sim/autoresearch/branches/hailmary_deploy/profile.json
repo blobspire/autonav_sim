@@ -1,0 +1,44 @@
+{
+  "affected_subsystems": [
+    "unknown_or_low_risk"
+  ],
+  "base_branch": "hailmary_deploy",
+  "base_head": "f2ca0d0b2d5d46cc896c65b9b5f2a2735aab023b",
+  "base_ref": "hailmary_deploy",
+  "branch_ref": "hailmary_deploy",
+  "branch_scope": "hailmary_deploy",
+  "changed_files": [],
+  "diff_stat": "",
+  "generated_at": "2026-05-31T20:19:47",
+  "inherited_findings": [
+    {
+      "finding": "IGVC course geometry, official full-loop validation, scorer integrity, and no-course-softening rules",
+      "reason": "course and scorer constraints are independent of robot branch",
+      "status": "global"
+    },
+    {
+      "finding": "GPS waypoint handoff 0.45s delay fixed stale NavigateToPose goal consumption on Hailmary",
+      "reason": "gps_waypoint files unchanged",
+      "status": "inherited"
+    },
+    {
+      "finding": "GoalBender and PathGoalConsistent global timeout/radius/angle-only tweaks caused cross-course regressions",
+      "reason": "planning/control files unchanged",
+      "status": "inherited"
+    },
+    {
+      "finding": "Camera-line fidelity against real bags remains perception-specific future work",
+      "reason": "perception files unchanged",
+      "status": "inherited"
+    },
+    {
+      "finding": "Pre-official-full-loop kept/discarded results are fast-suite evidence only",
+      "reason": "official_full_loop was added after the earlier fast-suite findings",
+      "status": "global"
+    }
+  ],
+  "merge_base": "f2ca0d0b2d5d46cc896c65b9b5f2a2735aab023b",
+  "robot_branch": "hailmary_deploy",
+  "robot_head": "f2ca0d0b2d5d46cc896c65b9b5f2a2735aab023b",
+  "robot_repo": "/Users/cole/code/git/AutoNavB"
+}

@@ -13,14 +13,20 @@ workspace shaped like
 1. Confirm the active robot-stack checkout is the branch under test, for example
    `AutoNav_25-26`/`AutoNavB` on `hailmary`, and confirm `autonav_sim` is on
    `main`.
-2. **Resolve the sim env**. The loop cannot score anything until
+2. For any branch other than the established baseline, create/read its branch
+   profile before tuning:
+   `python3 master/orchestrator.py init-branch-profile --robot-branch <branch> --base-branch hailmary_deploy`.
+   Use that profile's `--branch-scope` for duplicate checks and experiment
+   logging. Hailmary findings are prior evidence, not binding truth, when the
+   branch changed the affected subsystem.
+3. **Resolve the sim env**. The loop cannot score anything until
    `evaluate.py --course compact_baseline --runs 1 --tier 1` produces a real result with no orphaned
    `gz`/ros processes left behind.
-3. Run gates: `python3 autoresearch/lib/check_footprint.py` (C-i) and
+4. Run gates: `python3 autoresearch/lib/check_footprint.py` (C-i) and
    `python3 autoresearch/lib/validate_course.py autoresearch/courses/*.yaml`.
-4. Run `./Run_IGVC_COMPETITION_FORTRESS_ORACLE_TEST.command` before tuning. If oracle fails, fix
+5. Run `./Run_IGVC_COMPETITION_FORTRESS_ORACLE_TEST.command` before tuning. If oracle fails, fix
    Nav2/control/config before blaming camera lines or PCA.
-5. Phase 0: wall-clock-calibrate one `compact_baseline` mission; auto-size tiers to the 8 h budget;
+6. Phase 0: wall-clock-calibrate one `compact_baseline` mission; auto-size tiers to the 8 h budget;
    establish the Tier-2 baseline (status=BASELINE) — the bar every KEEP must beat.
 
 ## File permissions
@@ -95,25 +101,28 @@ KEEP iff: gate passes AND fitness strictly beats current best for that course AN
 ## The experiment loop
 ```
 LOOP until 8h-budget - 20min:
-  1. Read NEXT_MASTER_RESEARCH_TARGETS.md, results/experiments.jsonl,
+  1. Read the branch profile under `branches/<branch-scope>/` when present,
+     then NEXT_MASTER_RESEARCH_TARGETS.md, results/experiments.jsonl,
      results/run_log.tsv, and references/CONTEXT.md.
      Do not repeat a terminal discarded/kept hypothesis unless the retry_rule condition has changed.
   2. Pick ONE change. Priority: (a) missing features [C-ii], (b) bug fixes [if baseline shows high
      pathfootprint_rejects/disruptive_aborts -> C-iii planning clearance first], (c) UNKNOWNS flips, (d) sweeps.
-  3. Check duplicate hypothesis:
-     `python3 log_experiment.py check --hypothesis "<hypothesis>"`.
+  3. Check duplicate hypothesis with branch scope when running a branch profile:
+     `python3 log_experiment.py check --branch-scope <branch-scope> --hypothesis "<hypothesis>"`.
+     Branch-local terminal duplicates block; global duplicates warn unless they are marked global safety/course facts.
   4. Edit only EDITABLE files. If C++: colcon build --packages-up-to <pkg>; source install/setup.bash.
   5. git commit -m "<hypothesis>" if the candidate should be preserved during testing.
   6. Tier 1 (1 run): regress vs best (slower OR any violation OR more recovery) -> discard candidate changes; log; goto 1.
   7. Tier 2 (3 runs): not 3/3 clean OR no fitness gain OR reliability regression -> discard candidate changes; log; goto 1.
   8. Tier 3 (strong provisional keeps, time permitting): 5-course sweep; clean sweep -> KEEP; else discard candidate changes.
-  9. Append structured entry:
+  9. Append structured entry, using `--branch-scope <branch-scope>` when a
+     branch profile exists:
      `python3 log_experiment.py add --hypothesis ... --change-summary ... --status kept|discarded|blocked|needs_rerun --conclusion ... --retry-rule ...`.
      Also append a human note in references/CONTEXT.md. If a target was tested,
-     implemented, invalidated, or newly discovered, update NEXT_MASTER_RESEARCH_TARGETS.md:
-     retire stale targets, rewrite still-open targets with the new evidence, and
-     add only actionable future work. Do not use NEXT_MASTER_RESEARCH_TARGETS.md
-     as the dead-end ledger; experiments.jsonl is the authoritative history.
+     implemented, invalidated, or newly discovered, update the branch-local
+     NEXT_RESEARCH_TARGETS.md first. Promote only cross-branch findings to
+     NEXT_MASTER_RESEARCH_TARGETS.md. Do not use either target file as the
+     dead-end ledger; experiments.jsonl is the authoritative history.
      Prune bags. goto 1.
 ```
 

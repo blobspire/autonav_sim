@@ -247,3 +247,19 @@ At the end of each autoresearch session, require the child agent to retire or
 rewrite any target it tested, implemented, or invalidated, and add only
 actionable newly discovered future work. Detailed evidence and the full dead-end
 history belong in `results/experiments.jsonl` and `references/CONTEXT.md`.
+
+For a robot branch derived from Hailmary, create a branch-scoped profile before
+starting dual-sim autoresearch:
+
+```bash
+python3 master/orchestrator.py init-branch-profile \
+  --robot-branch <branch-under-test> \
+  --base-branch hailmary_deploy
+```
+
+The profile lives under `branches/<branch-scope>/` and records the merge-base,
+changed files, affected subsystem classification, inherited findings, and
+baseline requirement. Agents should use the branch-local
+`NEXT_RESEARCH_TARGETS.md` and `experiments.jsonl` for branch-specific work.
+Top-level targets and ledgers remain global history and safety guidance, not a
+blanket claim that Hailmary-specific findings apply to every derived branch.

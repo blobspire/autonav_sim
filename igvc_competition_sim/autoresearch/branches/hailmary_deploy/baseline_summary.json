@@ -1,0 +1,17 @@
+{
+  "base_branch": "hailmary_deploy",
+  "branch_scope": "hailmary_deploy",
+  "created_at": "2026-05-31T20:19:47",
+  "fast_suite": [
+    "compact_baseline",
+    "tight_gaps",
+    "dense_obstacles",
+    "sparse_lines",
+    "ramp_turns"
+  ],
+  "merge_base": "f2ca0d0b2d5d46cc896c65b9b5f2a2735aab023b",
+  "official_full_loop": "final_gate_required_after_fast_suite_stability",
+  "robot_branch": "hailmary_deploy",
+  "robot_head": "f2ca0d0b2d5d46cc896c65b9b5f2a2735aab023b",
+  "status": "baseline_required"
+}

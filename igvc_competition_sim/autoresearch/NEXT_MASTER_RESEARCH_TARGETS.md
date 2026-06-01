@@ -17,6 +17,13 @@ Authoritative history lives elsewhere:
 This file is the short list of open targets and high-level guardrails that
 should shape the next session.
 
+Branch-specific work belongs under `branches/<branch-scope>/`. Before running
+autoresearch on a branch derived from Hailmary, run
+`python3 master/orchestrator.py init-branch-profile --robot-branch <branch> --base-branch hailmary_deploy`
+and use the generated branch-local `NEXT_RESEARCH_TARGETS.md` and
+`experiments.jsonl`. Hailmary results are prior evidence for a derived branch,
+not binding truth, when that branch changed the relevant subsystem.
+
 ## How Agents Should Use This File
 
 - At session start, read this file after `program.md`,
@@ -24,20 +31,23 @@ should shape the next session.
   `results/experiments.jsonl`.
 - Pick one target from the relevant section and convert it into one concrete
   hypothesis.
-- Check duplicates with `log_experiment.py check` before editing code.
+- Check duplicates with `log_experiment.py check` before editing code; include
+  `--branch-scope <scope>` when a branch profile exists.
 - At session end, retire or rewrite any target that was tested, implemented, or
   invalidated. Do not leave stale recommendations for future agents.
 - Add newly discovered future-work targets only when they are actionable enough
   for the next agent to test.
 - Keep detailed evidence in `results/experiments.jsonl` and
   `references/CONTEXT.md`; keep this file short enough to guide the next agent.
+- Promote only cross-branch findings here. Keep branch-specific next steps in
+  the branch profile.
 
 ## Current Baseline
 
 Robot repo baseline:
 
 - Repo: `/Users/cole/code/git/AutoNavB`
-- Branch: `hailmary`
+- Branch: `hailmary` / `hailmary_deploy` lineage
 - Last kept robot commit: `5034bdb9b7ab`
 - Kept change: `gps_handler_node` delays the first `/goal_pose` publish for a
   newly accepted waypoint by `0.45s`.
@@ -52,6 +62,11 @@ That kept change fixed the stale NavigateToPose waypoint-handoff race:
 
 Do not remove the `0.45s` delay unless new bags prove the race is gone without
 it.
+
+Validation-scope note: findings recorded before `official_full_loop` was added
+were validated against the fast oracle suite, not against the full official
+course. Keep them as useful evidence, but require `official_full_loop` before
+claiming full official-course readiness.
 
 ## Planning/Control Targets
 

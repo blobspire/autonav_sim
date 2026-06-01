@@ -167,14 +167,18 @@ def main() -> int:
     ap.add_argument("--ros-ws", default="")
     ap.add_argument("--autonav-src", default="")
     ap.add_argument("--experiment-hypothesis", default="",
-                    help="record this candidate in results/experiments.jsonl")
+                    help="record this candidate in the global or branch-scoped experiment ledger")
     ap.add_argument("--change-summary", default="")
     ap.add_argument("--retry-rule", default="")
     ap.add_argument("--experiment-status", default="needs_review",
                     choices=["kept", "discarded", "blocked", "needs_rerun",
                              "needs_review", "baseline"])
     ap.add_argument("--allow-duplicate-hypothesis", action="store_true")
-    ap.add_argument("--ledger", default=str(ledger.DEFAULT_LEDGER))
+    ap.add_argument("--ledger", default="")
+    ap.add_argument("--branch-scope", default="",
+                    help="write experiment memory under branches/<scope>/")
+    ap.add_argument("--robot-branch", default="")
+    ap.add_argument("--base-branch", default="")
     ap.add_argument("--robot-repo", default=str(ledger.DEFAULT_ROBOT_REPO))
     args = ap.parse_args()
 
@@ -188,7 +192,7 @@ def main() -> int:
     logs.mkdir(parents=True, exist_ok=True)
     eval_runs.mkdir(parents=True, exist_ok=True)
 
-    ledger_path = Path(args.ledger).expanduser()
+    ledger_path = ledger.resolve_ledger(args.ledger, args.branch_scope)
     if args.experiment_hypothesis and not args.allow_duplicate_hypothesis:
         matches = ledger.find_duplicates(args.experiment_hypothesis, ledger_path)
         if matches:
@@ -199,6 +203,17 @@ def main() -> int:
                     f"retry_rule={entry.get('retry_rule')}")
             print("use --allow-duplicate-hypothesis to override")
             return 4
+        if args.branch_scope:
+            global_matches = ledger.find_duplicates(
+                args.experiment_hypothesis,
+                ledger.DEFAULT_LEDGER,
+            )
+            if global_matches:
+                print("global duplicate warning; not blocking this branch scope")
+                for entry in global_matches[-5:]:
+                    print(
+                        f"- {entry.get('id')} status={entry.get('status')} "
+                        f"retry_rule={entry.get('retry_rule')}")
 
     env = build_env(args)
     summary: dict[str, object] = {
@@ -336,6 +351,9 @@ def main() -> int:
             notes=f"timebox_dir={session_root}",
             robot_repo=args.robot_repo,
             sim_repo=str(HERE.parent.parent),
+            branch_scope=args.branch_scope,
+            robot_branch=args.robot_branch,
+            base_branch=args.base_branch,
             robot_commit="",
             sim_commit=git_sha(HERE.parent.parent),
             capture_diff=False,
