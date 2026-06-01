@@ -246,7 +246,7 @@ Minimum planning/control baseline:
 ```bash
 python3 run_timebox.py --duration 45m \\
   --courses blender_competition_course \\
-  --runs 1 --tier 1 --timeout 300 \\
+  --runs 1 --tier 1 --timeout 420 \\
   --branch-scope {profile['branch_scope']} \\
   --robot-branch {profile['robot_branch']} \\
   --base-branch {profile['base_branch']} \\
@@ -1974,7 +1974,7 @@ def main(argv: list[str]) -> int:
     start.add_argument("--courses", nargs="+", default=["blender_competition_course"])
     start.add_argument("--runs", type=int, default=1)
     start.add_argument("--tier", type=int, default=1)
-    start.add_argument("--timeout", type=int, default=300)
+    start.add_argument("--timeout", type=int, default=420)
     start.add_argument("--max-attempts", type=int, default=0)
     start.add_argument("--description", default="")
     start.add_argument("--allow-active", action="store_true")

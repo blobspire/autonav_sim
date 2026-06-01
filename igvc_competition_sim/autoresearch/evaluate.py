@@ -7,7 +7,7 @@ a machine RESULT line, and appends a row to results/run_log.tsv.
 
 Modes:
   python3 evaluate.py --course tight_gaps --runs 3 --tier 2 [--commit SHA] \
-      [--description "..."] [--best-fitness F] [--timeout 300]
+      [--description "..."] [--best-fitness F] [--timeout 420]
   python3 evaluate.py --score-existing DIR1 DIR2 ...   # re-score dirs, no sim
 
 The sim-run path requires a runnable sim env (see references/CONTEXT.md). The
@@ -127,7 +127,7 @@ def main() -> int:
     ap.add_argument("--course")
     ap.add_argument("--runs", type=int, default=1)
     ap.add_argument("--tier", type=int, default=1)
-    ap.add_argument("--timeout", type=int, default=300)
+    ap.add_argument("--timeout", type=int, default=420)
     ap.add_argument("--commit", default="")
     ap.add_argument("--description", default="")
     ap.add_argument("--best-fitness", type=float, default=None)

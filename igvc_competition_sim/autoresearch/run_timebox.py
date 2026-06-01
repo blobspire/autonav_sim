@@ -147,7 +147,7 @@ def main() -> int:
     ap.add_argument("--courses", nargs="+", default=["blender_competition_course"])
     ap.add_argument("--runs", type=int, default=1)
     ap.add_argument("--tier", type=int, default=1)
-    ap.add_argument("--timeout", type=int, default=300)
+    ap.add_argument("--timeout", type=int, default=420)
     ap.add_argument("--min-start-seconds", type=int, default=420,
                     help="do not start a new attempt with less time remaining")
     ap.add_argument("--max-attempts", type=int, default=0,

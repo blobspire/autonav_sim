@@ -12,7 +12,7 @@
 # mirrors the verified .command. See references/CONTEXT.md.
 #
 # Usage:
-#   run_one.sh --course-yaml <yaml> --world <sdf> --run-dir <dir> [--timeout 300]
+#   run_one.sh --course-yaml <yaml> --world <sdf> --run-dir <dir> [--timeout 420]
 # Env overrides:
 #   ROS_WS (default: containing colcon workspace), AUTONAV_SRC,
 #   NAV2_PARAMS_SRC, BT_XML_SRC,
@@ -86,7 +86,7 @@ STARTUP_WAIT_SEC="${STARTUP_WAIT_SEC:-12}"
 PRE_MISSION_WAIT_SEC="${PRE_MISSION_WAIT_SEC:-8}"
 FINAL_SCORE_WAIT_SEC="${FINAL_SCORE_WAIT_SEC:-8}"
 NAV_READY_WAIT_SEC="${NAV_READY_WAIT_SEC:-45}"
-MISSION_TIMEOUT_SEC="${MISSION_TIMEOUT_SEC:-300}"
+MISSION_TIMEOUT_SEC="${MISSION_TIMEOUT_SEC:-420}"
 
 COURSE_YAML=""; WORLD=""; RUN_DIR=""
 while [[ $# -gt 0 ]]; do

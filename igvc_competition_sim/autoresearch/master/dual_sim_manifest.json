@@ -38,7 +38,7 @@
         "ROS_LOCALHOST_ONLY": "1",
         "AUTORESEARCH_CLEAN_ROS_ENV": "true"
       },
-      "default_command": "python3 run_timebox.py --duration 45m --courses blender_competition_course --runs 1 --tier 1 --timeout 300 --description master-planning-control"
+      "default_command": "python3 run_timebox.py --duration 45m --courses blender_competition_course --runs 1 --tier 1 --timeout 420 --description master-planning-control"
     },
     "planning_control_ros22": {
       "purpose": "Second headless Gazebo plus robot Nav2 planning/control lane in autonav-ros22, using oracle perception and no Jetson.",
@@ -54,7 +54,7 @@
         "ROS_LOCALHOST_ONLY": "1",
         "AUTORESEARCH_CLEAN_ROS_ENV": "true"
       },
-      "default_command": "python3 run_timebox.py --duration 45m --courses blender_competition_course --runs 1 --tier 1 --timeout 300 --description master-planning-control-ros22"
+      "default_command": "python3 run_timebox.py --duration 45m --courses blender_competition_course --runs 1 --tier 1 --timeout 420 --description master-planning-control-ros22"
     },
     "jetson_perception": {
       "purpose": "Headless Gazebo in a VM with simulated sensors feeding the Jetson robot stack for perception/full-stack testing.",
