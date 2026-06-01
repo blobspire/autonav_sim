@@ -55,7 +55,7 @@ METRIC_TOPICS = {
     "/igvc_sim/score",
 }
 
-MIN_SCORE_SCHEMA_VERSION = 2
+MIN_SCORE_SCHEMA_VERSION = 3
 
 def _read_bag(
     bag_dir: Path,
@@ -164,21 +164,21 @@ def _parse_score_text(text: str) -> dict | None:
     return None
 
 
-def _load_score(run_dir: Path, msgs: dict) -> dict | None:
+def _load_score(run_dir: Path, msgs: dict) -> tuple[dict | None, str]:
     fp = run_dir / "final_score.txt"
     if fp.is_file():
         txt = fp.read_text(encoding="utf-8", errors="replace")
         parsed = _parse_score_text(txt)
         if parsed is not None:
-            return parsed
+            return parsed, "final_score"
     # fall back to last /igvc_sim/score String in the bag
     score_msgs = msgs.get("/igvc_sim/score") or []
     if score_msgs:
         try:
-            return json.loads(score_msgs[-1][1].data)
+            return json.loads(score_msgs[-1][1].data), "bag"
         except Exception:
-            return None
-    return None
+            return None, ""
+    return None, ""
 
 
 def _mission_completed(run_dir: Path) -> bool | None:
@@ -205,6 +205,22 @@ def _read_status_file(run_dir: Path, name: str) -> str:
 def _score_schema_version(score: dict) -> int:
     try:
         return int(score.get("score_schema_version") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _int_or_zero(value: Any) -> int:
+    try:
+        return int(value or 0)
     except (TypeError, ValueError):
         return 0
 
@@ -390,7 +406,8 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
     )
 
     # --- authoritative reliability ---
-    score = _load_score(run_dir, msgs)
+    score, score_source = _load_score(run_dir, msgs)
+    m["score_source"] = score_source
     if score is None:
         m["score_loaded"] = False
         m["failed"] = None
@@ -407,9 +424,23 @@ def compute_metrics(run_dir: str | Path, course_yaml: str | None = None) -> dict
         m["score_odom_source"] = score.get("odom_source")
         m["score_odom_topic"] = score.get("odom_topic")
         m["finish_armed"] = score.get("finish_armed")
+        m["course_config_sha256"] = score.get("course_config_sha256")
+        m["scoring_mode"] = score.get("scoring_mode")
+        m["odom_sample_count"] = score.get("odom_sample_count")
+        m["last_odom_age_s"] = score.get("last_odom_age_s")
+        m["waypoints_total"] = score.get("waypoints_total")
+        m["waypoints_reached_count"] = score.get("waypoints_reached_count")
+        m["all_waypoints_reached"] = score.get("all_waypoints_reached")
+        last_odom_age_s = _float_or_none(score.get("last_odom_age_s"))
         m["score_trustworthy"] = (
-            _score_schema_version(score) >= MIN_SCORE_SCHEMA_VERSION
+            score_source == "final_score"
+            and _score_schema_version(score) >= MIN_SCORE_SCHEMA_VERSION
             and score.get("odom_source") == "primary"
+            and score.get("odom_topic") == "/igvc_sim/ground_truth_odom"
+            and _int_or_zero(score.get("odom_sample_count")) >= 2
+            and last_odom_age_s is not None
+            and last_odom_age_s <= 3.0
+            and score.get("all_waypoints_reached") is not None
         )
     m["mission_completed"] = _mission_completed(run_dir)
 

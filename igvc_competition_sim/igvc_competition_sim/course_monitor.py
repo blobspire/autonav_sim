@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import sys
+from pathlib import Path
 
 from .course import Course, load_course
 
-SCORE_SCHEMA_VERSION = 2
+SCORE_SCHEMA_VERSION = 3
 
 try:
     import rclpy
@@ -49,6 +51,83 @@ def _point_segment_distance(x: float,
     return math.hypot(x - qx, y - qy)
 
 
+def _point_aabb_distance(x: float,
+                         y: float,
+                         min_x: float,
+                         max_x: float,
+                         min_y: float,
+                         max_y: float) -> float:
+    dx = max(min_x - x, 0.0, x - max_x)
+    dy = max(min_y - y, 0.0, y - max_y)
+    return math.hypot(dx, dy)
+
+
+def _orientation(a: tuple[float, float],
+                 b: tuple[float, float],
+                 c: tuple[float, float]) -> float:
+    return (b[0] - a[0]) * (c[1] - a[1]) - (
+        b[1] - a[1]) * (c[0] - a[0])
+
+
+def _on_segment(a: tuple[float, float],
+                b: tuple[float, float],
+                c: tuple[float, float]) -> bool:
+    return (
+        min(a[0], c[0]) - 1e-9 <= b[0] <= max(a[0], c[0]) + 1e-9
+        and min(a[1], c[1]) - 1e-9 <= b[1] <= max(a[1], c[1]) + 1e-9
+    )
+
+
+def _segments_intersect(a: tuple[float, float],
+                        b: tuple[float, float],
+                        c: tuple[float, float],
+                        d: tuple[float, float]) -> bool:
+    o1 = _orientation(a, b, c)
+    o2 = _orientation(a, b, d)
+    o3 = _orientation(c, d, a)
+    o4 = _orientation(c, d, b)
+    if o1 * o2 < 0.0 and o3 * o4 < 0.0:
+        return True
+    return (
+        abs(o1) <= 1e-9 and _on_segment(a, c, b)
+        or abs(o2) <= 1e-9 and _on_segment(a, d, b)
+        or abs(o3) <= 1e-9 and _on_segment(c, a, d)
+        or abs(o4) <= 1e-9 and _on_segment(c, b, d)
+    )
+
+
+def _segment_aabb_distance(start: tuple[float, float],
+                           end: tuple[float, float],
+                           min_x: float,
+                           max_x: float,
+                           min_y: float,
+                           max_y: float) -> float:
+    if _point_aabb_distance(start[0], start[1], min_x, max_x, min_y,
+                            max_y) <= 0.0:
+        return 0.0
+    if _point_aabb_distance(end[0], end[1], min_x, max_x, min_y,
+                            max_y) <= 0.0:
+        return 0.0
+    corners = (
+        (min_x, min_y),
+        (min_x, max_y),
+        (max_x, max_y),
+        (max_x, min_y),
+    )
+    edges = tuple(zip(corners, corners[1:] + corners[:1]))
+    if any(_segments_intersect(start, end, a, b) for a, b in edges):
+        return 0.0
+    distances = [
+        _point_aabb_distance(start[0], start[1], min_x, max_x, min_y, max_y),
+        _point_aabb_distance(end[0], end[1], min_x, max_x, min_y, max_y),
+    ]
+    distances.extend(
+        _point_segment_distance(corner[0], corner[1], start, end)
+        for corner in corners
+    )
+    return min(distances)
+
+
 def _shortest_angle_delta(start: float, end: float) -> float:
     return (end - start + math.pi) % (2.0 * math.pi) - math.pi
 
@@ -61,8 +140,10 @@ class IgvcCourseMonitor(Node):
         self.declare_parameter("odom_topic", "/igvc_sim/ground_truth_odom")
         self.declare_parameter("fallback_odom_topic", "/odom")
         self.declare_parameter("finish_reentry_margin_m", 0.25)
+        self.declare_parameter("run_id", "")
         course_path = str(self.get_parameter("course_config").value).strip()
         self.course: Course = load_course(course_path or None)
+        self.course_config_sha256 = self._file_sha256(self.course.config_path)
         self.robot = self.course.robot
         self.sample_spacing_m = max(
             0.02, float(self.get_parameter("sample_spacing_m").value))
@@ -71,7 +152,12 @@ class IgvcCourseMonitor(Node):
             self.get_parameter("fallback_odom_topic").value).strip()
         self.finish_reentry_margin_m = max(
             0.0, float(self.get_parameter("finish_reentry_margin_m").value))
+        self.run_id = str(self.get_parameter("run_id").value).strip()
         self.ramp_monitor_lateral_margin_m = 1.0
+        hx = self.robot.physical_half_length_m + self.robot.footprint_padding_m
+        hy = self.robot.physical_half_width_m + self.robot.footprint_padding_m
+        self.robot_sweep_radius_m = (
+            math.hypot(hx, hy) + abs(self.robot.base_link_to_nav_center_m))
 
         self.score_pub = self.create_publisher(String, "/igvc_sim/score", 10)
         self.fail_pub = self.create_publisher(Bool, "/igvc_sim/fail", 10)
@@ -101,6 +187,12 @@ class IgvcCourseMonitor(Node):
         self.first_failure: dict[str, object] | None = None
         self.max_speed_mps = 0.0
         self.finish_reached = False
+        self.odom_sample_count = 0
+        self.last_odom_time_s: float | None = None
+        self.waypoints_reached = [
+            False for _ in self.course.mission_waypoints
+        ]
+        self.next_waypoint_index = 0
         fx, fy, radius = self.course.finish
         start_finish_distance = math.hypot(
             self.course.start.x - fx, self.course.start.y - fy)
@@ -110,6 +202,13 @@ class IgvcCourseMonitor(Node):
             "IGVC course monitor scoring with odom_topic=%s fallback=%s "
             "finish_armed=%s"
             % (self.odom_topic, self.fallback_odom_topic, self.finish_armed))
+
+    @staticmethod
+    def _file_sha256(path: Path) -> str:
+        try:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return ""
 
     def _odom_callback(self, msg: Odometry, source: str = "primary") -> None:
         if source == "fallback" and self.primary_odom_seen:
@@ -124,6 +223,8 @@ class IgvcCourseMonitor(Node):
                 self.last_time_s = None
         self.odom_source = source
         now_s = _stamp_s(self)
+        self.odom_sample_count += 1
+        self.last_odom_time_s = now_s
         x = float(msg.pose.pose.position.x)
         y = float(msg.pose.pose.position.y)
         q = msg.pose.pose.orientation
@@ -149,6 +250,7 @@ class IgvcCourseMonitor(Node):
 
         self.distance_m += step_distance
         if not self.finish_reached:
+            self._update_waypoint_reaches_swept(previous_pose, pose)
             self._check_course_contact_swept(previous_pose, pose)
             self._update_speed_checks(now_s, motion_speed, limit_speed, pose)
             self._check_finish(x, y)
@@ -232,23 +334,70 @@ class IgvcCourseMonitor(Node):
         if distance_to_finish <= radius:
             self.finish_reached = True
 
+    def _waypoint_reference_position(
+            self,
+            pose: tuple[float, float, float],
+            kind: str) -> tuple[float, float]:
+        if kind != "gps":
+            return pose[0], pose[1]
+        x, y, yaw = pose
+        return (
+            x + self.robot.gps_x_from_base_link_m * math.cos(yaw)
+            - self.robot.gps_y_from_base_link_m * math.sin(yaw),
+            y + self.robot.gps_x_from_base_link_m * math.sin(yaw)
+            + self.robot.gps_y_from_base_link_m * math.cos(yaw),
+        )
+
+    def _update_waypoint_reaches_swept(
+            self,
+            previous_pose: tuple[float, float, float] | None,
+            current_pose: tuple[float, float, float]) -> None:
+        if self.next_waypoint_index >= len(self.course.mission_waypoints):
+            return
+        for pose in self._interpolate_swept_poses(previous_pose, current_pose):
+            while self.next_waypoint_index < len(self.course.mission_waypoints):
+                waypoint = self.course.mission_waypoints[
+                    self.next_waypoint_index]
+                wx, wy = self._waypoint_reference_position(
+                    pose, waypoint.kind)
+                if math.hypot(wx - waypoint.x_m,
+                              wy - waypoint.y_m) > waypoint.radius_m:
+                    break
+                self.waypoints_reached[self.next_waypoint_index] = True
+                self.next_waypoint_index += 1
+
+    def _interpolate_swept_poses(
+            self,
+            previous_pose: tuple[float, float, float] | None,
+            current_pose: tuple[float, float, float]
+    ) -> list[tuple[float, float, float]]:
+        if previous_pose is None:
+            return [current_pose]
+        distance = math.hypot(current_pose[0] - previous_pose[0],
+                              current_pose[1] - previous_pose[1])
+        yaw_delta = _shortest_angle_delta(previous_pose[2], current_pose[2])
+        rotation_distance = abs(yaw_delta) * self.robot_sweep_radius_m
+        samples = max(
+            1,
+            int(math.ceil(max(distance, rotation_distance)
+                          / self.sample_spacing_m)),
+        )
+        poses = []
+        for idx in range(samples + 1):
+            t = idx / float(samples)
+            poses.append((
+                previous_pose[0] + (current_pose[0] - previous_pose[0]) * t,
+                previous_pose[1] + (current_pose[1] - previous_pose[1]) * t,
+                previous_pose[2] + yaw_delta * t,
+            ))
+        return poses
+
     def _check_course_contact_swept(
             self,
             previous_pose: tuple[float, float, float] | None,
             current_pose: tuple[float, float, float]) -> None:
-        if previous_pose is None:
-            self._check_course_contact(*current_pose)
-            return
-        distance = math.hypot(current_pose[0] - previous_pose[0],
-                              current_pose[1] - previous_pose[1])
-        samples = max(1, int(math.ceil(distance / self.sample_spacing_m)))
-        yaw_delta = _shortest_angle_delta(previous_pose[2], current_pose[2])
-        for idx in range(samples + 1):
-            t = idx / float(samples)
-            x = previous_pose[0] + (current_pose[0] - previous_pose[0]) * t
-            y = previous_pose[1] + (current_pose[1] - previous_pose[1]) * t
-            yaw = previous_pose[2] + yaw_delta * t
-            self._check_course_contact(x, y, yaw)
+        for pose in self._interpolate_swept_poses(previous_pose, current_pose):
+            self._check_course_contact(*pose)
 
     def _check_course_contact(self, base_x: float, base_y: float,
                               yaw: float) -> None:
@@ -280,28 +429,48 @@ class IgvcCourseMonitor(Node):
                     pose=(base_x, base_y, yaw),
                 )
         for ramp in self.course.ramps:
-            if nav_x + hx >= ramp.start_x_m and nav_x - hx <= ramp.end_x_m:
-                lateral = abs(nav_y - ramp.center_y_m)
-                edge_limit = ramp.width_m * 0.5 + hy
-                distance_to_ramp_center = _point_segment_distance(
-                    nav_x, nav_y,
-                    (ramp.start_x_m, ramp.center_y_m),
-                    (ramp.end_x_m, ramp.center_y_m),
+            run_length_m = (
+                ramp.run_length_m
+                if ramp.run_length_m is not None
+                else ramp.end_x_m - ramp.start_x_m
+            )
+            half_run = 0.5 * run_length_m
+            if half_run <= 1e-6:
+                continue
+            center_x = (
+                ramp.center_x_m
+                if ramp.center_x_m is not None
+                else 0.5 * (ramp.start_x_m + ramp.end_x_m)
+            )
+            corners = self._footprint_corners(nav_x, nav_y, yaw, hx, hy)
+            local_corners = [
+                self._world_to_frame(
+                    corner[0], corner[1], center_x, ramp.center_y_m,
+                    ramp.yaw_rad)
+                for corner in corners
+            ]
+            min_local_x = min(point[0] for point in local_corners)
+            max_local_x = max(point[0] for point in local_corners)
+            if max_local_x < -half_run or min_local_x > half_run:
+                continue
+            _, local_nav_y = self._world_to_frame(
+                nav_x, nav_y, center_x, ramp.center_y_m, ramp.yaw_rad)
+            local_y_values = [point[1] for point in local_corners]
+            lateral_radius = max(
+                abs(local_y - local_nav_y) for local_y in local_y_values)
+            edge_limit = ramp.width_m * 0.5
+            if abs(local_nav_y) > (
+                    edge_limit + lateral_radius
+                    + self.ramp_monitor_lateral_margin_m):
+                continue
+            if min(local_y_values) < -edge_limit or (
+                    max(local_y_values) > edge_limit):
+                self._fail(
+                    "ramp_edge_departure:" + ramp.name,
+                    failure_type="ramp_edge_departure",
+                    hazard=ramp.name,
+                    pose=(base_x, base_y, yaw),
                 )
-                # Long loop courses can revisit the same x range far away
-                # from an x-aligned ramp. Only suppress the ramp-specific
-                # check when the robot is clearly in a different lane; tape and
-                # obstacle contact checks above still score normal course exits.
-                if distance_to_ramp_center > (
-                        edge_limit + self.ramp_monitor_lateral_margin_m):
-                    continue
-                if lateral > edge_limit:
-                    self._fail(
-                        "ramp_edge_departure:" + ramp.name,
-                        failure_type="ramp_edge_departure",
-                        hazard=ramp.name,
-                        pose=(base_x, base_y, yaw),
-                    )
 
     def _segment_hits_body(self,
                            start: tuple[float, float],
@@ -312,16 +481,11 @@ class IgvcCourseMonitor(Node):
                            yaw: float,
                            hx: float,
                            hy: float) -> bool:
-        length = max(0.0, math.hypot(end[0] - start[0], end[1] - start[1]))
-        samples = max(1, int(math.ceil(length / self.sample_spacing_m)))
-        for idx in range(samples + 1):
-            t = idx / float(samples)
-            x = start[0] + (end[0] - start[0]) * t
-            y = start[1] + (end[1] - start[1]) * t
-            local_x, local_y = self._world_to_nav(x, y, nav_x, nav_y, yaw)
-            if abs(local_x) <= hx + half_width and abs(local_y) <= hy + half_width:
-                return True
-        return False
+        local_start = self._world_to_nav(
+            start[0], start[1], nav_x, nav_y, yaw)
+        local_end = self._world_to_nav(end[0], end[1], nav_x, nav_y, yaw)
+        return _segment_aabb_distance(
+            local_start, local_end, -hx, hx, -hy, hy) <= half_width
 
     def _circle_hits_body(self,
                           center: tuple[float, float],
@@ -340,11 +504,33 @@ class IgvcCourseMonitor(Node):
     @staticmethod
     def _world_to_nav(x: float, y: float, nav_x: float, nav_y: float,
                       yaw: float) -> tuple[float, float]:
-        dx = x - nav_x
-        dy = y - nav_y
+        return IgvcCourseMonitor._world_to_frame(x, y, nav_x, nav_y, yaw)
+
+    @staticmethod
+    def _world_to_frame(x: float, y: float, frame_x: float, frame_y: float,
+                        yaw: float) -> tuple[float, float]:
+        dx = x - frame_x
+        dy = y - frame_y
         c = math.cos(yaw)
         s = math.sin(yaw)
         return c * dx + s * dy, -s * dx + c * dy
+
+    @staticmethod
+    def _footprint_corners(nav_x: float,
+                           nav_y: float,
+                           yaw: float,
+                           hx: float,
+                           hy: float) -> tuple[tuple[float, float], ...]:
+        c = math.cos(yaw)
+        s = math.sin(yaw)
+        corners = []
+        for local_x, local_y in ((-hx, -hy), (-hx, hy), (hx, hy),
+                                 (hx, -hy)):
+            corners.append((
+                nav_x + c * local_x - s * local_y,
+                nav_y + s * local_x + c * local_y,
+            ))
+        return tuple(corners)
 
     def _fail(self,
               reason: str,
@@ -375,9 +561,17 @@ class IgvcCourseMonitor(Node):
                 % (reason, json.dumps(detail, sort_keys=True)))
 
     def _publish_score(self) -> None:
+        score_time_s = _stamp_s(self)
+        last_odom_age_s = None
+        if self.last_odom_time_s is not None:
+            last_odom_age_s = max(0.0, score_time_s - self.last_odom_time_s)
         score = {
             "score_schema_version": SCORE_SCHEMA_VERSION,
+            "scoring_mode": "ground_truth_odom_swept_footprint_v3",
+            "run_id": self.run_id,
             "course_id": self.course.course_id,
+            "course_config": str(self.course.config_path),
+            "course_config_sha256": self.course_config_sha256,
             "failed": bool(self.failures),
             "failures": self.failures,
             "first_failure": self.first_failure,
@@ -388,6 +582,20 @@ class IgvcCourseMonitor(Node):
             "finish_armed": self.finish_armed,
             "odom_topic": self.odom_topic,
             "odom_source": self.odom_source,
+            "odom_sample_count": self.odom_sample_count,
+            "last_odom_time_s": (
+                None if self.last_odom_time_s is None
+                else round(self.last_odom_time_s, 3)
+            ),
+            "last_odom_age_s": (
+                None if last_odom_age_s is None
+                else round(last_odom_age_s, 3)
+            ),
+            "score_time_s": round(score_time_s, 3),
+            "waypoints_total": len(self.course.mission_waypoints),
+            "waypoints_reached_count": sum(self.waypoints_reached),
+            "all_waypoints_reached": all(self.waypoints_reached),
+            "next_waypoint_index": self.next_waypoint_index,
             "speed_check_complete": self.speed_check_end_s is not None,
         }
         self.score_pub.publish(String(data=json.dumps(score, sort_keys=True)))

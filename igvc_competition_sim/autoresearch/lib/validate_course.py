@@ -17,6 +17,7 @@ sim baseline. ASCII output only. Exit 0 if all requested courses pass.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import math
 import sys
 from pathlib import Path
@@ -34,6 +35,7 @@ from igvc_competition_sim.course import (  # noqa: E402
     iter_course_points,
     load_yaml,
 )
+from igvc_competition_sim.generate_world import generate_world  # noqa: E402
 
 RES = 0.05
 FT_TO_M = 0.3048
@@ -735,6 +737,27 @@ def generated_world_problems(course_path: Path) -> list[str]:
     return problems
 
 
+def generated_world_sync_problems(course_path: Path) -> list[str]:
+    if course_path.parent.name != "courses":
+        return []
+    world_path = course_path.parent / "worlds" / f"{course_path.stem}.sdf"
+    if not world_path.is_file():
+        return [f"generated world missing: {world_path}"]
+    course = load_course(course_path)
+    expected = "\n".join(
+        line.rstrip() for line in generate_world(course).splitlines()
+    ) + "\n"
+    actual = world_path.read_text(encoding="utf-8")
+    if actual == expected:
+        return []
+    return [
+        "generated world is stale or does not match course YAML "
+        f"(actual_sha256={hashlib.sha256(actual.encode('utf-8')).hexdigest()} "
+        f"expected_sha256="
+        f"{hashlib.sha256(expected.encode('utf-8')).hexdigest()})"
+    ]
+
+
 def validate(course_path: Path) -> tuple[bool, str]:
     c = load_course(course_path)
     min_x, min_y, max_x, max_y = course_bounds(c, margin_m=2.0)
@@ -801,6 +824,7 @@ def validate(course_path: Path) -> tuple[bool, str]:
     problems.extend(slalom_gate_problems(course_path))
     problems.extend(ramp_geometry_problems(course_path))
     problems.extend(official_rules_profile_problems(course_path))
+    problems.extend(generated_world_sync_problems(course_path))
     problems.extend(generated_world_problems(course_path))
     free_frac = float(free.mean())
     detail = (f"grid={nx}x{ny} r_in={r_in:.2f}m free={free_frac*100:.0f}% "

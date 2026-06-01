@@ -105,6 +105,8 @@ for f in "$COURSE_YAML" "$WORLD" "$NAV2_PARAMS_SRC" "$BT_XML_SRC"; do
 done
 
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-$(( (RANDOM % 200) + 11 ))}"
+AUTORESEARCH_RUN_ID="${AUTORESEARCH_RUN_ID:-run-$(date +%s%N)-$RANDOM}"
+export AUTORESEARCH_RUN_ID
 mkdir -p "$RUN_DIR"
 ROS_LOG_DIR="${ROS_LOG_DIR:-$RUN_DIR/ros_log}"
 export ROS_LOG_DIR
@@ -121,6 +123,38 @@ set +u
 source /opt/ros/humble/setup.bash
 source "$ROS_WS/install/local_setup.bash"
 set -u
+
+python3 - "$COURSE_YAML" "$WORLD" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+from igvc_competition_sim.course import load_course
+from igvc_competition_sim.generate_world import generate_world
+
+course_path = Path(sys.argv[1]).resolve()
+world_path = Path(sys.argv[2]).resolve()
+course = load_course(course_path)
+expected = "\n".join(
+    line.rstrip() for line in generate_world(course).splitlines()
+) + "\n"
+actual = world_path.read_text(encoding="utf-8")
+if actual != expected:
+    print(
+        "run_one: generated world is stale or does not match course YAML: "
+        f"{world_path}",
+        file=sys.stderr,
+    )
+    print(
+        "run_one: actual_sha256=%s expected_sha256=%s"
+        % (
+            hashlib.sha256(actual.encode("utf-8")).hexdigest(),
+            hashlib.sha256(expected.encode("utf-8")).hexdigest(),
+        ),
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+PY
 
 stop_process() {  # pid name [group]
   local pid="$1" name="$2" scope="${3:-process}" target="$1"
@@ -153,6 +187,7 @@ setsid ros2 launch igvc_competition_sim igvc_competition.launch.py \
   launch_detection:="$LAUNCH_DETECTION" \
   nav2_params:="$NAV2_PARAMS_SRC" \
   bt_xml:="$BT_XML_SRC" \
+  run_id:="$AUTORESEARCH_RUN_ID" \
   use_calibrated_dynamics:=true \
   dynamics_calibration:="$DYN_CAL" \
   gazebo_server_only:=true \
@@ -212,6 +247,7 @@ set +e
 timeout --kill-after=5s "${MISSION_TIMEOUT_SEC}s" \
   ros2 run igvc_competition_sim igvc_mission_runner \
     --course-config "$COURSE_YAML" --timeout-sec "$MISSION_TIMEOUT_SEC" \
+    --run-id "$AUTORESEARCH_RUN_ID" \
   | tee "$RUN_DIR/mission.log"
 mission_status="${PIPESTATUS[0]}"
 timeout --kill-after=2s "${FINAL_SCORE_WAIT_SEC}s" \
@@ -226,14 +262,19 @@ echo "run_one: done (mission_status=$mission_status) -> $RUN_DIR"
 if [[ "$mission_status" -ne 0 ]]; then
   exit "$mission_status"
 fi
-python3 - "$RUN_DIR/final_score.txt" <<'PY'
+python3 - "$RUN_DIR/final_score.txt" "$COURSE_YAML" "$AUTORESEARCH_RUN_ID" <<'PY'
 import ast
+import hashlib
 import json
 import re
 import sys
 from pathlib import Path
 
 score_file = Path(sys.argv[1])
+course_file = Path(sys.argv[2])
+expected_run_id = sys.argv[3]
+expected_course_sha256 = hashlib.sha256(
+    course_file.read_bytes()).hexdigest()
 text = score_file.read_text(encoding="utf-8", errors="replace")
 match = re.search(r"^data:\s*(.+)$", text, flags=re.MULTILINE)
 if not match:
@@ -259,10 +300,18 @@ try:
     score_schema_version = int(score.get("score_schema_version") or 0)
 except (TypeError, ValueError):
     score_schema_version = 0
-if score_schema_version < 2:
+if score_schema_version < 3:
     print(
         f"run_one: untrusted /igvc_sim/score schema "
-        f"{score.get('score_schema_version')!r}; expected >= 2. "
+        f"{score.get('score_schema_version')!r}; expected >= 3. "
+        f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("run_id") != expected_run_id:
+    print(
+        f"run_one: IGVC monitor run_id mismatch "
+        f"(score={score.get('run_id')!r} expected={expected_run_id!r}). "
         f"See {score_file}",
         file=sys.stderr,
     )
@@ -271,6 +320,45 @@ if score.get("odom_source") != "primary":
     print(
         f"run_one: IGVC monitor did not score primary ground-truth odom "
         f"(odom_source={score.get('odom_source')!r}). See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("odom_topic") != "/igvc_sim/ground_truth_odom":
+    print(
+        f"run_one: IGVC monitor scored unexpected odom topic "
+        f"{score.get('odom_topic')!r}. See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("course_config_sha256") != expected_course_sha256:
+    print(
+        "run_one: IGVC monitor course hash does not match requested "
+        f"course YAML. See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+try:
+    odom_sample_count = int(score.get("odom_sample_count") or 0)
+except (TypeError, ValueError):
+    odom_sample_count = 0
+if odom_sample_count < 2:
+    print(
+        f"run_one: IGVC monitor saw too few ground-truth odom samples. "
+        f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+last_odom_age_s = score.get("last_odom_age_s")
+try:
+    last_odom_age_value = (
+        None if last_odom_age_s is None else float(last_odom_age_s)
+    )
+except (TypeError, ValueError):
+    last_odom_age_value = None
+if last_odom_age_value is None or last_odom_age_value > 3.0:
+    print(
+        f"run_one: IGVC monitor score is stale "
+        f"(last_odom_age_s={last_odom_age_s!r}). See {score_file}",
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -284,6 +372,15 @@ if score.get("finish_reached") is not True:
     print(
         f"run_one: IGVC monitor did not report finish_reached=true. "
         f"See {score_file}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if score.get("all_waypoints_reached") is not True:
+    print(
+        f"run_one: IGVC monitor did not observe all mission waypoints "
+        f"with ground-truth odom "
+        f"({score.get('waypoints_reached_count')}/"
+        f"{score.get('waypoints_total')}). See {score_file}",
         file=sys.stderr,
     )
     raise SystemExit(1)

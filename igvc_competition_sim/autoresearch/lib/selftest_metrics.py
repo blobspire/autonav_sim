@@ -8,6 +8,7 @@ Exit 0 = all asserts pass.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import sys
@@ -140,8 +141,11 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
 
     # score
     score = {
-        "score_schema_version": 2,
+        "score_schema_version": 3,
+        "scoring_mode": "ground_truth_odom_swept_footprint_v3",
         "course_id": "compact_baseline",
+        "course_config_sha256": hashlib.sha256(
+            Path(COURSE).read_bytes()).hexdigest(),
         "failed": fail,
         "failures": (["tape_crossing:left_boundary_3"] if fail else []),
         "distance_m": 12.3,
@@ -149,6 +153,11 @@ def write_bag(run_dir: Path, *, fail: bool = False) -> None:
         "max_speed_mps": 0.49,
         "odom_source": "primary",
         "odom_topic": "/igvc_sim/ground_truth_odom",
+        "odom_sample_count": 33,
+        "last_odom_age_s": 0.1,
+        "waypoints_total": 1,
+        "waypoints_reached_count": 1,
+        "all_waypoints_reached": True,
         "finish_reached": (not fail),
         "speed_check_complete": True,
     }
@@ -183,10 +192,12 @@ def main() -> int:
             {k: m[k] for k in ("traversal_time", "breadcrumb", "gradient",
              "pathfootprint_rejects", "backup", "ang_reversals", "stuck_events",
              "time_below_speed", "finish_reached", "violations", "mission_completed",
-             "min_course_clear", "pca_first_s", "score_trustworthy")}, default=str))
+             "min_course_clear", "pca_first_s", "score_trustworthy",
+             "all_waypoints_reached", "score_source")}, default=str))
         ok &= check("score parsed + clean", m["score_loaded"] and not m["failed"]
                     and m["finish_reached"] and not m["violations"])
         ok &= check("score is trustworthy", m["score_trustworthy"] is True)
+        ok &= check("score source is final_score", m["score_source"] == "final_score")
         ok &= check("mission_completed True", m["mission_completed"] is True)
         ok &= check("traversal_time ~16s",
                     m["traversal_time"] is not None and 15.0 <= m["traversal_time"] <= 17.0)
@@ -274,9 +285,17 @@ def main() -> int:
         write_bag(fallback_dir, fail=False)
         fallback_score = dict(stale_score)
         fallback_score.update({
-            "score_schema_version": 2,
+            "score_schema_version": 3,
+            "scoring_mode": "ground_truth_odom_swept_footprint_v3",
+            "course_config_sha256": hashlib.sha256(
+                Path(COURSE).read_bytes()).hexdigest(),
             "odom_source": "fallback",
             "odom_topic": "/igvc_sim/ground_truth_odom",
+            "odom_sample_count": 33,
+            "last_odom_age_s": 0.1,
+            "waypoints_total": 1,
+            "waypoints_reached_count": 1,
+            "all_waypoints_reached": True,
         })
         (fallback_dir / "final_score.txt").write_text(
             'data: "%s"\n'
@@ -287,6 +306,54 @@ def main() -> int:
                     mfallback["score_loaded"]
                     and mfallback["score_trustworthy"] is False
                     and F.run_clean(mfallback) is None)
+
+        stale_odom_dir = tmp / "stale_odom_score"
+        stale_odom_dir.mkdir(parents=True)
+        write_bag(stale_odom_dir, fail=False)
+        stale_odom_score = dict(fallback_score)
+        stale_odom_score.update({
+            "odom_source": "primary",
+            "last_odom_age_s": 10.0,
+        })
+        (stale_odom_dir / "final_score.txt").write_text(
+            'data: "%s"\n'
+            % json.dumps(stale_odom_score, sort_keys=True).replace('"', '\\"'),
+            encoding="utf-8")
+        mstale_odom = M.compute_metrics(stale_odom_dir, COURSE)
+        ok &= check("stale odom score -> INCOMPLETE",
+                    mstale_odom["score_loaded"]
+                    and mstale_odom["score_trustworthy"] is False
+                    and F.run_clean(mstale_odom) is None)
+
+        missed_wp_dir = tmp / "missed_waypoint_score"
+        missed_wp_dir.mkdir(parents=True)
+        write_bag(missed_wp_dir, fail=False)
+        missed_wp_score = dict(fallback_score)
+        missed_wp_score.update({
+            "odom_source": "primary",
+            "waypoints_total": 2,
+            "waypoints_reached_count": 1,
+            "all_waypoints_reached": False,
+        })
+        (missed_wp_dir / "final_score.txt").write_text(
+            'data: "%s"\n'
+            % json.dumps(missed_wp_score, sort_keys=True).replace('"', '\\"'),
+            encoding="utf-8")
+        mmissed_wp = M.compute_metrics(missed_wp_dir, COURSE)
+        ok &= check("missed ground-truth waypoint -> gate FAIL",
+                    mmissed_wp["score_trustworthy"] is True
+                    and F.run_clean(mmissed_wp) is False)
+
+        bag_only_dir = tmp / "bag_only_score"
+        bag_only_dir.mkdir(parents=True)
+        write_bag(bag_only_dir, fail=False)
+        (bag_only_dir / "final_score.txt").unlink()
+        mbag_only = M.compute_metrics(bag_only_dir, COURSE)
+        ok &= check("bag-only score is diagnostic, not clean evidence",
+                    mbag_only["score_loaded"]
+                    and mbag_only["score_source"] == "bag"
+                    and mbag_only["score_trustworthy"] is False
+                    and F.run_clean(mbag_only) is None)
 
         # incomplete run (no score) -> not clean
         inc_dir = tmp / "inc"

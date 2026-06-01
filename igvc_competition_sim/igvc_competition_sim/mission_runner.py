@@ -19,16 +19,21 @@ except ImportError as exc:  # pragma: no cover - ROS runtime only.
 
 
 class MissionRunner(Node):
-    def __init__(self, course_config: str, timeout_sec: float) -> None:
+    def __init__(self,
+                 course_config: str,
+                 timeout_sec: float,
+                 run_id: str = "") -> None:
         super().__init__("igvc_mission_runner")
         self.course = load_course(course_config or None)
         self.timeout_sec = timeout_sec
+        self.run_id = run_id
         self.client = ActionClient(
             self, NavigateToWaypoint, "/navigate_to_waypoint")
 
     def run(self) -> bool:
         self.get_logger().info(
-            "waiting for /navigate_to_waypoint action server")
+            "waiting for /navigate_to_waypoint action server"
+            + (f" run_id={self.run_id}" if self.run_id else ""))
         if not self.client.wait_for_server(timeout_sec=30.0):
             self.get_logger().error("/navigate_to_waypoint unavailable")
             return False
@@ -101,11 +106,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--course-config", default="")
     parser.add_argument("--timeout-sec", type=float, default=240.0)
+    parser.add_argument("--run-id", default="")
     raw_args = sys.argv[1:] if argv is None else argv
     args, ros_args = parser.parse_known_args(raw_args)
 
     rclpy.init(args=([sys.argv[0]] + ros_args) if argv is None else ros_args)
-    node = MissionRunner(args.course_config, args.timeout_sec)
+    node = MissionRunner(args.course_config, args.timeout_sec, args.run_id)
     try:
         ok = node.run()
     finally:

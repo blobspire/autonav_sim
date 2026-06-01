@@ -116,6 +116,31 @@ def _truthy(context, name: str) -> bool:
         "1", "true", "yes", "on")
 
 
+def _validate_world_sync(context, *args, **kwargs):
+    if not _truthy(context, "validate_world_sync"):
+        return []
+    course_path = Path(LaunchConfiguration("course_config").perform(context))
+    world_path = Path(LaunchConfiguration("world").perform(context))
+    if not course_path.is_file() or not world_path.is_file():
+        return []
+    from igvc_competition_sim.course import load_course
+    from igvc_competition_sim.generate_world import generate_world
+
+    expected = "\n".join(
+        line.rstrip()
+        for line in generate_world(load_course(course_path)).splitlines()
+    ) + "\n"
+    actual = world_path.read_text(encoding="utf-8")
+    if actual != expected:
+        actual_sha = hashlib.sha256(actual.encode("utf-8")).hexdigest()
+        expected_sha = hashlib.sha256(expected.encode("utf-8")).hexdigest()
+        raise RuntimeError(
+            "Generated world does not match course YAML: "
+            f"{world_path} actual_sha256={actual_sha} "
+            f"expected_sha256={expected_sha}")
+    return []
+
+
 def _line_detection_mode(context) -> str:
     mode = LaunchConfiguration("line_detection_mode").perform(context).lower()
     if mode not in ("camera", "ground_truth", "lidar"):
@@ -361,6 +386,7 @@ def _detection_process(context, *args, **kwargs):
 
 def generate_launch_description() -> LaunchDescription:
     course_config = LaunchConfiguration("course_config")
+    run_id = LaunchConfiguration("run_id")
     launch_bridge = LaunchConfiguration("launch_bridge")
     launch_monitor = LaunchConfiguration("launch_monitor")
     launch_pca_scan_converters = LaunchConfiguration("launch_pca_scan_converters")
@@ -390,6 +416,7 @@ def generate_launch_description() -> LaunchDescription:
         parameters=[{
             "use_sim_time": True,
             "course_config": course_config,
+            "run_id": run_id,
         }],
         condition=IfCondition(launch_monitor),
     )
@@ -458,6 +485,8 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         DeclareLaunchArgument("course_config", default_value=_default_course_config()),
         DeclareLaunchArgument("world", default_value=_default_world()),
+        DeclareLaunchArgument("validate_world_sync", default_value="true"),
+        DeclareLaunchArgument("run_id", default_value=""),
         DeclareLaunchArgument("launch_gazebo", default_value="true"),
         DeclareLaunchArgument("gazebo_server_only", default_value="true"),
         DeclareLaunchArgument("launch_bridge", default_value="true"),
@@ -515,6 +544,7 @@ def generate_launch_description() -> LaunchDescription:
                 os.environ.get("IGN_GAZEBO_RESOURCE_PATH", ""),
             ]),
         ),
+        OpaqueFunction(function=_validate_world_sync),
         OpaqueFunction(function=_gazebo_process),
         bridge,
         OpaqueFunction(function=_calibrated_dynamics_process),

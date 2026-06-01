@@ -56,10 +56,12 @@ def run_clean(m: dict) -> bool | None:
         return False
     if m.get("finish_reached") is False:
         return False
-    if m.get("violations"):
+    if m.get("all_waypoints_reached") is False:
         return False
     mc = m.get("mission_completed")
-    if mc is False:
+    if mc is not True:
+        return False
+    if m.get("violations"):
         return False
     # finish_reached True + no violations + not explicitly aborted => clean
     return bool(m.get("finish_reached"))
@@ -152,11 +154,20 @@ def evaluate_candidate(runs: list[dict],
                     reason = r.get("startup_status") or "INCOMPLETE"
                 else:
                     mission_status = str(r.get("mission_status") or "").strip()
-                    reason = (
-                        f"mission_status={mission_status}"
-                        if mission_status and mission_status != "0"
-                        else ",".join(r.get("violations") or ["incomplete/timeout"])
-                    )
+                    if mission_status and mission_status != "0":
+                        reason = f"mission_status={mission_status}"
+                    elif r.get("violations"):
+                        reason = ",".join(r.get("violations") or [])
+                    elif r.get("all_waypoints_reached") is False:
+                        reason = (
+                            "waypoints_reached="
+                            f"{r.get('waypoints_reached_count')}/"
+                            f"{r.get('waypoints_total')}"
+                        )
+                    elif r.get("mission_completed") is not True:
+                        reason = "mission_not_completed"
+                    else:
+                        reason = "incomplete/timeout"
                 reasons.append(f"run{i + 1}:{reason}")
         result["notes"] = "; ".join(reasons)
         return result
