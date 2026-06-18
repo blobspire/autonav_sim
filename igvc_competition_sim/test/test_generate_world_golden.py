@@ -29,7 +29,8 @@ def test_omitting_profile_uses_shogi_default():
 
 def test_custom_profile_changes_model_name_and_topics():
     course = load_course(PKG / "config" / "igvc_competition_compact.yaml")
-    world = generate_world(course, RobotProfile(name="rover"))
+    shogi_profile = load_robot_profile(PKG / "profiles" / "shogi" / "profile.yaml")
+    world = generate_world(course, RobotProfile(name="rover", geometry=shogi_profile.geometry))
     assert "<model name='rover'>" in world
     assert "<odom_topic>/model/rover/odometry</odom_topic>" in world
     assert "<tf_topic>/model/rover/tf</tf_topic>" in world
