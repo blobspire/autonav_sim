@@ -32,3 +32,14 @@ def test_invalid_name_raises(tmp_path: Path):
     p.write_text("name: 'bad name/slash'\n", encoding="utf-8")
     with pytest.raises(ValueError, match=r"\[A-Za-z0-9_\]"):
         load_robot_profile(p)
+
+
+def test_default_shogi_profile_loads():
+    from igvc_competition_sim.robot_profile import (
+        DEFAULT_ROBOT_PROFILE,
+        load_robot_profile,
+    )
+    assert DEFAULT_ROBOT_PROFILE.is_file()
+    profile = load_robot_profile()
+    assert profile.name == "shogi"
+    assert profile.gz_odom_topic == "/model/shogi/odometry"

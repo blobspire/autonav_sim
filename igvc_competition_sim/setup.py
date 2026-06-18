@@ -1,3 +1,5 @@
+from glob import glob
+
 from setuptools import find_packages, setup
 
 
@@ -23,6 +25,8 @@ setup(
          ["launch/igvc_competition.launch.py"]),
         ("share/" + package_name + "/worlds",
          ["worlds/igvc_competition_compact.sdf"]),
+        ("share/" + package_name + "/profiles/shogi",
+         glob("profiles/shogi/*")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,

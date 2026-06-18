@@ -1,0 +1,10 @@
+# Robot profile: AutoNav 2025-26 competition robot ("shogi").
+# This reference profile reproduces the original sim behavior exactly.
+#
+# To plug in your own robot: copy this directory to profiles/<your_robot>/,
+# change `name` to your Gazebo model name, then launch with
+# robot_profile:=<path-to-your-profile.yaml>. The name is interpolated into
+# the spawned model and into /model/<name>/odometry and /model/<name>/tf.
+schema_version: 1
+name: shogi
+description: "AutoNav 2025-26 IGVC competition robot (reference profile)."
