@@ -415,14 +415,12 @@ def test_course_loads_without_robot_block(tmp_path):
 
 
 def test_course_ignores_stray_robot_block(tmp_path):
-    # A course YAML that still HAS a robot: block must also load (ignored).
+    # A course YAML with a legacy robot: block must still load (block ignored).
+    src = (PKG / "config" / "igvc_competition_compact.yaml").read_text(
+        encoding="utf-8")
     p = tmp_path / "course.yaml"
-    p.write_text(
-        (PKG / "config" / "igvc_competition_compact.yaml").read_text(
-            encoding="utf-8"),
-        encoding="utf-8",
-    )
-    course = load_course(p)  # original still has robot: at this point
+    p.write_text(src + "\nrobot:\n  wheel_track_m: 0.5\n", encoding="utf-8")
+    course = load_course(p)
     assert course.course_id == "igvc_competition_compact"
 ```
 
