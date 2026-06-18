@@ -442,6 +442,7 @@ def generate_launch_description() -> LaunchDescription:
             "run_id": run_id,
             "odom_topic": "/igvc_sim/ground_truth_odom",
             "fallback_odom_topic": "",
+            "robot_profile": LaunchConfiguration("robot_profile"),
         }],
         condition=IfCondition(launch_monitor),
     )
