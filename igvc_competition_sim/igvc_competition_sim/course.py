@@ -5,8 +5,6 @@ import math
 from pathlib import Path
 from typing import Any, Iterable
 
-from .robot_profile import RobotSpec
-
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 EARTH_RADIUS_M = 6378137.0
@@ -106,7 +104,6 @@ class Course:
     datum_altitude_m: float
     start: Pose2D
     finish: tuple[float, float, float]
-    robot: RobotSpec
     tapes: tuple[TapeSegment, ...]
     obstacles: tuple[Obstacle, ...]
     ramps: tuple[Ramp, ...]
@@ -682,7 +679,6 @@ def load_course(path: str | Path | None = None) -> Course:
     datum = data["datum"]
     start = data["start"]
     finish = data["finish"]
-    robot = data["robot"]
     speed_check = data["speed_check"]
 
     return Course(
@@ -702,7 +698,6 @@ def load_course(path: str | Path | None = None) -> Course:
             float(finish["y_m"]),
             float(finish.get("radius_m", 1.0)),
         ),
-        robot=RobotSpec(**{key: float(value) for key, value in robot.items()}),
         tapes=tuple(tapes),
         obstacles=tuple(
             Obstacle(
