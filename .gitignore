@@ -18,3 +18,6 @@ docs/AUTORESEARCH_RUN_REPORT_*.md
 docs/GAZEBO_CANON_OFFLINE_REPORT.md
 docs/gazebo_canon_offline_report.json
 docs/GAZEBO_WORK_LOG.md
+
+# Local test virtualenv (host-side pytest)
+.venv/
