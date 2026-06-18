@@ -7,6 +7,7 @@ import sys
 
 from .course import Course, load_course, local_to_latlon
 from .lidar_geometry import raycast_cylinders
+from .robot_profile import load_robot_profile
 
 try:
     import rclpy
@@ -105,10 +106,17 @@ class IgvcSensorHarness(Node):
         self.declare_parameter("publish_odom_tf", True)
         self.declare_parameter(
             "gazebo_odom_topic", "/model/shogi/odometry")
+        self.declare_parameter("robot_profile", "")
 
         course_path = str(self.get_parameter("course_config").value).strip()
         self.course: Course = load_course(course_path or None)
-        self.robot = self.course.robot
+        profile_path = str(self.get_parameter("robot_profile").value).strip()
+        profile = load_robot_profile(profile_path or None)
+        if profile.geometry is None:
+            raise RuntimeError(
+                "igvc_sensor_harness requires a robot_profile with a 'geometry' "
+                f"block; profile '{profile.name}' has none")
+        self.robot = profile.geometry
         self.fallback_integrate_cmd = bool(
             self.get_parameter("fallback_integrate_cmd").value)
         self.publish_ground_truth_pca = bool(
