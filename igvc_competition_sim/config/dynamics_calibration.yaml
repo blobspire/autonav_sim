@@ -2,8 +2,10 @@ schema_version: 1
 description: "Real-robot low-speed dynamics calibration inputs for the IGVC Gazebo sim."
 
 source_runs:
-  bag_root: "/Users/cole/autonav_bags/jetson_practice_course_20260529_211047"
-  video_root: "/Users/cole/Downloads"
+  # Pass --bag-root / --video-root to igvc_calibration_report to point at your
+  # own recordings. Left blank intentionally (no machine-specific paths shipped).
+  bag_root: ""
+  video_root: ""
   runs:
     straight_distance_drift_low_2:
       profile: straight_distance_drift_low
