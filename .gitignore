@@ -12,3 +12,9 @@ igvc_competition_sim/fortress_runs/
 igvc_competition_sim/autoresearch/results/*
 !igvc_competition_sim/autoresearch/results/.gitkeep
 !igvc_competition_sim/autoresearch/results/experiments.jsonl
+
+# Generated reports / internal work logs (kept on disk, not tracked)
+docs/AUTORESEARCH_RUN_REPORT_*.md
+docs/GAZEBO_CANON_OFFLINE_REPORT.md
+docs/gazebo_canon_offline_report.json
+docs/GAZEBO_WORK_LOG.md
