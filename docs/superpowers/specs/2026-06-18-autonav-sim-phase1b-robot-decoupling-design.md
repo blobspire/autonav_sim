@@ -1,7 +1,7 @@
 # Design: Phase 1b — Robot-Agnostic World + Single Sim-Complete Robot Description
 
 - **Date:** 2026-06-18
-- **Status:** Draft — awaiting user review
+- **Status:** Approved 2026-06-18 — ready for implementation planning
 - **Primary repo:** `autonav_sim` (`github.com/blobspire/autonav_sim`) — branch `phase1b-robot-decoupling` (stacked on `showcase-restructure` / PR #1)
 - **Secondary repo:** `AutoNav_25-26` (`github.com/KazakhStallion/AutoNav_25-26`) — `bringup` package (robot *description*, not perception/planning/control logic)
 - **Builds on:** Phase 1 (robot-profile foundation — robot *identity* parameterized)
@@ -85,9 +85,9 @@ Move the course config's `robot:` block into the profile's `geometry`/`dynamics`
 | E1 | **Architecture B** — robot-agnostic world + spawn-from-description | ROS-standard; low-friction adoption (teams reuse their URDF) | Confirmed by user |
 | E2 | **Path A** — single shared sim-complete `shogi.urdf` (vs a sim-only description) | One source of truth; seamless for the next team | Confirmed by user |
 | E3 | Caster becomes **articulated** in the shared URDF | Sim empirically needs it (fixed binds steering); functionally inert on real (caster unused; `joint_state_publisher` feeds it) | Confirmed by user |
-| E4 | Spawn via **`ros_gz_sim create`** (primary) / world `<include>` (fallback) | Standard spawner; verify availability at plan time | Proposed |
-| E5 | Robot **geometry/dynamics floats live in the profile** (not the course config) | Course becomes robot-agnostic; sim nodes read one source | Proposed |
-| E6 | Robot **fidelity verified by VM drive-equivalence**, not byte-identity | The robot leaves the world SDF; bytes no longer apply | Proposed |
+| E4 | Spawn via **`ros_gz_sim create`** (primary) / world `<include>` (fallback) | Standard spawner; final pick verified in the VM at plan time | Approved (mechanism), pick TBD-at-plan |
+| E5 | Robot **geometry/dynamics floats live in the profile** (not the course config) | Course becomes robot-agnostic; sim nodes read one source | Confirmed by user |
+| E6 | Robot **fidelity verified by VM drive-equivalence**, not byte-identity | The robot leaves the world SDF; bytes no longer apply | Confirmed by user |
 
 ## 6. Verification Strategy
 - **Course-only golden test (host):** `generate_world(course)` == committed course-only world (deterministic).
