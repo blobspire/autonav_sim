@@ -52,6 +52,19 @@ def _default_dynamics_calibration() -> str:
     )
 
 
+def _default_robot_profile() -> str:
+    return os.path.join(
+        _package_share("igvc_competition_sim"),
+        "profiles", "shogi", "profile.yaml",
+    )
+
+
+def _active_robot_profile(context):
+    from igvc_competition_sim.robot_profile import load_robot_profile
+    path = LaunchConfiguration("robot_profile").perform(context)
+    return load_robot_profile(path or None)
+
+
 def _default_nav2_params() -> str:
     try:
         candidate = Path(_package_share("slam")) / "config" / "nav2_params_camera.yaml"
@@ -126,9 +139,11 @@ def _validate_world_sync(context, *args, **kwargs):
     from igvc_competition_sim.course import load_course
     from igvc_competition_sim.generate_world import generate_world
 
+    profile = _active_robot_profile(context)
     expected = "\n".join(
         line.rstrip()
-        for line in generate_world(load_course(course_path)).splitlines()
+        for line in generate_world(
+            load_course(course_path), profile).splitlines()
     ) + "\n"
     actual = world_path.read_text(encoding="utf-8")
     if actual != expected:
@@ -271,6 +286,7 @@ def _harness_process(context, *args, **kwargs):
             parameters=[{
                 "use_sim_time": True,
                 "course_config": LaunchConfiguration("course_config"),
+                "gazebo_odom_topic": _active_robot_profile(context).gz_odom_topic,
                 "fallback_integrate_cmd": LaunchConfiguration(
                     "fallback_integrate_cmd"),
                 "publish_full_lidar_cloud": ParameterValue(
@@ -333,7 +349,30 @@ def _odom_bridge_process(context, *args, **kwargs):
                     LaunchConfiguration("odom_bridge_rate_hz"),
                     value_type=float,
                 ),
+                "input_odom_topic": _active_robot_profile(context).gz_odom_topic,
             }],
+        )
+    ]
+
+
+def _bridge_process(context, *args, **kwargs):
+    if not _truthy(context, "launch_bridge"):
+        return []
+    profile = _active_robot_profile(context)
+    return [
+        Node(
+            package="ros_gz_bridge",
+            executable="parameter_bridge",
+            name="igvc_gz_bridge",
+            output="screen",
+            arguments=[
+                "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+                "/cmd_vel_gazebo@geometry_msgs/msg/Twist]gz.msgs.Twist",
+                f"{profile.gz_odom_topic}@nav_msgs/msg/Odometry[gz.msgs.Odometry",
+                "/igvc_sim/zed/image@sensor_msgs/msg/Image[gz.msgs.Image",
+                "/igvc_sim/zed/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
+                "/igvc_sim/zed/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+            ],
         )
     ]
 
@@ -387,26 +426,9 @@ def _detection_process(context, *args, **kwargs):
 def generate_launch_description() -> LaunchDescription:
     course_config = LaunchConfiguration("course_config")
     run_id = LaunchConfiguration("run_id")
-    launch_bridge = LaunchConfiguration("launch_bridge")
     launch_monitor = LaunchConfiguration("launch_monitor")
     launch_pca_scan_converters = LaunchConfiguration("launch_pca_scan_converters")
     launch_gps_handler = LaunchConfiguration("launch_gps_handler")
-
-    bridge = Node(
-        package="ros_gz_bridge",
-        executable="parameter_bridge",
-        name="igvc_gz_bridge",
-        output="screen",
-        arguments=[
-            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-            "/cmd_vel_gazebo@geometry_msgs/msg/Twist]gz.msgs.Twist",
-            "/model/shogi/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry",
-            "/igvc_sim/zed/image@sensor_msgs/msg/Image[gz.msgs.Image",
-            "/igvc_sim/zed/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
-            "/igvc_sim/zed/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
-        ],
-        condition=IfCondition(launch_bridge),
-    )
 
     monitor = Node(
         package="igvc_competition_sim",
@@ -510,6 +532,14 @@ def generate_launch_description() -> LaunchDescription:
             "dynamics_calibration",
             default_value=_default_dynamics_calibration(),
         ),
+        DeclareLaunchArgument(
+            "robot_profile",
+            default_value=_default_robot_profile(),
+            description=(
+                "Path to a robot profile.yaml. Sets the Gazebo model name and "
+                "the /model/<name>/odometry|tf topics the sim bridges."
+            ),
+        ),
         DeclareLaunchArgument("ground_truth_pca", default_value="false"),
         DeclareLaunchArgument("ground_truth_line_rate_hz", default_value="20.0"),
         DeclareLaunchArgument("ground_truth_line_view_limited", default_value="true"),
@@ -548,7 +578,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         OpaqueFunction(function=_validate_world_sync),
         OpaqueFunction(function=_gazebo_process),
-        bridge,
+        OpaqueFunction(function=_bridge_process),
         OpaqueFunction(function=_calibrated_dynamics_process),
         OpaqueFunction(function=_camera_bridge_process),
         OpaqueFunction(function=_odom_bridge_process),
