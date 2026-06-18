@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 
 from .course import Course, DEFAULT_COURSE_CONFIG, course_bounds, load_course
+from .robot_profile import RobotProfile, load_robot_profile
 
 BRINGUP_MESH_URI_PREFIX = "model://bringup/description/meshes"
 IN_TO_M = 0.0254
@@ -364,7 +365,7 @@ def _ramp_line_models(course: Course) -> str:
     return "\n".join(out)
 
 
-def _robot_model(course: Course) -> str:
+def _robot_model(course: Course, profile: RobotProfile) -> str:
     robot = course.robot
     track = robot.wheel_track_m
     radius = robot.wheel_radius_m
@@ -401,7 +402,7 @@ def _robot_model(course: Course) -> str:
     ) / SHOGI_BODY_MASS_KG
     z0 = radius
     return f"""
-    <model name='shogi'>
+    <model name='{profile.name}'>
       <pose>{course.start.x:.4f} {course.start.y:.4f} {z0:.4f} 0 0 {course.start.yaw:.6f}</pose>
       <link name='base_link'>
         {_inertial(SHOGI_BODY_MASS_KG, 2.20, 4.30, 4.80,
@@ -531,8 +532,8 @@ def _robot_model(course: Course) -> str:
         <wheel_separation>{track:.5f}</wheel_separation>
         <wheel_radius>{radius:.5f}</wheel_radius>
         <topic>/cmd_vel_gazebo</topic>
-        <odom_topic>/model/shogi/odometry</odom_topic>
-        <tf_topic>/model/shogi/tf</tf_topic>
+        <odom_topic>{profile.gz_odom_topic}</odom_topic>
+        <tf_topic>{profile.gz_tf_topic}</tf_topic>
         <frame_id>odom</frame_id>
         <child_frame_id>base_link</child_frame_id>
         <odom_publish_frequency>50</odom_publish_frequency>
@@ -542,7 +543,9 @@ def _robot_model(course: Course) -> str:
     </model>"""
 
 
-def generate_world(course: Course) -> str:
+def generate_world(course: Course, profile: RobotProfile | None = None) -> str:
+    if profile is None:
+        profile = load_robot_profile()
     min_x, min_y, max_x, max_y = course_bounds(course, margin_m=8.0)
     ground_size_x = max(60.0, max_x - min_x)
     ground_size_y = max(30.0, max_y - min_y)
@@ -584,7 +587,7 @@ def generate_world(course: Course) -> str:
             ))
     models.append(_ramp_model(course))
     models.append(_ramp_line_models(course))
-    models.append(_robot_model(course))
+    models.append(_robot_model(course, profile))
 
     return f"""<?xml version='1.0'?>
 <sdf version='1.9'>
@@ -635,12 +638,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--course-config", default=str(DEFAULT_COURSE_CONFIG))
     parser.add_argument("--output", required=True)
+    parser.add_argument(
+        "--robot-profile", default="",
+        help="Path to a robot profile.yaml (default: bundled shogi profile).")
     args = parser.parse_args()
 
     course = load_course(args.course_config)
+    profile = load_robot_profile(args.robot_profile or None)
     output = Path(args.output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
-    text = "\n".join(line.rstrip() for line in generate_world(course).splitlines())
+    text = "\n".join(
+        line.rstrip()
+        for line in generate_world(course, profile).splitlines())
     output.write_text(text + "\n", encoding="utf-8")
 
 
