@@ -5,6 +5,8 @@ import math
 from pathlib import Path
 from typing import Any, Iterable
 
+from .robot_profile import RobotSpec
+
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 EARTH_RADIUS_M = 6378137.0
@@ -81,27 +83,6 @@ class AnalysisStation:
     x_m: float
     y_min_m: float
     y_max_m: float
-
-
-@dataclass(frozen=True)
-class RobotSpec:
-    base_link_to_nav_center_m: float
-    lidar_x_from_base_link_m: float
-    lidar_z_from_base_link_m: float
-    base_link_height_above_ground_m: float
-    gps_x_from_base_link_m: float
-    gps_y_from_base_link_m: float
-    gps_z_from_base_link_m: float
-    wheel_track_m: float
-    wheel_radius_m: float
-    physical_half_length_m: float
-    physical_half_width_m: float
-    footprint_padding_m: float
-    max_linear_speed_mps: float
-    max_angular_speed_radps: float
-    cmd_latency_s: float
-    linear_time_constant_s: float
-    angular_time_constant_s: float
 
 
 @dataclass(frozen=True)
