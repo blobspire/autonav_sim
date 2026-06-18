@@ -167,6 +167,83 @@ git commit -m "chore: remove absolute local paths from sim config and README"
 
 ---
 
+### Task 0.3: Regenerate the stale default world (make `validate_world_sync` honest)
+
+**Files:**
+- Modify (regenerate): `igvc_competition_sim/worlds/igvc_competition_compact.sdf`
+
+**Interfaces:**
+- Consumes: `igvc_competition_sim.course.load_course`, `igvc_competition_sim.generate_world.generate_world` (current, pre-refactor — pure Python, no ROS).
+- Produces: a committed default world byte-identical to `generate_world(load_course(default))`, so `_validate_world_sync` passes with defaults and the generator is the world's source of truth.
+
+**Context (why this task exists — discovered in pre-flight):** `generate_world.py`/`course.py` were changed on June 1 (commit `35819b1` added `boundary_join` corner-fill tape at `course.py:626-646`) but `worlds/igvc_competition_compact.sdf` was last regenerated May 31. The committed world (34 models / 27,940 B) is a **strict subset** of current generator output (165 models / 89,597 B) — the generator only adds intended join tape, removes nothing. `validate_world_sync` defaults to `true` and is not disabled in the `Run_*.command` runners, so the default launch path currently raises before Gazebo starts. Regenerating reconciles this.
+
+- [ ] **Step 1: Confirm the committed world is a stale strict subset (not a divergent canon)**
+
+Run:
+```bash
+cd /Users/cole/code/git/autonav_sim/igvc_competition_sim
+python3 -c "
+import re
+from pathlib import Path
+from igvc_competition_sim.course import load_course
+from igvc_competition_sim.generate_world import generate_world
+com = Path('worlds/igvc_competition_compact.sdf').read_text(encoding='utf-8')
+gen = generate_world(load_course('config/igvc_competition_compact.yaml'))
+names = lambda t: set(re.findall(r\"<model name='([^']+)'\", t))
+only_committed = names(com) - names(gen)
+print('committed-only models:', sorted(only_committed) or 'NONE (safe: committed is a subset)')
+"
+```
+Expected: `committed-only models: NONE (safe: committed is a subset)`. If anything is listed, STOP and escalate — regenerating would drop models.
+
+- [ ] **Step 2: Regenerate the world with the current generator (exact `main()` normalization)**
+
+Run (host, pure Python — mirrors `generate_world.main()` byte-for-byte):
+```bash
+cd /Users/cole/code/git/autonav_sim/igvc_competition_sim
+python3 -c "
+from pathlib import Path
+from igvc_competition_sim.course import load_course
+from igvc_competition_sim.generate_world import generate_world
+course = load_course('config/igvc_competition_compact.yaml')
+text = '\n'.join(l.rstrip() for l in generate_world(course).splitlines()) + '\n'
+Path('worlds/igvc_competition_compact.sdf').write_text(text, encoding='utf-8')
+print('regenerated', len(text), 'bytes')
+"
+```
+Expected: `regenerated 89597 bytes` (±, if the generator changed since this plan was written).
+
+- [ ] **Step 3: Verify the diff is purely additive and now in sync**
+
+Run:
+```bash
+cd /Users/cole/code/git/autonav_sim
+git diff --stat igvc_competition_sim/worlds/igvc_competition_compact.sdf
+grep -c "<model" igvc_competition_sim/worlds/igvc_competition_compact.sdf
+cd igvc_competition_sim && python3 -c "
+from pathlib import Path
+from igvc_competition_sim.course import load_course
+from igvc_competition_sim.generate_world import generate_world
+course = load_course('config/igvc_competition_compact.yaml')
+gen = '\n'.join(l.rstrip() for l in generate_world(course).splitlines()) + '\n'
+com = Path('worlds/igvc_competition_compact.sdf').read_text(encoding='utf-8')
+print('IN SYNC' if gen == com else 'STILL MISMATCH')
+"
+```
+Expected: diff shows mostly insertions (the join models); model count `165`; `IN SYNC`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add igvc_competition_sim/worlds/igvc_competition_compact.sdf
+git commit -m "fix: regenerate default world from current generator (restore validate_world_sync)"
+```
+
+> After this task, `generate_world(load_course(default))` and the committed world match, so Task 1.3's golden test (which compares the shogi-profile output to the committed world) and Task 1.6's `validate_world_sync` check are both valid.
+
+---
+
 ## Phase 1 — Robot-Profile Foundation (robot identity)
 
 ### Task 1.1: `RobotProfile` loader module (pure Python, TDD)
