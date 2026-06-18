@@ -1,7 +1,7 @@
 # Design: `autonav_sim` Showcase Restructure & Autoresearch Knowledge Transfer
 
 - **Date:** 2026-06-17
-- **Status:** Draft — awaiting user review
+- **Status:** Approved 2026-06-17 — ready for implementation planning
 - **Primary repo:** `autonav_sim` (`github.com/blobspire/autonav_sim`, public — owned by the author, to be featured)
 - **Secondary repo:** `AutoNav_25-26` (`github.com/KazakhStallion/AutoNav_25-26`, public — the team robot stack)
 - **Author/owner:** Cole Wendrowski
@@ -123,9 +123,9 @@ A team integrates by adding **one profile directory** plus **their robot's ROS p
 | D2 | Autoresearch = **generic runnable single-sim framework** + **documented dual-sim reference** | Matches reusability goal without over-investing in hardware-specific dual-sim | Confirmed by user |
 | D3 | **Single-sim is live-verified** in the existing limactl VMs (CPU); **dual-sim is documented** | Jetson no longer available; honest verification | Confirmed by user |
 | D4 | **Skip** the optional CPU dual-sim stand-in | CPU perception without CUDA adds no value here | Confirmed by user |
-| D5 | The **AutoNav sim profile lives in `AutoNav_25-26`**, pulled via vcs | Keeps the sim repo clean; honest ownership boundary | **Proposed — confirm in review** |
-| D6 | **Keep** the ROS package name `igvc_competition_sim` | It is an IGVC sim; renaming is risky and unnecessary | Proposed |
-| D7 | Cleanup via **untrack + `.gitignore`**; full git-history scrub of artifacts is **optional/deferred** | Untracking is safe and reversible; history rewrite of a public repo is disruptive | **Proposed — confirm in review (OQ2)** |
+| D5 | The **AutoNav sim profile lives in `AutoNav_25-26`**, pulled via vcs | Keeps the sim repo clean; honest ownership boundary | Confirmed by user |
+| D6 | **Keep** the ROS package name `igvc_competition_sim` | It is an IGVC sim; renaming is risky and unnecessary | Confirmed by user |
+| D7 | Cleanup via **untrack + `.gitignore`**; full git-history scrub of artifacts is **deferred** (not done) | Untracking is safe and reversible; history rewrite of a public repo is disruptive | Confirmed by user |
 
 ## 6. Verification Strategy
 
@@ -169,8 +169,8 @@ Each phase produces its own implementation plan (via the writing-plans skill) an
 - **R2 — Minimal robot must be a *credible* demo.** It must exercise the same sim features as a real robot (camera + lidar + gps + mission/scoring), not a toy that bypasses them. Designed in Phase 2 to hit all sensor paths and the course monitor.
 - **R3 — Mission-interface generalization.** The sim currently drives missions via the custom `NavigateToWaypoint` action. We must cleanly support standard Nav2 `navigate_to_pose` (minimal robot) *and* the custom action (AutoNav), selected by profile.
 - **R4 — Dual-sim cannot be live-verified (no Jetson).** Accepted; documented and evidenced via existing run reports. Docs must state this explicitly.
-- **OQ1 (D5):** Confirm the AutoNav sim profile lives in `AutoNav_25-26` (pulled via vcs) vs. in `autonav_sim/profiles/`.
-- **OQ2 (D7):** Do we scrub the generated artifacts from git history now, or only untrack going forward?
+- **OQ1 (D5): RESOLVED** — AutoNav sim profile lives in `AutoNav_25-26`, pulled via vcs.
+- **OQ2 (D7): RESOLVED** — untrack + `.gitignore` going forward; no git-history scrub.
 
 ## 9. Out of Scope
 - Robot perception/planning/control refactors.
