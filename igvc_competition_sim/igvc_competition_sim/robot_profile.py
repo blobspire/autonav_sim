@@ -32,15 +32,33 @@ DEFAULT_ROBOT_PROFILE = _default_robot_profile()
 
 
 @dataclass(frozen=True)
-class RobotProfile:
-    """Identity of the robot the sim spawns and bridges.
+class RobotSpec:
+    base_link_to_nav_center_m: float
+    lidar_x_from_base_link_m: float
+    lidar_z_from_base_link_m: float
+    base_link_height_above_ground_m: float
+    gps_x_from_base_link_m: float
+    gps_y_from_base_link_m: float
+    gps_z_from_base_link_m: float
+    wheel_track_m: float
+    wheel_radius_m: float
+    physical_half_length_m: float
+    physical_half_width_m: float
+    footprint_padding_m: float
+    max_linear_speed_mps: float
+    max_angular_speed_radps: float
+    cmd_latency_s: float
+    linear_time_constant_s: float
+    angular_time_constant_s: float
 
-    For now this carries only the Gazebo model ``name``; geometry/dynamics
-    still live in the course config (see the Phase 1b plan).
-    """
+
+@dataclass(frozen=True)
+class RobotProfile:
+    """Identity of the robot the sim spawns and bridges."""
 
     name: str
     description: str = ""
+    geometry: "RobotSpec | None" = None
 
     @property
     def gz_odom_topic(self) -> str:
@@ -66,4 +84,16 @@ def load_robot_profile(path: str | Path | None = None) -> RobotProfile:
         raise ValueError(
             f"robot profile name '{name}' must match [A-Za-z0-9_]+ "
             "(it becomes the Gazebo model name and /model/<name>/odometry)")
-    return RobotProfile(name=name, description=str(data.get("description", "")))
+    geometry_raw = data.get("geometry")
+    geometry: RobotSpec | None = None
+    if geometry_raw is not None:
+        if not isinstance(geometry_raw, dict):
+            raise ValueError(
+                f"robot profile {profile_path} 'geometry' must be a mapping")
+        geometry = RobotSpec(
+            **{key: float(value) for key, value in geometry_raw.items()})
+    return RobotProfile(
+        name=name,
+        description=str(data.get("description", "")),
+        geometry=geometry,
+    )

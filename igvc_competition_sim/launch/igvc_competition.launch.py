@@ -287,6 +287,7 @@ def _harness_process(context, *args, **kwargs):
                 "use_sim_time": True,
                 "course_config": LaunchConfiguration("course_config"),
                 "gazebo_odom_topic": _active_robot_profile(context).gz_odom_topic,
+                "robot_profile": LaunchConfiguration("robot_profile"),
                 "fallback_integrate_cmd": LaunchConfiguration(
                     "fallback_integrate_cmd"),
                 "publish_full_lidar_cloud": ParameterValue(
@@ -441,6 +442,7 @@ def generate_launch_description() -> LaunchDescription:
             "run_id": run_id,
             "odom_topic": "/igvc_sim/ground_truth_odom",
             "fallback_odom_topic": "",
+            "robot_profile": LaunchConfiguration("robot_profile"),
         }],
         condition=IfCondition(launch_monitor),
     )

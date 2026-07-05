@@ -84,27 +84,6 @@ class AnalysisStation:
 
 
 @dataclass(frozen=True)
-class RobotSpec:
-    base_link_to_nav_center_m: float
-    lidar_x_from_base_link_m: float
-    lidar_z_from_base_link_m: float
-    base_link_height_above_ground_m: float
-    gps_x_from_base_link_m: float
-    gps_y_from_base_link_m: float
-    gps_z_from_base_link_m: float
-    wheel_track_m: float
-    wheel_radius_m: float
-    physical_half_length_m: float
-    physical_half_width_m: float
-    footprint_padding_m: float
-    max_linear_speed_mps: float
-    max_angular_speed_radps: float
-    cmd_latency_s: float
-    linear_time_constant_s: float
-    angular_time_constant_s: float
-
-
-@dataclass(frozen=True)
 class SpeedCheck:
     start_x_m: float
     end_distance_m: float
@@ -125,7 +104,6 @@ class Course:
     datum_altitude_m: float
     start: Pose2D
     finish: tuple[float, float, float]
-    robot: RobotSpec
     tapes: tuple[TapeSegment, ...]
     obstacles: tuple[Obstacle, ...]
     ramps: tuple[Ramp, ...]
@@ -701,7 +679,6 @@ def load_course(path: str | Path | None = None) -> Course:
     datum = data["datum"]
     start = data["start"]
     finish = data["finish"]
-    robot = data["robot"]
     speed_check = data["speed_check"]
 
     return Course(
@@ -721,7 +698,6 @@ def load_course(path: str | Path | None = None) -> Course:
             float(finish["y_m"]),
             float(finish.get("radius_m", 1.0)),
         ),
-        robot=RobotSpec(**{key: float(value) for key, value in robot.items()}),
         tapes=tuple(tapes),
         obstacles=tuple(
             Obstacle(

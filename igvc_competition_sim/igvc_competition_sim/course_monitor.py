@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from .course import Course, load_course
+from .robot_profile import load_robot_profile
 
 SCORE_SCHEMA_VERSION = 4
 
@@ -141,10 +142,17 @@ class IgvcCourseMonitor(Node):
         self.declare_parameter("fallback_odom_topic", "/odom")
         self.declare_parameter("finish_reentry_margin_m", 0.25)
         self.declare_parameter("run_id", "")
+        self.declare_parameter("robot_profile", "")
         course_path = str(self.get_parameter("course_config").value).strip()
         self.course: Course = load_course(course_path or None)
         self.course_config_sha256 = self._file_sha256(self.course.config_path)
-        self.robot = self.course.robot
+        profile_path = str(self.get_parameter("robot_profile").value).strip()
+        profile = load_robot_profile(profile_path or None)
+        if profile.geometry is None:
+            raise RuntimeError(
+                "igvc_course_monitor requires a robot_profile with a 'geometry' "
+                f"block; profile '{profile.name}' has none")
+        self.robot = profile.geometry
         self.sample_spacing_m = max(
             0.02, float(self.get_parameter("sample_spacing_m").value))
         self.odom_topic = str(self.get_parameter("odom_topic").value).strip()
