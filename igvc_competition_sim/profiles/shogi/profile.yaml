@@ -9,6 +9,11 @@ schema_version: 1
 name: shogi
 description: "AutoNav 2025-26 IGVC competition robot (reference profile)."
 
+# Spawnable robot description (URDF) — used for BOTH the Gazebo spawn and
+# robot_state_publisher. A custom robot points this at its own URDF.
+# Empty => the launch falls back to the bringup package's installed shogi.urdf.
+description_ref: "package://bringup/description/shogi.urdf"
+
 # Robot geometry + low-speed dynamics the sim's own nodes need
 # (world-gen wheel params, harness sensor offsets/kinematics, monitor footprint).
 # Values are the AutoNav "shogi" robot, identical to the prior course-config robot: block.

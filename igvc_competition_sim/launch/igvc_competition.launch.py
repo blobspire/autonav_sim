@@ -99,6 +99,58 @@ def _load_robot_description(robot_description_path: str = "") -> str:
         + searched)
 
 
+def _resolve_description_path(context, profile) -> str:
+    """Absolute path to the robot description (URDF), used for BOTH the Gazebo
+    spawn and robot_state_publisher. Priority: robot_description_path arg >
+    profile.description_ref (package:// or absolute path) > bringup fallback."""
+    override = LaunchConfiguration("robot_description_path").perform(context)
+    if override:
+        return override
+    ref = getattr(profile, "description_ref", "") or ""
+    if ref.startswith("package://"):
+        pkg, _, rel = ref[len("package://"):].partition("/")
+        return str(Path(_package_share(pkg)) / rel)
+    if ref:
+        return ref
+    return str(Path(_package_share("bringup")) / "description" / "shogi.urdf")
+
+
+def _spawn_robot(context, *args, **kwargs):
+    """Spawn the robot from its description into the running world at the course
+    start pose (or profile.spawn override). Model name = profile.name so its
+    odometry lands on profile.gz_odom_topic (which the bridge already reads).
+    Runs after _gazebo_process; ros_gz_sim create waits for the world service."""
+    if not _truthy(context, "launch_gazebo"):
+        return []
+    from igvc_competition_sim.course import load_course
+    profile = _active_robot_profile(context)
+    course = load_course(
+        LaunchConfiguration("course_config").perform(context) or None)
+    sp = profile.spawn
+    x = sp.x if sp and sp.x is not None else course.start.x
+    y = sp.y if sp and sp.y is not None else course.start.y
+    z = sp.z if sp and sp.z is not None else (
+        profile.geometry.wheel_radius_m if profile.geometry else 0.0)
+    yaw = sp.yaw if sp and sp.yaw is not None else course.start.yaw
+    return [
+        Node(
+            package="ros_gz_sim",
+            executable="create",
+            name="igvc_spawn_robot",
+            output="screen",
+            arguments=[
+                "-world", "igvc_competition",
+                "-name", profile.name,
+                "-file", _resolve_description_path(context, profile),
+                "-x", f"{x:.4f}",
+                "-y", f"{y:.4f}",
+                "-z", f"{z:.4f}",
+                "-Y", f"{yaw:.6f}",
+            ],
+        )
+    ]
+
+
 def _gazebo_process(context, *args, **kwargs):
     if not _truthy(context, "launch_gazebo"):
         return []
@@ -175,7 +227,8 @@ def _robot_state_publisher(context, *args, **kwargs):
             output="screen",
             parameters=[{
                 "robot_description": _load_robot_description(
-                    LaunchConfiguration("robot_description_path").perform(context)),
+                    _resolve_description_path(
+                        context, _active_robot_profile(context))),
                 "use_sim_time": True,
             }],
         )
@@ -580,6 +633,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         OpaqueFunction(function=_validate_world_sync),
         OpaqueFunction(function=_gazebo_process),
+        OpaqueFunction(function=_spawn_robot),
         OpaqueFunction(function=_bridge_process),
         OpaqueFunction(function=_calibrated_dynamics_process),
         OpaqueFunction(function=_camera_bridge_process),
