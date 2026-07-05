@@ -127,11 +127,11 @@ def _spawn_robot(context, *args, **kwargs):
     course = load_course(
         LaunchConfiguration("course_config").perform(context) or None)
     sp = profile.spawn
-    x = sp.x if sp else course.start.x
-    y = sp.y if sp else course.start.y
-    z = sp.z if sp else (
+    x = sp.x if sp and sp.x is not None else course.start.x
+    y = sp.y if sp and sp.y is not None else course.start.y
+    z = sp.z if sp and sp.z is not None else (
         profile.geometry.wheel_radius_m if profile.geometry else 0.0)
-    yaw = sp.yaw if sp else course.start.yaw
+    yaw = sp.yaw if sp and sp.yaw is not None else course.start.yaw
     return [
         Node(
             package="ros_gz_sim",

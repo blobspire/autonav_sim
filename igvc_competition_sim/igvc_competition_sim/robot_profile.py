@@ -54,12 +54,14 @@ class RobotSpec:
 
 @dataclass(frozen=True)
 class SpawnPose:
-    """Optional spawn-pose override; when absent the launch uses the course start."""
+    """Optional spawn-pose override. Each field independently falls back (in the
+    launch) to the course start (x/y/yaw) or wheel radius (z) when left None, so a
+    partial `spawn:` block overrides only the fields it sets (never silently 0)."""
 
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    yaw: float = 0.0
+    x: float | None = None
+    y: float | None = None
+    z: float | None = None
+    yaw: float | None = None
 
 
 @dataclass(frozen=True)
@@ -88,6 +90,13 @@ def load_robot_profile(path: str | Path | None = None) -> RobotProfile:
     if not isinstance(data, dict):
         raise ValueError(
             f"robot profile {profile_path} must be a YAML mapping")
+    allowed_keys = {"schema_version", "name", "description", "geometry",
+                    "description_ref", "spawn"}
+    unknown = set(data) - allowed_keys
+    if unknown:
+        raise ValueError(
+            f"robot profile {profile_path} has unknown key(s) "
+            f"{sorted(unknown)}; allowed: {sorted(allowed_keys)}")
     name = str(data.get("name", "")).strip()
     if not name:
         raise ValueError(

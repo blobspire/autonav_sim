@@ -253,8 +253,10 @@ def _ramp_line_models(course: Course) -> str:
 
 
 def generate_world(course: Course, profile: RobotProfile | None = None) -> str:
-    if profile is None:
-        profile = load_robot_profile()
+    # `profile` is accepted for API/back-compat (validate_world_sync and the CLI
+    # pass it) but unused here: the generated world is robot-agnostic — the robot
+    # spawns separately via `ros_gz_sim create` at launch.
+    del profile
     min_x, min_y, max_x, max_y = course_bounds(course, margin_m=8.0)
     ground_size_x = max(60.0, max_x - min_x)
     ground_size_y = max(30.0, max_y - min_y)
