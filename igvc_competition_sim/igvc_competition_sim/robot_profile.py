@@ -53,12 +53,24 @@ class RobotSpec:
 
 
 @dataclass(frozen=True)
+class SpawnPose:
+    """Optional spawn-pose override; when absent the launch uses the course start."""
+
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+    yaw: float = 0.0
+
+
+@dataclass(frozen=True)
 class RobotProfile:
     """Identity of the robot the sim spawns and bridges."""
 
     name: str
     description: str = ""
     geometry: "RobotSpec | None" = None
+    description_ref: str = ""
+    spawn: "SpawnPose | None" = None
 
     @property
     def gz_odom_topic(self) -> str:
@@ -92,8 +104,25 @@ def load_robot_profile(path: str | Path | None = None) -> RobotProfile:
                 f"robot profile {profile_path} 'geometry' must be a mapping")
         geometry = RobotSpec(
             **{key: float(value) for key, value in geometry_raw.items()})
+    description_ref = str(data.get("description_ref", "")).strip()
+    spawn_raw = data.get("spawn")
+    spawn: SpawnPose | None = None
+    if spawn_raw is not None:
+        if not isinstance(spawn_raw, dict):
+            raise ValueError(
+                f"robot profile {profile_path} 'spawn' must be a mapping")
+        allowed = {"x", "y", "z", "yaw"}
+        extra = set(spawn_raw) - allowed
+        if extra:
+            raise ValueError(
+                f"robot profile {profile_path} 'spawn' allows only "
+                f"{sorted(allowed)}; got unexpected {sorted(extra)}")
+        spawn = SpawnPose(
+            **{key: float(value) for key, value in spawn_raw.items()})
     return RobotProfile(
         name=name,
         description=str(data.get("description", "")),
         geometry=geometry,
+        description_ref=description_ref,
+        spawn=spawn,
     )

@@ -86,3 +86,44 @@ def test_default_shogi_profile_has_geometry():
     profile = load_robot_profile()
     assert profile.geometry is not None
     assert profile.geometry.wheel_track_m == 0.72326
+
+
+def test_description_ref_empty_and_spawn_none_when_absent(tmp_path):
+    p = tmp_path / "profile.yaml"
+    p.write_text("name: bare\n", encoding="utf-8")
+    profile = load_robot_profile(p)
+    assert profile.description_ref == ""
+    assert profile.spawn is None
+
+
+def test_description_ref_and_spawn_parsed(tmp_path):
+    p = tmp_path / "profile.yaml"
+    p.write_text(
+        "name: custom\n"
+        "description_ref: package://myrobot/urdf/myrobot.urdf\n"
+        "spawn:\n"
+        "  x: 1.5\n"
+        "  y: -2.0\n"
+        "  z: 0.1\n"
+        "  yaw: 1.5708\n",
+        encoding="utf-8",
+    )
+    profile = load_robot_profile(p)
+    assert profile.description_ref == "package://myrobot/urdf/myrobot.urdf"
+    assert profile.spawn is not None
+    assert profile.spawn.x == 1.5
+    assert profile.spawn.y == -2.0
+    assert profile.spawn.yaw == 1.5708
+
+
+def test_spawn_rejects_unknown_key(tmp_path):
+    p = tmp_path / "profile.yaml"
+    p.write_text(
+        "name: bad\nspawn:\n  x: 1.0\n  pitch: 0.5\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="spawn"):
+        load_robot_profile(p)
+
+
+def test_default_shogi_profile_has_description_ref():
+    profile = load_robot_profile()
+    assert profile.description_ref == "package://bringup/description/shogi.urdf"
