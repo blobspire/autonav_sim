@@ -70,15 +70,15 @@ colcon build --symlink-install
 For local setup:
 
 ```bash
-cd /Users/cole/code/git/autonav_sim
+cd /path/to/autonav_sim
 ./scripts/bootstrap_workspace.sh
 ```
 
 Useful overrides:
 
 ```bash
-AUTONAV_SOURCE=/Users/cole/code/git/AutoNav_25-26 \
-SIM_SOURCE=/Users/cole/code/git/autonav_sim \
+AUTONAV_SOURCE=/path/to/AutoNav_25-26 \
+SIM_SOURCE=/path/to/autonav_sim \
 AUTONAV_WS=~/autonav_ws \
 ./scripts/bootstrap_workspace.sh --symlink
 ```

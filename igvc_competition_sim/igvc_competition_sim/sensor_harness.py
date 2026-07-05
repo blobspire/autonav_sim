@@ -103,6 +103,8 @@ class IgvcSensorHarness(Node):
         self.declare_parameter(
             "ground_truth_odom_topic", "/igvc_sim/ground_truth_odom")
         self.declare_parameter("publish_odom_tf", True)
+        self.declare_parameter(
+            "gazebo_odom_topic", "/model/shogi/odometry")
 
         course_path = str(self.get_parameter("course_config").value).strip()
         self.course: Course = load_course(course_path or None)
@@ -179,7 +181,11 @@ class IgvcSensorHarness(Node):
         self.cmd_sub = self.create_subscription(
             Twist, "/cmd_vel", self._cmd_vel_callback, 10)
         self.gz_odom_sub = self.create_subscription(
-            Odometry, "/model/shogi/odometry", self._gazebo_odom_callback, 10)
+            Odometry,
+            str(self.get_parameter("gazebo_odom_topic").value),
+            self._gazebo_odom_callback,
+            10,
+        )
 
         self.tf_pub = TransformBroadcaster(self)
         self.base_x = self.course.start.x
