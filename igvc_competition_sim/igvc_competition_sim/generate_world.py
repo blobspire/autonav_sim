@@ -366,7 +366,11 @@ def _ramp_line_models(course: Course) -> str:
 
 
 def _robot_model(course: Course, profile: RobotProfile) -> str:
-    robot = course.robot
+    if profile.geometry is None:
+        raise ValueError(
+            "generate_world requires a robot profile with a 'geometry' block; "
+            f"profile '{profile.name}' has none")
+    robot = profile.geometry
     track = robot.wheel_track_m
     radius = robot.wheel_radius_m
     wheel_width = 0.1000

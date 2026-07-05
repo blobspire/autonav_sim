@@ -8,3 +8,25 @@
 schema_version: 1
 name: shogi
 description: "AutoNav 2025-26 IGVC competition robot (reference profile)."
+
+# Robot geometry + low-speed dynamics the sim's own nodes need
+# (world-gen wheel params, harness sensor offsets/kinematics, monitor footprint).
+# Values are the AutoNav "shogi" robot, identical to the prior course-config robot: block.
+geometry:
+  base_link_to_nav_center_m: 0.225
+  lidar_x_from_base_link_m: 0.6598
+  lidar_z_from_base_link_m: 0.20568
+  base_link_height_above_ground_m: 0.11303
+  gps_x_from_base_link_m: -0.2122
+  gps_y_from_base_link_m: -0.000105
+  gps_z_from_base_link_m: 0.66161
+  wheel_track_m: 0.72326
+  wheel_radius_m: 0.12946
+  physical_half_length_m: 0.545
+  physical_half_width_m: 0.410
+  footprint_padding_m: 0.050
+  max_linear_speed_mps: 0.50
+  max_angular_speed_radps: 1.0
+  cmd_latency_s: 0.08
+  linear_time_constant_s: 0.20
+  angular_time_constant_s: 0.18
