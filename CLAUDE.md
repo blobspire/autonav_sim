@@ -20,16 +20,16 @@ Design lives in `docs/superpowers/specs/` and plans in `docs/superpowers/plans/`
 
 ## Conventions / invariants (keep stable)
 
-- **The robot is profile-driven.** A robot's identity (Gazebo model name → `/model/<name>/odometry|tf`) and geometry/dynamics come from a **robot profile** (`igvc_competition_sim/profiles/<name>/profile.yaml`), never hardcoded. The bundled `shogi` profile is the AutoNav reference robot.
-- **Byte-safety:** with the default `shogi` profile, `generate_world` output stays **byte-identical** to the committed world. `test/test_generate_world_golden.py` enforces this — it must stay green through any world-gen change.
+- **The robot is profile-driven.** A robot's identity (Gazebo model name → `/model/<name>/odometry|tf`) and geometry/dynamics come from a **robot profile** (`igvc_competition_sim/profiles/<name>/profile.yaml`), never hardcoded. The profile also carries **`description_ref`** (the spawnable robot description/URDF, used for both the Gazebo spawn and `robot_state_publisher`) and an optional **`spawn`** pose override. The bundled `shogi` profile is the AutoNav reference robot.
+- **Byte-safety:** `generate_world` emits a **robot-agnostic (course-only)** world — the robot is spawned separately (`ros_gz_sim create` at launch), not baked in. With the default `shogi` profile, the generated course-only world stays **byte-identical** to the committed one; `test/test_generate_world_golden.py` enforces this **and** asserts the world stays robot-absent/course-present — it must stay green through any world-gen change. **Robot fidelity is verified by VM drive-equivalence, not bytes** (the robot left the world SDF).
 - **Pure-logic modules stay ROS-free.** `robot_profile.py`, `course.py`, `generate_world.py` must not import `rclpy` (so they're host-testable). ROS nodes (`sensor_harness.py`, `course_monitor.py`, the launch) are verified in the VM, not host pytest.
-- **Phase roadmap:** 0 cleanup ✅ · 1 robot-profile identity ✅ · 1b geometry→profile + decouple robot model (single sim-complete URDF) · 2 bundled minimal robot + clone-and-run demo · 3 AutoNav-as-example via vcs · 4 generic autoresearch + documented dual-sim (also: prune the throwaway Codex autoresearch courses; only `blender_competition_course` is real) · 5 showcase docs.
+- **Phase roadmap:** 0 cleanup ✅ · 1 robot-profile identity ✅ · 1b geometry→profile + decouple robot model (single sim-complete URDF) ✅ · 2 bundled minimal robot + clone-and-run demo · 3 AutoNav-as-example via vcs · 4 generic autoresearch + documented dual-sim (also: prune the throwaway Codex autoresearch courses; only `blender_competition_course` is real) · 5 showcase docs.
 - When you change *how the project works* (commands, conventions, architecture), update this file in the same commit.
 
 ## Architecture (mental model)
 
 - **Sim core** (`igvc_competition_sim/igvc_competition_sim/`): `generate_world` (course SDF from a YAML), `sensor_harness` (simulated lidar/camera/GPS/odom), `camera_bridge`/`odom_bridge` (gz↔ROS), `course_monitor` (scoring), `mission_runner` (waypoints). `course.py` loads the course; `robot_profile.py` loads the robot profile.
-- **Contract** (how a robot plugs in): sim publishes sensors (camera, lidar `/scan_fullframe`, `/gps_fix`, odom), subscribes `/cmd_vel`; the robot is identified by its profile.
+- **Contract** (how a robot plugs in): the robot is **spawned from its `description_ref` URDF** (`ros_gz_sim create`, model name = profile name) into the robot-agnostic world at the course start pose; the sim publishes sensors (camera, lidar `/scan_fullframe`, `/gps_fix`, odom), subscribes `/cmd_vel`; the robot is identified by its profile.
 - **Autoresearch** (`igvc_competition_sim/autoresearch/`): reliability-gated fitness scoring + KEEP/DISCARD loop (single-sim), and a two-lane VM-oracle + Jetson-GPU dual-sim (documented reference).
 
 ## Working agreement

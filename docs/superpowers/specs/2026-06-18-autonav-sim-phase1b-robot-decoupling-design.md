@@ -118,3 +118,8 @@ Each step gets its own implementation plan (writing-plans), executed subagent-dr
 - Minimal robot (Phase 2); AutoNav vcs wiring (Phase 3); autoresearch (Phase 4); showcase docs (Phase 5).
 - AutoNav perception/planning/control changes.
 - Dynamics re-calibration (preserve, don't rework).
+
+## 11. Deferred / follow-up (recorded during Step 2 execution, 2026-07-05)
+- **Profile schema simplification (Step 1):** the design's separate `dynamics`/`topics` blocks (§4.5) were **folded into the single `geometry` block + name-derived topics** in Step 1 (the 17-float `RobotSpec` already carries the dynamics floats; `gz_odom_topic`/`gz_tf_topic` derive from `name`). Step 2 added only `description_ref` + `spawn`. Intentional; not separate blocks.
+- **R6 — autoresearch `validate_course` breaks → Phase 4.** `autoresearch/lib/validate_course.py:748` calls `generate_world(course)` and byte-compares to a frozen robot-ful `courses/worlds/<course>.sdf`. Step 2's course-only `generate_world` makes that compare **hard-fail for every autoresearch course** (off the Step-2 host gate — no `test/` import). **Phase 4 must** prune the 6 throwaway Codex courses, regenerate `blender_competition_course` course-only, and teach the autoresearch driver to spawn via `description_ref`. **Interim caveat:** do not run single-sim autoresearch between the Step-2 merge and Phase 4 without regenerating its worlds. (Code pointers: `autoresearch/lib/validate_course.py:38,748`.)
+- **Spawn odom topic:** the unified `shogi.urdf` DiffDrive plugin **omits** `<odom_topic>`/`<tf_topic>` so gz defaults them to `/model/<spawn-name>/…` — VM-verified to land on `/model/shogi/odometry` (= `profile.gz_odom_topic`). A custom robot's URDF should do the same (name-driven), or set them explicitly.
