@@ -85,6 +85,11 @@ class MinimalNavigator(Node):
         self.pose: tuple[float, float, float] | None = None  # (x, y, yaw)
         self.scan: LaserScan | None = None
         self.done = False
+        # stuck-recovery state
+        self._check_pos: tuple[float, float] | None = None
+        self._check_t = 0.0
+        self._recovery_until = 0.0
+        self._recovery_turn = 0.0
 
         self.cmd_pub = self.create_publisher(
             Twist, str(self.get_parameter("cmd_topic").value), 10)
@@ -148,6 +153,29 @@ class MinimalNavigator(Node):
             return
         x, y, yaw = self.pose
         tx, ty, radius = self.targets[self.target_idx]
+        max_lin = float(self.get_parameter("max_linear_mps").value)
+        max_ang = float(self.get_parameter("max_angular_rps").value)
+
+        # Stuck recovery: if we're commanding motion but not moving (wedged on an
+        # obstacle too close for the lidar to see), back out and pivot toward the
+        # target, then retry. The robot can pivot now, so this frees it.
+        now = self.get_clock().now().nanoseconds * 1e-9
+        if now < self._recovery_until:
+            cmd = Twist()
+            cmd.linear.x = -0.3 * max_lin
+            cmd.angular.z = self._recovery_turn
+            self.cmd_pub.publish(cmd)
+            return
+        if self._check_pos is None or now - self._check_t > 3.0:
+            if (self._check_pos is not None and math.hypot(
+                    x - self._check_pos[0], y - self._check_pos[1]) < 0.25):
+                self._recovery_until = now + 2.5
+                to_target = _normalize_angle(math.atan2(ty - y, tx - x) - yaw)
+                self._recovery_turn = max_ang if to_target >= 0.0 else -max_ang
+                self.get_logger().warn(
+                    f"stuck at ({x:.1f},{y:.1f}); backing out")
+            self._check_pos = (x, y)
+            self._check_t = now
 
         # Waypoint reached? advance (finish when past the last).
         if math.hypot(tx - x, ty - y) <= radius * float(
@@ -194,12 +222,6 @@ class MinimalNavigator(Node):
         cmd.linear.x = speed
         cmd.angular.z = max(-max_ang, min(max_ang, steer))
         self.cmd_pub.publish(cmd)
-        self.get_logger().info(
-            f"@({x:.1f},{y:.1f},{math.degrees(yaw):+.0f}d) t{self.target_idx}=({tx:.1f},{ty:.1f}) "
-            f"look=({lax:.1f},{lay:.1f}) herr={math.degrees(heading_error):+.0f} "
-            f"obst=({obstacle_range:.1f},{math.degrees(obstacle_bearing):+.0f}) "
-            f"steer={cmd.angular.z:+.2f} spd={cmd.linear.x:.2f}",
-            throttle_duration_sec=2.0)
 
     def _finish(self) -> None:
         self.done = True
