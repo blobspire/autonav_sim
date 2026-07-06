@@ -116,12 +116,12 @@
 
   <!-- ===== Gazebo (Fortress) sim extensions ===== -->
   <gazebo reference="left_wheel_link">
-    <mu1>1.1</mu1>
-    <mu2>1.1</mu2>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
   </gazebo>
   <gazebo reference="right_wheel_link">
-    <mu1>1.1</mu1>
-    <mu2>1.1</mu2>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
   </gazebo>
   <gazebo reference="caster_link">
     <mu1>0.05</mu1>
@@ -138,8 +138,8 @@
       <frame_id>odom</frame_id>
       <child_frame_id>base_link</child_frame_id>
       <odom_publish_frequency>50</odom_publish_frequency>
-      <max_linear_acceleration>1.0</max_linear_acceleration>
-      <max_angular_acceleration>2.0</max_angular_acceleration>
+      <max_linear_acceleration>3.0</max_linear_acceleration>
+      <max_angular_acceleration>8.0</max_angular_acceleration>
     </plugin>
   </gazebo>
 

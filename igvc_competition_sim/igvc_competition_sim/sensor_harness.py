@@ -29,6 +29,7 @@ try:
     )
     from sensor_msgs_py import point_cloud2
     from std_msgs.msg import Bool, Header
+    from tf2_msgs.msg import TFMessage
     from tf2_ros import TransformBroadcaster
 except ImportError as exc:  # pragma: no cover - ROS runtime only.
     raise SystemExit(
@@ -119,6 +120,11 @@ class IgvcSensorHarness(Node):
         self.declare_parameter("publish_odom_tf", True)
         self.declare_parameter(
             "gazebo_odom_topic", "/model/shogi/odometry")
+        # Optional bridged Gazebo true-pose feed (tf2_msgs/TFMessage from
+        # /world/<world>/dynamic_pose/info). When set, the harness positions the
+        # robot from the TRUE physics pose instead of the dead-reckoned wheel odom,
+        # so sensors + scoring stay honest even if the robot slips or stalls.
+        self.declare_parameter("ground_truth_pose_topic", "")
         self.declare_parameter("robot_profile", "")
 
         course_path = str(self.get_parameter("course_config").value).strip()
@@ -130,6 +136,9 @@ class IgvcSensorHarness(Node):
                 "igvc_sensor_harness requires a robot_profile with a 'geometry' "
                 f"block; profile '{profile.name}' has none")
         self.robot = profile.geometry
+        self.robot_model_name = profile.name
+        self.ground_truth_pose_topic = str(
+            self.get_parameter("ground_truth_pose_topic").value).strip()
         self.fallback_integrate_cmd = bool(
             self.get_parameter("fallback_integrate_cmd").value)
         self.publish_ground_truth_pca = bool(
@@ -209,6 +218,12 @@ class IgvcSensorHarness(Node):
             self._gazebo_odom_callback,
             10,
         )
+        self.true_pose_sub = (
+            self.create_subscription(
+                TFMessage, self.ground_truth_pose_topic,
+                self._true_pose_callback, 10)
+            if self.ground_truth_pose_topic else None
+        )
 
         self.tf_pub = TransformBroadcaster(self)
         self.base_x = self.course.start.x
@@ -221,6 +236,8 @@ class IgvcSensorHarness(Node):
         self.pending_commands: list[tuple[float, float, float]] = []
         self.last_cmd_s = -math.inf
         self.last_gazebo_odom_s = -math.inf
+        self.last_true_pose_s = -math.inf
+        self.received_true_pose = False
         self.last_step_s: float | None = None
         self.left_wheel_position = 0.0
         self.right_wheel_position = 0.0
@@ -296,15 +313,43 @@ class IgvcSensorHarness(Node):
         ))
         self.last_cmd_s = now_s
 
+    def _true_pose_live(self) -> bool:
+        # Once the true-pose feed has delivered the robot's pose, always prefer it:
+        # a stationary/stalled robot stops appearing in /dynamic_pose/info, but its
+        # last true pose stays correct (unlike dead-reckoned odom, which drifts when
+        # the wheels spin against an obstacle).
+        return self.received_true_pose
+
+    def _true_pose_callback(self, msg: "TFMessage") -> None:
+        """Track the robot's TRUE physics pose from the bridged Gazebo pose feed,
+        matching the transform whose child_frame_id is the robot's model name."""
+        for tf in msg.transforms:
+            if tf.child_frame_id == self.robot_model_name:
+                t = tf.transform.translation
+                q = tf.transform.rotation
+                self.base_x = float(t.x)
+                self.base_y = float(t.y)
+                self.heading = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
+                self.last_true_pose_s = _stamp_to_float(
+                    self.get_clock().now().to_msg())
+                self.received_true_pose = True
+                self.get_logger().info(
+                    f"true-pose {self.robot_model_name}="
+                    f"({self.base_x:.2f},{self.base_y:.2f})",
+                    throttle_duration_sec=5.0)
+                return
+
     def _gazebo_odom_callback(self, msg: Odometry) -> None:
         stamp = msg.header.stamp
         if stamp.sec == 0 and stamp.nanosec == 0:
             stamp = self.get_clock().now().to_msg()
         self.last_gazebo_odom_s = _stamp_to_float(stamp)
-        self.base_x = float(msg.pose.pose.position.x)
-        self.base_y = float(msg.pose.pose.position.y)
-        q = msg.pose.pose.orientation
-        self.heading = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
+        if not self._true_pose_live():
+            # No true-pose feed: fall back to the dead-reckoned wheel-odom pose.
+            self.base_x = float(msg.pose.pose.position.x)
+            self.base_y = float(msg.pose.pose.position.y)
+            q = msg.pose.pose.orientation
+            self.heading = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
         self.applied_v = float(msg.twist.twist.linear.x)
         self.applied_w = float(msg.twist.twist.angular.z)
         if self.publish_odom_tf:
@@ -320,7 +365,8 @@ class IgvcSensorHarness(Node):
         self.last_step_s = now_s
 
         gazebo_odom_live = now_s - self.last_gazebo_odom_s <= 1.0
-        if self.fallback_integrate_cmd and not gazebo_odom_live:
+        if (self.fallback_integrate_cmd and not gazebo_odom_live
+                and not self._true_pose_live()):
             self._integrate_cmd_fallback(now_s, dt)
         self._integrate_wheels(dt, self.applied_v, self.applied_w)
         if self.publish_odom_tf and not gazebo_odom_live:

@@ -17,9 +17,10 @@ It closes the perception -> control loop using the sim's own lidar — it is the
 worked "how a robot plugs in" example, NOT a scripted path. It is intentionally
 simple (no Nav2, no costmaps); the AutoNav example is the full stack.
 
-Localization: the minimal robot navigates on its own wheel odometry (/odom),
-which tracks true pose closely on flat ground with good traction. A real robot
-would fuse GPS/IMU. Contract: subscribes odom + LaserScan, publishes
+Localization: the minimal robot navigates on the simulator's ground-truth pose
+(/igvc_sim/ground_truth_odom) for simplicity — a real robot brings its own
+odometry/SLAM; this keeps the example focused on navigation + avoidance, not
+state estimation. Contract: subscribes odom + LaserScan, publishes
 geometry_msgs/Twist on /cmd_vel. Every behaviour is a tunable ROS parameter.
 """
 from __future__ import annotations
@@ -54,15 +55,17 @@ class MinimalNavigator(Node):
 
         # --- parameters (all tunable; defaults tuned for the compact course) ---
         self.declare_parameter("course_config", "")   # "" => default course
-        self.declare_parameter("odom_topic", "/odom")
+        self.declare_parameter("odom_topic", "/igvc_sim/ground_truth_odom")
         self.declare_parameter("scan_topic", "/scan_fullframe")
         self.declare_parameter("cmd_topic", "/cmd_vel")
         self.declare_parameter("max_linear_mps", 0.8)
-        self.declare_parameter("max_angular_rps", 1.4)
-        self.declare_parameter("heading_gain", 1.8)
-        self.declare_parameter("lookahead_m", 1.5)           # pure-pursuit lookahead
-        self.declare_parameter("obstacle_influence_m", 3.5)  # start avoiding here
-        self.declare_parameter("obstacle_repel_gain", 2.5)   # steer-away strength
+        self.declare_parameter("max_angular_rps", 1.6)
+        self.declare_parameter("heading_gain", 2.2)
+        self.declare_parameter("lookahead_m", 1.0)           # pure-pursuit lookahead
+        self.declare_parameter("obstacle_influence_m", 2.5)  # start avoiding here
+        self.declare_parameter("obstacle_repel_gain", 1.0)   # gentle: path-following
+        #                                                      does the routing; this
+        #                                                      only nudges off grazes
         self.declare_parameter("forward_cone_deg", 45.0)     # only avoid obstacles ahead
         self.declare_parameter("goal_tolerance_scale", 1.0)  # x waypoint radius
 
@@ -182,11 +185,10 @@ class MinimalNavigator(Node):
             else:                                   # steer to the obstacle's far side
                 away = -1.0 if obstacle_bearing > 0.0 else 1.0
             steer += repel * urgency * away
-            # Keep enough forward speed to retain turning authority: this robot
-            # arcs to turn and cannot pivot at a crawl, so slowing to a stop near
-            # an obstacle would leave it unable to steer away. Hold a moderate,
-            # steady speed and let the strong steer-away arc it clear.
-            speed = max(0.55 * max_lin, min(speed, 0.7 * max_lin))
+            # This robot turns by arcing and cannot pivot at a crawl, so hold a
+            # steady moderate speed near obstacles (never stall) and let the
+            # steer-away arc it clear.
+            speed = 0.7 * max_lin
 
         cmd = Twist()
         cmd.linear.x = speed

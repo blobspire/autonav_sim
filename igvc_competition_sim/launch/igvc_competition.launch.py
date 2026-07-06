@@ -363,6 +363,9 @@ def _harness_process(context, *args, **kwargs):
                 "use_sim_time": True,
                 "course_config": LaunchConfiguration("course_config"),
                 "gazebo_odom_topic": _active_robot_profile(context).gz_odom_topic,
+                "ground_truth_pose_topic": (
+                    "/world/igvc_competition/dynamic_pose/info"
+                    if _truthy(context, "use_ground_truth_pose") else ""),
                 "robot_profile": LaunchConfiguration("robot_profile"),
                 "fallback_integrate_cmd": LaunchConfiguration(
                     "fallback_integrate_cmd"),
@@ -427,6 +430,11 @@ def _odom_bridge_process(context, *args, **kwargs):
                     value_type=float,
                 ),
                 "input_odom_topic": _active_robot_profile(context).gz_odom_topic,
+                # When the harness publishes the TRUE ground-truth pose it owns
+                # /igvc_sim/ground_truth_odom; the bridge must not also publish a
+                # dead-reckoned copy (two publishers => monitor/nav get a mix).
+                "publish_ground_truth_odom": not _truthy(
+                    context, "use_ground_truth_pose"),
             }],
         )
     ]
@@ -436,20 +444,27 @@ def _bridge_process(context, *args, **kwargs):
     if not _truthy(context, "launch_bridge"):
         return []
     profile = _active_robot_profile(context)
+    bridge_args = [
+        "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+        "/cmd_vel_gazebo@geometry_msgs/msg/Twist]gz.msgs.Twist",
+        f"{profile.gz_odom_topic}@nav_msgs/msg/Odometry[gz.msgs.Odometry",
+        "/igvc_sim/zed/image@sensor_msgs/msg/Image[gz.msgs.Image",
+        "/igvc_sim/zed/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
+        "/igvc_sim/zed/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+    ]
+    if _truthy(context, "use_ground_truth_pose"):
+        # TRUE physics poses of every model -> ROS, so the harness can place
+        # sensors + score on the real robot pose instead of dead-reckoned odom.
+        bridge_args.append(
+            "/world/igvc_competition/dynamic_pose/info"
+            "@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V")
     return [
         Node(
             package="ros_gz_bridge",
             executable="parameter_bridge",
             name="igvc_gz_bridge",
             output="screen",
-            arguments=[
-                "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-                "/cmd_vel_gazebo@geometry_msgs/msg/Twist]gz.msgs.Twist",
-                f"{profile.gz_odom_topic}@nav_msgs/msg/Odometry[gz.msgs.Odometry",
-                "/igvc_sim/zed/image@sensor_msgs/msg/Image[gz.msgs.Image",
-                "/igvc_sim/zed/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
-                "/igvc_sim/zed/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
-            ],
+            arguments=bridge_args,
         )
     ]
 
@@ -633,6 +648,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument("fallback_integrate_cmd", default_value="false"),
         DeclareLaunchArgument("publish_full_lidar_cloud", default_value="true"),
+        DeclareLaunchArgument("use_ground_truth_pose", default_value="true"),
         DeclareLaunchArgument(
             "nav2_params",
             default_value=_default_nav2_params(),
