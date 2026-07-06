@@ -314,11 +314,18 @@ class IgvcSensorHarness(Node):
         self.last_cmd_s = now_s
 
     def _true_pose_live(self) -> bool:
-        # Once the true-pose feed has delivered the robot's pose, always prefer it:
-        # a stationary/stalled robot stops appearing in /dynamic_pose/info, but its
-        # last true pose stays correct (unlike dead-reckoned odom, which drifts when
-        # the wheels spin against an obstacle).
-        return self.received_true_pose
+        # Prefer the true-pose feed once it has delivered the robot's pose. A
+        # stationary/stalled robot stops appearing in /dynamic_pose/info, but its
+        # last true pose stays correct (unlike dead-reckoned odom, which drifts as
+        # the wheels spin against an obstacle) — so a STALE feed is fine while the
+        # robot isn't moving. Only if the feed goes stale while the robot is being
+        # DRIVEN (it has likely died) do we fall back to dead-reckoning.
+        if not self.received_true_pose:
+            return False
+        now_s = _stamp_to_float(self.get_clock().now().to_msg())
+        stale = now_s - self.last_true_pose_s > 1.0
+        moving = abs(self.applied_v) > 0.05 or abs(self.applied_w) > 0.05
+        return not (stale and moving)
 
     def _true_pose_callback(self, msg: "TFMessage") -> None:
         """Track the robot's TRUE physics pose from the bridged Gazebo pose feed,
