@@ -1,0 +1,36 @@
+# Robot profile: minibot — the bundled minimal example robot.
+#
+# This is the worked "plug your own robot in" reference. A robot plugs into
+# autonav_sim by adding exactly this: a profile (identity + geometry) whose
+# `description_ref` points at the robot's URDF. The sim's sensor_harness
+# synthesizes the lidar / GPS / odom from this geometry, and the course_monitor
+# scores the footprint from it — the minibot carries NO sensors of its own.
+#
+# Launch it with:  robot_profile:=<abs path to this file>
+schema_version: 1
+name: minibot
+description: "Minimal CPU-only diff-drive demo robot (bundled autonav_sim example)."
+
+# Points at the minibot URDF in this same package (installed to the package share).
+description_ref: "package://minimal_robot/urdf/minimal_robot.urdf"
+
+# Geometry + low-speed dynamics — must match minimal_robot.urdf so the simulated
+# sensors and scoring footprint are self-consistent with the physical model.
+geometry:
+  base_link_to_nav_center_m: 0.0        # symmetric body; nav center == base_link
+  lidar_x_from_base_link_m: 0.20        # virtual lidar near the front of the body
+  lidar_z_from_base_link_m: 0.20        # at the body top (=> 0.30 m above ground)
+  base_link_height_above_ground_m: 0.10 # base_link sits at the wheel-axle height
+  gps_x_from_base_link_m: 0.0           # virtual GPS at body center
+  gps_y_from_base_link_m: 0.0
+  gps_z_from_base_link_m: 0.20
+  wheel_track_m: 0.44                   # == URDF wheel separation (y = +/-0.22)
+  wheel_radius_m: 0.10                  # == URDF wheel radius
+  physical_half_length_m: 0.25          # body 0.50 long
+  physical_half_width_m: 0.25           # body 0.40 wide + wheels
+  footprint_padding_m: 0.05
+  max_linear_speed_mps: 1.0             # within the course speed band (0.447..2.235)
+  max_angular_speed_radps: 1.5
+  cmd_latency_s: 0.0                    # ideal response (no calibration for the demo)
+  linear_time_constant_s: 0.10
+  angular_time_constant_s: 0.10

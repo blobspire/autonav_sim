@@ -1,0 +1,146 @@
+<?xml version="1.0"?>
+<!--
+  minibot — the bundled minimal example robot for autonav_sim.
+
+  A deliberately simple, CPU-only, zero-dependency differential-drive robot built
+  entirely from primitives (no meshes). It is sim-complete (inertials + collisions
+  + the Gazebo DiffDrive plugin) so it spawns and drives in Gazebo Fortress, and
+  carries NO sensor <sensor> blocks — autonav_sim's sensor_harness synthesizes the
+  lidar / GPS / odom from the robot profile's geometry.
+
+  This is the worked "plug your own robot in" template: a profile (config/
+  minimal_profile.yaml) points description_ref at this URDF; the launch spawns it
+  via `ros_gz_sim create` and the minimal_navigator drives /cmd_vel.
+
+  Design notes (lessons from the shogi Phase-1b bring-up):
+   * Both drive wheels spin about the SAME axis (0 1 0) -> parallel world spin
+     axes, so DiffDrive drives straight (a mismatched axis makes it spin in place).
+   * Every physical link has an <inertial> (urdf2sdf drops inertialess links, so
+     the model wouldn't spawn otherwise).
+   * The rear stabilizer is a low-friction caster BALL (a fixed sphere that slides)
+     — no articulated caster, so nothing to bind or flop.
+-->
+<robot name="minibot">
+
+  <!-- ===== chassis ===== -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="6.0"/>
+      <inertia ixx="0.10" iyy="0.145" izz="0.205" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.50 0.40 0.20"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.50 0.40 0.20"/></geometry>
+      <material name="minibot_body"><color rgba="0.20 0.45 0.80 1.0"/></material>
+    </visual>
+  </link>
+
+  <link name="base_footprint"/>
+  <joint name="base_joint" type="fixed">
+    <origin xyz="0 0 -0.10" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="base_footprint"/>
+  </joint>
+
+  <!-- ===== drive wheels (spin about +Y; parallel axes) ===== -->
+  <link name="left_wheel_link">
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.00135" iyy="0.0025" izz="0.00135" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry><cylinder radius="0.10" length="0.05"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry><cylinder radius="0.10" length="0.05"/></geometry>
+      <material name="minibot_wheel"><color rgba="0.10 0.10 0.10 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="left_wheel" type="continuous">
+    <origin xyz="0 0.22 0" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="left_wheel_link"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="right_wheel_link">
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.00135" iyy="0.0025" izz="0.00135" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry><cylinder radius="0.10" length="0.05"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry><cylinder radius="0.10" length="0.05"/></geometry>
+      <material name="minibot_wheel"/>
+    </visual>
+  </link>
+  <joint name="right_wheel" type="continuous">
+    <origin xyz="0 -0.22 0" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="right_wheel_link"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <!-- ===== rear caster ball (fixed, low-friction slider) ===== -->
+  <link name="caster_link">
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0003" iyy="0.0003" izz="0.0003" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><sphere radius="0.06"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><sphere radius="0.06"/></geometry>
+      <material name="minibot_caster"><color rgba="0.35 0.35 0.35 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="caster" type="fixed">
+    <origin xyz="-0.18 0 -0.04" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="caster_link"/>
+  </joint>
+
+  <!-- ===== Gazebo (Fortress) sim extensions ===== -->
+  <gazebo reference="left_wheel_link">
+    <mu1>1.1</mu1>
+    <mu2>1.1</mu2>
+  </gazebo>
+  <gazebo reference="right_wheel_link">
+    <mu1>1.1</mu1>
+    <mu2>1.1</mu2>
+  </gazebo>
+  <gazebo reference="caster_link">
+    <mu1>0.05</mu1>
+    <mu2>0.05</mu2>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="ignition-gazebo-diff-drive-system" name="ignition::gazebo::systems::DiffDrive">
+      <left_joint>left_wheel</left_joint>
+      <right_joint>right_wheel</right_joint>
+      <wheel_separation>0.44</wheel_separation>
+      <wheel_radius>0.10</wheel_radius>
+      <topic>/cmd_vel_gazebo</topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_link</child_frame_id>
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <max_linear_acceleration>1.0</max_linear_acceleration>
+      <max_angular_acceleration>2.0</max_angular_acceleration>
+    </plugin>
+  </gazebo>
+
+</robot>
