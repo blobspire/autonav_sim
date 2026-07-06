@@ -17,7 +17,6 @@ try:
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from builtin_interfaces.msg import Time
-    from autonav_interfaces.msg import LinePoints
     from geometry_msgs.msg import TransformStamped, Twist, Vector3
     from nav_msgs.msg import OccupancyGrid, Odometry
     from sensor_msgs.msg import (
@@ -35,6 +34,20 @@ except ImportError as exc:  # pragma: no cover - ROS runtime only.
     raise SystemExit(
         "igvc_sensor_harness must run in a sourced ROS 2 Humble environment"
     ) from exc
+
+
+def _import_line_points():
+    """Import the OPTIONAL AutoNav `LinePoints` msg lazily — only needed when
+    publish_ground_truth_lines is enabled. Keeps the harness runnable without the
+    `autonav_interfaces` package (the bundled minimal robot has no AutoNav deps)."""
+    try:
+        from autonav_interfaces.msg import LinePoints
+        return LinePoints
+    except ImportError as exc:  # pragma: no cover - optional dep
+        raise RuntimeError(
+            "publish_ground_truth_lines=true requires the optional AutoNav "
+            "'autonav_interfaces' package; install it or set "
+            "publish_ground_truth_lines:=false.") from exc
 
 # RCLError was added to rclpy after Humble; fall back when absent (matches the
 # pattern already in dynamics_replay.py). auto_camera env-compat fix.
@@ -163,8 +176,10 @@ class IgvcSensorHarness(Node):
                 PointCloud2, "/scan_pca_filtered_points", sensor_qos)
             if self.publish_ground_truth_pca else None
         )
+        self._line_points_cls = (
+            _import_line_points() if self.publish_ground_truth_lines else None)
         self.line_gt_pub = (
-            self.create_publisher(LinePoints, "/line_points", line_qos)
+            self.create_publisher(self._line_points_cls, "/line_points", line_qos)
             if self.publish_ground_truth_lines else None
         )
         self.map_pub = self.create_publisher(
@@ -769,7 +784,7 @@ class IgvcSensorHarness(Node):
     def _publish_ground_truth_lines(self) -> None:
         if self.line_gt_pub is None:
             return
-        msg = LinePoints()
+        msg = self._line_points_cls()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "map"
         msg.points = self._visible_ground_truth_line_points()
