@@ -22,19 +22,24 @@
 -->
 <robot name="minibot">
 
-  <!-- ===== chassis ===== -->
+  <!-- ===== chassis =====
+       base_link sits at the wheel axle (0.1 m above ground). The body box is
+       raised +0.12 so its underside clears the ground (bottom at z=0.12) and ONLY
+       the wheels + caster contact the floor. If the box bottom sits at ground
+       level its flat face drags — the robot then drives/arcs but cannot pivot,
+       because a large flat contact resists rotation far more than sliding. -->
   <link name="base_link">
     <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.12" rpy="0 0 0"/>
       <mass value="6.0"/>
       <inertia ixx="0.10" iyy="0.145" izz="0.205" ixy="0" ixz="0" iyz="0"/>
     </inertial>
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.12" rpy="0 0 0"/>
       <geometry><box size="0.50 0.40 0.20"/></geometry>
     </collision>
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.12" rpy="0 0 0"/>
       <geometry><box size="0.50 0.40 0.20"/></geometry>
       <material name="minibot_body"><color rgba="0.20 0.45 0.80 1.0"/></material>
     </visual>

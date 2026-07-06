@@ -372,6 +372,7 @@ class IgvcSensorHarness(Node):
         if self.publish_odom_tf and not gazebo_odom_live:
             self._publish_dynamic_transforms(stamp)
             self._publish_odom(stamp)
+        self._publish_ground_truth_odom(stamp)
         self._publish_joint_states(stamp)
         self.autonomous_pub.publish(Bool(data=True))
 
@@ -471,20 +472,29 @@ class IgvcSensorHarness(Node):
             msg.twist.twist.linear.x = self.applied_v
             msg.twist.twist.angular.z = self.applied_w
             publisher.publish(msg)
-        if self.ground_truth_odom_pub is not None:
-            msg = Odometry()
-            msg.header.stamp = stamp
-            msg.header.frame_id = "odom"
-            msg.child_frame_id = "base_link"
-            msg.pose.pose.position.x = self.base_x
-            msg.pose.pose.position.y = self.base_y
-            msg.pose.pose.orientation.x = qx
-            msg.pose.pose.orientation.y = qy
-            msg.pose.pose.orientation.z = qz
-            msg.pose.pose.orientation.w = qw
-            msg.twist.twist.linear.x = self.applied_v
-            msg.twist.twist.angular.z = self.applied_w
-            self.ground_truth_odom_pub.publish(msg)
+
+    def _publish_ground_truth_odom(self, stamp: Time) -> None:
+        """Publish the authoritative ground-truth odom from base_x/y (the TRUE
+        physics pose when the ground-truth feed is active). Emitted every tick,
+        independent of publish_odom_tf and wheel-odom liveness, so the monitor and
+        a plugged-in robot always have a truthful pose — even at rest before the
+        wheels first turn (the DiffDrive doesn't emit odom until it moves)."""
+        if self.ground_truth_odom_pub is None:
+            return
+        qx, qy, qz, qw = _yaw_quaternion(self.heading)
+        msg = Odometry()
+        msg.header.stamp = stamp
+        msg.header.frame_id = "odom"
+        msg.child_frame_id = "base_link"
+        msg.pose.pose.position.x = self.base_x
+        msg.pose.pose.position.y = self.base_y
+        msg.pose.pose.orientation.x = qx
+        msg.pose.pose.orientation.y = qy
+        msg.pose.pose.orientation.z = qz
+        msg.pose.pose.orientation.w = qw
+        msg.twist.twist.linear.x = self.applied_v
+        msg.twist.twist.angular.z = self.applied_w
+        self.ground_truth_odom_pub.publish(msg)
 
     def _publish_gps(self) -> None:
         stamp = self.get_clock().now().to_msg()
