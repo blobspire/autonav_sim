@@ -28,6 +28,22 @@ def _package_share(package: str) -> str:
     return get_package_share_directory(package)
 
 
+def _optional_package_share(package: str) -> str | None:
+    """Share dir of an OPTIONAL package (e.g. AutoNav's `bringup`), or None if it
+    isn't installed — lets the sim run bringup-free for the bundled minimal robot."""
+    try:
+        return get_package_share_directory(package)
+    except Exception:
+        return None
+
+
+def _bringup_resource_dir() -> str:
+    """Parent dir of the optional `bringup` package (for `model://bringup/...`
+    mesh URIs), or '' when bringup is not installed."""
+    bringup = _optional_package_share("bringup")
+    return str(Path(bringup).parent) if bringup else ""
+
+
 def _default_course_config() -> str:
     return os.path.join(
         _package_share("igvc_competition_sim"),
@@ -87,7 +103,9 @@ def _default_bt_xml() -> str:
 
 def _load_robot_description(robot_description_path: str = "") -> str:
     candidates = [Path(robot_description_path)] if robot_description_path else []
-    candidates.append(Path(_package_share("bringup")) / "description" / "shogi.urdf")
+    bringup = _optional_package_share("bringup")
+    if bringup:  # AutoNav shogi fallback — only if bringup is installed
+        candidates.append(Path(bringup) / "description" / "shogi.urdf")
     for path in candidates:
         if path.is_file():
             return path.read_text(encoding="utf-8")
@@ -112,7 +130,12 @@ def _resolve_description_path(context, profile) -> str:
         return str(Path(_package_share(pkg)) / rel)
     if ref:
         return ref
-    return str(Path(_package_share("bringup")) / "description" / "shogi.urdf")
+    bringup = _optional_package_share("bringup")
+    if bringup:
+        return str(Path(bringup) / "description" / "shogi.urdf")
+    raise FileNotFoundError(
+        "robot profile has no 'description_ref' and no 'bringup' package is "
+        "installed to fall back to; set description_ref or robot_description_path.")
 
 
 def _spawn_robot(context, *args, **kwargs):
@@ -625,11 +648,11 @@ def generate_launch_description() -> LaunchDescription:
         ),
         SetEnvironmentVariable(
             "IGN_GAZEBO_RESOURCE_PATH",
-            os.pathsep.join([
+            os.pathsep.join(p for p in [
                 _package_share("igvc_competition_sim"),
-                str(Path(_package_share("bringup")).parent),
+                _bringup_resource_dir(),  # '' when bringup absent (minimal robot)
                 os.environ.get("IGN_GAZEBO_RESOURCE_PATH", ""),
-            ]),
+            ] if p),
         ),
         OpaqueFunction(function=_validate_world_sync),
         OpaqueFunction(function=_gazebo_process),
