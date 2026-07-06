@@ -13,7 +13,11 @@ full-stack example.
 
 ## Try it — the bundled minimal robot (no AutoNav needed)
 
-<!-- TODO: demo gif of the minibot driving the course to the finish -->
+![The minibot autonomously navigating the IGVC course](docs/images/minibot_demo.png)
+
+*The bundled `minibot` tracking a lane past a barrel. (Static frame for now — an
+animated demo is coming; the current CI VM renders headless on software GL, so a
+GPU capture will do it justice.)*
 
 ```bash
 mkdir -p ws/src && cd ws/src
