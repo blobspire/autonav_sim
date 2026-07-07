@@ -38,6 +38,10 @@ sim. Its packages (`bringup`, `slam`, `autonav_detection`, `autonav_interfaces`,
 custom BT plugins, Nav2 params, URDF, BT XML) come from the active AutoNav
 checkout in the same colcon workspace.
 
+See **[docs/examples/autonav_25-26.md](docs/examples/autonav_25-26.md)** for the
+**oracle-perception** run — ground-truth lanes + obstacles (no GPU) fed to
+AutoNav's Nav2 stack, driving the real robot through the course on CPU.
+
 ## Workspace Layout
 
 Use both repos side by side:
