@@ -28,6 +28,22 @@ def _package_share(package: str) -> str:
     return get_package_share_directory(package)
 
 
+def _optional_package_share(package: str) -> str | None:
+    """Share dir of an OPTIONAL package (e.g. AutoNav's `bringup`), or None if it
+    isn't installed — lets the sim run bringup-free for the bundled minimal robot."""
+    try:
+        return get_package_share_directory(package)
+    except Exception:
+        return None
+
+
+def _bringup_resource_dir() -> str:
+    """Parent dir of the optional `bringup` package (for `model://bringup/...`
+    mesh URIs), or '' when bringup is not installed."""
+    bringup = _optional_package_share("bringup")
+    return str(Path(bringup).parent) if bringup else ""
+
+
 def _default_course_config() -> str:
     return os.path.join(
         _package_share("igvc_competition_sim"),
@@ -87,7 +103,9 @@ def _default_bt_xml() -> str:
 
 def _load_robot_description(robot_description_path: str = "") -> str:
     candidates = [Path(robot_description_path)] if robot_description_path else []
-    candidates.append(Path(_package_share("bringup")) / "description" / "shogi.urdf")
+    bringup = _optional_package_share("bringup")
+    if bringup:  # AutoNav shogi fallback — only if bringup is installed
+        candidates.append(Path(bringup) / "description" / "shogi.urdf")
     for path in candidates:
         if path.is_file():
             return path.read_text(encoding="utf-8")
@@ -112,7 +130,12 @@ def _resolve_description_path(context, profile) -> str:
         return str(Path(_package_share(pkg)) / rel)
     if ref:
         return ref
-    return str(Path(_package_share("bringup")) / "description" / "shogi.urdf")
+    bringup = _optional_package_share("bringup")
+    if bringup:
+        return str(Path(bringup) / "description" / "shogi.urdf")
+    raise FileNotFoundError(
+        "robot profile has no 'description_ref' and no 'bringup' package is "
+        "installed to fall back to; set description_ref or robot_description_path.")
 
 
 def _spawn_robot(context, *args, **kwargs):
@@ -340,6 +363,9 @@ def _harness_process(context, *args, **kwargs):
                 "use_sim_time": True,
                 "course_config": LaunchConfiguration("course_config"),
                 "gazebo_odom_topic": _active_robot_profile(context).gz_odom_topic,
+                "ground_truth_pose_topic": (
+                    "/world/igvc_competition/dynamic_pose/info"
+                    if _truthy(context, "use_ground_truth_pose") else ""),
                 "robot_profile": LaunchConfiguration("robot_profile"),
                 "fallback_integrate_cmd": LaunchConfiguration(
                     "fallback_integrate_cmd"),
@@ -404,6 +430,11 @@ def _odom_bridge_process(context, *args, **kwargs):
                     value_type=float,
                 ),
                 "input_odom_topic": _active_robot_profile(context).gz_odom_topic,
+                # When the harness publishes the TRUE ground-truth pose it owns
+                # /igvc_sim/ground_truth_odom; the bridge must not also publish a
+                # dead-reckoned copy (two publishers => monitor/nav get a mix).
+                "publish_ground_truth_odom": not _truthy(
+                    context, "use_ground_truth_pose"),
             }],
         )
     ]
@@ -413,20 +444,27 @@ def _bridge_process(context, *args, **kwargs):
     if not _truthy(context, "launch_bridge"):
         return []
     profile = _active_robot_profile(context)
+    bridge_args = [
+        "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+        "/cmd_vel_gazebo@geometry_msgs/msg/Twist]gz.msgs.Twist",
+        f"{profile.gz_odom_topic}@nav_msgs/msg/Odometry[gz.msgs.Odometry",
+        "/igvc_sim/zed/image@sensor_msgs/msg/Image[gz.msgs.Image",
+        "/igvc_sim/zed/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
+        "/igvc_sim/zed/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+    ]
+    if _truthy(context, "use_ground_truth_pose"):
+        # TRUE physics poses of every model -> ROS, so the harness can place
+        # sensors + score on the real robot pose instead of dead-reckoned odom.
+        bridge_args.append(
+            "/world/igvc_competition/dynamic_pose/info"
+            "@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V")
     return [
         Node(
             package="ros_gz_bridge",
             executable="parameter_bridge",
             name="igvc_gz_bridge",
             output="screen",
-            arguments=[
-                "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-                "/cmd_vel_gazebo@geometry_msgs/msg/Twist]gz.msgs.Twist",
-                f"{profile.gz_odom_topic}@nav_msgs/msg/Odometry[gz.msgs.Odometry",
-                "/igvc_sim/zed/image@sensor_msgs/msg/Image[gz.msgs.Image",
-                "/igvc_sim/zed/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
-                "/igvc_sim/zed/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
-            ],
+            arguments=bridge_args,
         )
     ]
 
@@ -610,6 +648,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument("fallback_integrate_cmd", default_value="false"),
         DeclareLaunchArgument("publish_full_lidar_cloud", default_value="true"),
+        DeclareLaunchArgument("use_ground_truth_pose", default_value="true"),
         DeclareLaunchArgument(
             "nav2_params",
             default_value=_default_nav2_params(),
@@ -625,11 +664,11 @@ def generate_launch_description() -> LaunchDescription:
         ),
         SetEnvironmentVariable(
             "IGN_GAZEBO_RESOURCE_PATH",
-            os.pathsep.join([
+            os.pathsep.join(p for p in [
                 _package_share("igvc_competition_sim"),
-                str(Path(_package_share("bringup")).parent),
+                _bringup_resource_dir(),  # '' when bringup absent (minimal robot)
                 os.environ.get("IGN_GAZEBO_RESOURCE_PATH", ""),
-            ]),
+            ] if p),
         ),
         OpaqueFunction(function=_validate_world_sync),
         OpaqueFunction(function=_gazebo_process),

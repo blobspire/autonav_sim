@@ -17,7 +17,6 @@ try:
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from builtin_interfaces.msg import Time
-    from autonav_interfaces.msg import LinePoints
     from geometry_msgs.msg import TransformStamped, Twist, Vector3
     from nav_msgs.msg import OccupancyGrid, Odometry
     from sensor_msgs.msg import (
@@ -30,11 +29,26 @@ try:
     )
     from sensor_msgs_py import point_cloud2
     from std_msgs.msg import Bool, Header
+    from tf2_msgs.msg import TFMessage
     from tf2_ros import TransformBroadcaster
 except ImportError as exc:  # pragma: no cover - ROS runtime only.
     raise SystemExit(
         "igvc_sensor_harness must run in a sourced ROS 2 Humble environment"
     ) from exc
+
+
+def _import_line_points():
+    """Import the OPTIONAL AutoNav `LinePoints` msg lazily — only needed when
+    publish_ground_truth_lines is enabled. Keeps the harness runnable without the
+    `autonav_interfaces` package (the bundled minimal robot has no AutoNav deps)."""
+    try:
+        from autonav_interfaces.msg import LinePoints
+        return LinePoints
+    except ImportError as exc:  # pragma: no cover - optional dep
+        raise RuntimeError(
+            "publish_ground_truth_lines=true requires the optional AutoNav "
+            "'autonav_interfaces' package; install it or set "
+            "publish_ground_truth_lines:=false.") from exc
 
 # RCLError was added to rclpy after Humble; fall back when absent (matches the
 # pattern already in dynamics_replay.py). auto_camera env-compat fix.
@@ -106,6 +120,11 @@ class IgvcSensorHarness(Node):
         self.declare_parameter("publish_odom_tf", True)
         self.declare_parameter(
             "gazebo_odom_topic", "/model/shogi/odometry")
+        # Optional bridged Gazebo true-pose feed (tf2_msgs/TFMessage from
+        # /world/<world>/dynamic_pose/info). When set, the harness positions the
+        # robot from the TRUE physics pose instead of the dead-reckoned wheel odom,
+        # so sensors + scoring stay honest even if the robot slips or stalls.
+        self.declare_parameter("ground_truth_pose_topic", "")
         self.declare_parameter("robot_profile", "")
 
         course_path = str(self.get_parameter("course_config").value).strip()
@@ -117,6 +136,9 @@ class IgvcSensorHarness(Node):
                 "igvc_sensor_harness requires a robot_profile with a 'geometry' "
                 f"block; profile '{profile.name}' has none")
         self.robot = profile.geometry
+        self.robot_model_name = profile.name
+        self.ground_truth_pose_topic = str(
+            self.get_parameter("ground_truth_pose_topic").value).strip()
         self.fallback_integrate_cmd = bool(
             self.get_parameter("fallback_integrate_cmd").value)
         self.publish_ground_truth_pca = bool(
@@ -163,8 +185,10 @@ class IgvcSensorHarness(Node):
                 PointCloud2, "/scan_pca_filtered_points", sensor_qos)
             if self.publish_ground_truth_pca else None
         )
+        self._line_points_cls = (
+            _import_line_points() if self.publish_ground_truth_lines else None)
         self.line_gt_pub = (
-            self.create_publisher(LinePoints, "/line_points", line_qos)
+            self.create_publisher(self._line_points_cls, "/line_points", line_qos)
             if self.publish_ground_truth_lines else None
         )
         self.map_pub = self.create_publisher(
@@ -194,6 +218,12 @@ class IgvcSensorHarness(Node):
             self._gazebo_odom_callback,
             10,
         )
+        self.true_pose_sub = (
+            self.create_subscription(
+                TFMessage, self.ground_truth_pose_topic,
+                self._true_pose_callback, 10)
+            if self.ground_truth_pose_topic else None
+        )
 
         self.tf_pub = TransformBroadcaster(self)
         self.base_x = self.course.start.x
@@ -206,6 +236,8 @@ class IgvcSensorHarness(Node):
         self.pending_commands: list[tuple[float, float, float]] = []
         self.last_cmd_s = -math.inf
         self.last_gazebo_odom_s = -math.inf
+        self.last_true_pose_s = -math.inf
+        self.received_true_pose = False
         self.last_step_s: float | None = None
         self.left_wheel_position = 0.0
         self.right_wheel_position = 0.0
@@ -281,15 +313,50 @@ class IgvcSensorHarness(Node):
         ))
         self.last_cmd_s = now_s
 
+    def _true_pose_live(self) -> bool:
+        # Prefer the true-pose feed once it has delivered the robot's pose. A
+        # stationary/stalled robot stops appearing in /dynamic_pose/info, but its
+        # last true pose stays correct (unlike dead-reckoned odom, which drifts as
+        # the wheels spin against an obstacle) — so a STALE feed is fine while the
+        # robot isn't moving. Only if the feed goes stale while the robot is being
+        # DRIVEN (it has likely died) do we fall back to dead-reckoning.
+        if not self.received_true_pose:
+            return False
+        now_s = _stamp_to_float(self.get_clock().now().to_msg())
+        stale = now_s - self.last_true_pose_s > 1.0
+        moving = abs(self.applied_v) > 0.05 or abs(self.applied_w) > 0.05
+        return not (stale and moving)
+
+    def _true_pose_callback(self, msg: "TFMessage") -> None:
+        """Track the robot's TRUE physics pose from the bridged Gazebo pose feed,
+        matching the transform whose child_frame_id is the robot's model name."""
+        for tf in msg.transforms:
+            if tf.child_frame_id == self.robot_model_name:
+                t = tf.transform.translation
+                q = tf.transform.rotation
+                self.base_x = float(t.x)
+                self.base_y = float(t.y)
+                self.heading = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
+                self.last_true_pose_s = _stamp_to_float(
+                    self.get_clock().now().to_msg())
+                self.received_true_pose = True
+                self.get_logger().info(
+                    f"true-pose {self.robot_model_name}="
+                    f"({self.base_x:.2f},{self.base_y:.2f})",
+                    throttle_duration_sec=5.0)
+                return
+
     def _gazebo_odom_callback(self, msg: Odometry) -> None:
         stamp = msg.header.stamp
         if stamp.sec == 0 and stamp.nanosec == 0:
             stamp = self.get_clock().now().to_msg()
         self.last_gazebo_odom_s = _stamp_to_float(stamp)
-        self.base_x = float(msg.pose.pose.position.x)
-        self.base_y = float(msg.pose.pose.position.y)
-        q = msg.pose.pose.orientation
-        self.heading = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
+        if not self._true_pose_live():
+            # No true-pose feed: fall back to the dead-reckoned wheel-odom pose.
+            self.base_x = float(msg.pose.pose.position.x)
+            self.base_y = float(msg.pose.pose.position.y)
+            q = msg.pose.pose.orientation
+            self.heading = _yaw_from_quaternion(q.x, q.y, q.z, q.w)
         self.applied_v = float(msg.twist.twist.linear.x)
         self.applied_w = float(msg.twist.twist.angular.z)
         if self.publish_odom_tf:
@@ -305,12 +372,14 @@ class IgvcSensorHarness(Node):
         self.last_step_s = now_s
 
         gazebo_odom_live = now_s - self.last_gazebo_odom_s <= 1.0
-        if self.fallback_integrate_cmd and not gazebo_odom_live:
+        if (self.fallback_integrate_cmd and not gazebo_odom_live
+                and not self._true_pose_live()):
             self._integrate_cmd_fallback(now_s, dt)
         self._integrate_wheels(dt, self.applied_v, self.applied_w)
         if self.publish_odom_tf and not gazebo_odom_live:
             self._publish_dynamic_transforms(stamp)
             self._publish_odom(stamp)
+        self._publish_ground_truth_odom(stamp)
         self._publish_joint_states(stamp)
         self.autonomous_pub.publish(Bool(data=True))
 
@@ -410,20 +479,29 @@ class IgvcSensorHarness(Node):
             msg.twist.twist.linear.x = self.applied_v
             msg.twist.twist.angular.z = self.applied_w
             publisher.publish(msg)
-        if self.ground_truth_odom_pub is not None:
-            msg = Odometry()
-            msg.header.stamp = stamp
-            msg.header.frame_id = "odom"
-            msg.child_frame_id = "base_link"
-            msg.pose.pose.position.x = self.base_x
-            msg.pose.pose.position.y = self.base_y
-            msg.pose.pose.orientation.x = qx
-            msg.pose.pose.orientation.y = qy
-            msg.pose.pose.orientation.z = qz
-            msg.pose.pose.orientation.w = qw
-            msg.twist.twist.linear.x = self.applied_v
-            msg.twist.twist.angular.z = self.applied_w
-            self.ground_truth_odom_pub.publish(msg)
+
+    def _publish_ground_truth_odom(self, stamp: Time) -> None:
+        """Publish the authoritative ground-truth odom from base_x/y (the TRUE
+        physics pose when the ground-truth feed is active). Emitted every tick,
+        independent of publish_odom_tf and wheel-odom liveness, so the monitor and
+        a plugged-in robot always have a truthful pose — even at rest before the
+        wheels first turn (the DiffDrive doesn't emit odom until it moves)."""
+        if self.ground_truth_odom_pub is None:
+            return
+        qx, qy, qz, qw = _yaw_quaternion(self.heading)
+        msg = Odometry()
+        msg.header.stamp = stamp
+        msg.header.frame_id = "odom"
+        msg.child_frame_id = "base_link"
+        msg.pose.pose.position.x = self.base_x
+        msg.pose.pose.position.y = self.base_y
+        msg.pose.pose.orientation.x = qx
+        msg.pose.pose.orientation.y = qy
+        msg.pose.pose.orientation.z = qz
+        msg.pose.pose.orientation.w = qw
+        msg.twist.twist.linear.x = self.applied_v
+        msg.twist.twist.angular.z = self.applied_w
+        self.ground_truth_odom_pub.publish(msg)
 
     def _publish_gps(self) -> None:
         stamp = self.get_clock().now().to_msg()
@@ -769,7 +847,7 @@ class IgvcSensorHarness(Node):
     def _publish_ground_truth_lines(self) -> None:
         if self.line_gt_pub is None:
             return
-        msg = LinePoints()
+        msg = self._line_points_cls()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "map"
         msg.points = self._visible_ground_truth_line_points()

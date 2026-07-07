@@ -3,17 +3,14 @@
 <package format="3">
   <name>igvc_competition_sim</name>
   <version>0.1.0</version>
-  <description>Gazebo Fortress IGVC competition simulation harness for the AutoNav Humble stack.</description>
+  <description>General-purpose "plug your own robot in" IGVC AutoNav simulator (ROS 2 Humble + Gazebo Fortress): drives a profile-selected robot through a mock competition course to test perception/planning/control.</description>
   <maintainer email="autonav@vt.edu">AutoNav</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
 
-  <exec_depend>autonav_interfaces</exec_depend>
-  <exec_depend>autonav_detection</exec_depend>
-  <exec_depend>bringup</exec_depend>
+  <!-- Sim-core dependencies (standard ROS 2 / gz packages, all in rosdistro). -->
   <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>gps_waypoint_handler</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
@@ -25,10 +22,20 @@
   <exec_depend>ros_gz_sim</exec_depend>
   <exec_depend>rosgraph_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>slam</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
+
+  <!-- OPTIONAL AutoNav-example packages — deliberately NOT exec_depend so a clean
+       workspace (the bundled minimal robot) resolves with ZERO AutoNav packages.
+       They are provided via vcs.yaml for the AutoNav example (Phase 3) and every
+       consumer is gated behind a launch arg or the lazy LinePoints import:
+         autonav_interfaces   (publish_ground_truth_lines / mission_runner)
+         autonav_detection    (launch_detection)
+         bringup              (shogi URDF/meshes — guarded; else description_ref)
+         gps_waypoint_handler (launch_gps_handler)
+         slam                 (launch_nav nav2 params + behavior trees) -->
+
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

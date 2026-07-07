@@ -1,13 +1,42 @@
 # autonav_sim
 
-Standalone Gazebo Fortress / IGVC simulation repository for the AutoNav ROS 2
-Humble stack.
+A general-purpose **"plug your own robot in"** IGVC AutoNav simulator (ROS 2
+Humble + Gazebo Fortress). It drives a real robot stack through a mock
+competition course — lane lines, barrels, a ramp, GPS waypoints, and scoring — to
+test perception / planning / control.
 
-This repo contains the simulation package `igvc_competition_sim`, course assets,
-run scripts, and simulation docs. It intentionally does not copy the robot stack.
-Robot packages such as `bringup`, `slam`, `autonav_detection`,
-`autonav_interfaces`, custom BT plugins, Nav2 params, URDF, and BT XML come from
-the active AutoNav checkout in the same colcon workspace.
+A robot plugs in via a **robot profile** (identity + geometry) that points at its
+URDF; the sim spawns it, publishes camera / lidar / GPS / odom, and subscribes to
+`/cmd_vel`. It ships with a bundled **minimal robot** you can clone and run in one
+command, and references the real **AutoNav 2025-26** competition robot as the
+full-stack example.
+
+## Try it — the bundled minimal robot (no AutoNav needed)
+
+![The minibot autonomously navigating the IGVC course](docs/images/minibot_demo.png)
+
+*The bundled `minibot` tracking a lane past a barrel. (Static frame for now — an
+animated demo is coming; the current CI VM renders headless on software GL, so a
+GPU capture will do it justice.)*
+
+```bash
+mkdir -p ws/src && cd ws/src
+git clone https://github.com/blobspire/autonav_sim.git
+cd .. && colcon build && source install/setup.bash
+ros2 launch minimal_robot minimal_demo.launch.py         # headless:=true for no GUI
+```
+
+A CPU-only diff-drive robot (`minibot`) spawns and autonomously drives the course
+to the finish — no AutoNav packages required. See
+**[docs/quickstart.md](docs/quickstart.md)** for details and how to plug in your
+own robot.
+
+## Running the AutoNav 2025-26 robot (the full-stack example)
+
+The real competition robot is referenced via `vcs.yaml` and runs alongside the
+sim. Its packages (`bringup`, `slam`, `autonav_detection`, `autonav_interfaces`,
+custom BT plugins, Nav2 params, URDF, BT XML) come from the active AutoNav
+checkout in the same colcon workspace.
 
 ## Workspace Layout
 
