@@ -46,10 +46,17 @@ SLAM_SHARE="$(pkg_share slam)"
 COURSE_CONFIG="${COURSE_CONFIG:-$SIM_SHARE/config/igvc_competition_compact.yaml}"
 DYNAMICS_CALIBRATION="${DYNAMICS_CALIBRATION:-$SIM_SHARE/config/dynamics_calibration.yaml}"
 if [[ -z "${NAV2_PARAMS:-}" ]]; then
-  if [[ "$LINE_DETECTION_MODE" == "lidar" ]]; then
+  # AutoNav's slam renamed its nav2 configs (camera/lidar -> paramsv2/params);
+  # prefer the lidar-specific file when it exists, else the current default,
+  # falling back to legacy names for older AutoNav checkouts.
+  if [[ "$LINE_DETECTION_MODE" == "lidar" && -f "$SLAM_SHARE/config/nav2_params_lidar.yaml" ]]; then
     NAV2_PARAMS="$SLAM_SHARE/config/nav2_params_lidar.yaml"
   else
-    NAV2_PARAMS="$SLAM_SHARE/config/nav2_params_camera.yaml"
+    for cand in nav2_paramsv2.yaml nav2_params.yaml nav2_params_camera.yaml; do
+      if [[ -f "$SLAM_SHARE/config/$cand" ]]; then
+        NAV2_PARAMS="$SLAM_SHARE/config/$cand"; break
+      fi
+    done
   fi
 fi
 if [[ -z "$PUBLISH_FULL_LIDAR_CLOUD" ]]; then

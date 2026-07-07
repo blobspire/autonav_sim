@@ -82,10 +82,17 @@ def _active_robot_profile(context):
 
 
 def _default_nav2_params() -> str:
+    # AutoNav's slam package renamed its nav2 configs (the old
+    # nav2_params_camera.yaml / nav2_params_lidar.yaml became
+    # nav2_paramsv2.yaml / nav2_params.yaml). Prefer the current name and fall
+    # back to older ones so the launch works across AutoNav versions.
     try:
-        candidate = Path(_package_share("slam")) / "config" / "nav2_params_camera.yaml"
-        if candidate.is_file():
-            return str(candidate)
+        slam_config = Path(_package_share("slam")) / "config"
+        for name in ("nav2_paramsv2.yaml", "nav2_params.yaml",
+                     "nav2_params_camera.yaml"):
+            candidate = slam_config / name
+            if candidate.is_file():
+                return str(candidate)
     except Exception:
         pass
     return ""
@@ -284,10 +291,10 @@ def _nav2_process(context, *args, **kwargs):
     bt_xml = bt_arg or _default_bt_xml()
     if not params_source:
         raise FileNotFoundError(
-            "Could not find slam/config/nav2_params_camera.yaml from the "
-            "active ROS package index. Build and source the workspace "
-            "containing the AutoNav slam package, or pass "
-            "nav2_params:=/absolute/path/to/nav2_params_camera.yaml.")
+            "Could not find a slam nav2 params file (looked for "
+            "nav2_paramsv2.yaml / nav2_params.yaml in the slam package's "
+            "config/). Build and source the workspace containing the AutoNav "
+            "slam package, or pass nav2_params:=/absolute/path/to/params.yaml.")
     if not bt_xml:
         raise FileNotFoundError(
             "Could not find slam/behavior_trees/bt_nav.xml from the active "
@@ -319,10 +326,10 @@ def _breadcrumb_buffer_process(context, *args, **kwargs):
     params_source = params_arg or _default_nav2_params()
     if not params_source:
         raise FileNotFoundError(
-            "Could not find slam/config/nav2_params_camera.yaml from the "
-            "active ROS package index. Build and source the workspace "
-            "containing the AutoNav slam package, or pass "
-            "nav2_params:=/absolute/path/to/nav2_params_camera.yaml.")
+            "Could not find a slam nav2 params file (looked for "
+            "nav2_paramsv2.yaml / nav2_params.yaml in the slam package's "
+            "config/). Build and source the workspace containing the AutoNav "
+            "slam package, or pass nav2_params:=/absolute/path/to/params.yaml.")
     return [
         Node(
             package="custom_behavior_tree_plugins",
